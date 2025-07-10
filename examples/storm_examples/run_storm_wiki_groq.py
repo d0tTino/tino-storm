@@ -19,7 +19,10 @@ args.output_dir/
 
 import os
 import re
+import logging
 from argparse import ArgumentParser
+
+logger = logging.getLogger(__name__)
 
 from knowledge_storm import (
     STORMWikiRunnerArguments,
