@@ -24,7 +24,7 @@ from argparse import ArgumentParser
 
 logger = logging.getLogger(__name__)
 
-from knowledge_storm import (
+from tino_storm import (
     STORMWikiRunnerArguments,
     STORMWikiRunner,
     STORMWikiLMConfigs,
@@ -33,7 +33,7 @@ from knowledge_storm import (
 # Now import lm directly
 import lm
 from lm import GroqModel
-from knowledge_storm.rm import (
+from tino_storm.rm import (
     YouRM,
     BingSearch,
     BraveRM,
@@ -42,7 +42,7 @@ from knowledge_storm.rm import (
     TavilySearchRM,
     SearXNG,
 )
-from knowledge_storm.utils import load_api_key
+from tino_storm.utils import load_api_key
 
 
 def sanitize_topic(topic):
