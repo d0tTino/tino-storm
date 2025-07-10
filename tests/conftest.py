@@ -2,6 +2,7 @@ import sys
 import types
 import importlib.machinery
 from dataclasses import dataclass
+from pathlib import Path
 
 # Stub modules from knowledge_storm to avoid heavy dependencies in tests
 
@@ -9,6 +10,8 @@ from dataclasses import dataclass
 def pytest_configure(config):
     if "knowledge_storm" in sys.modules:
         return
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
     ks = types.ModuleType("knowledge_storm")
     ks.__spec__ = importlib.machinery.ModuleSpec(

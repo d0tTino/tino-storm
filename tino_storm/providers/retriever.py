@@ -21,6 +21,7 @@ RETRIEVER_REGISTRY: dict[str, str] = {
     "searxng": "SearXNG",
     "azure_ai_search": "AzureAISearch",
     "arxiv": "StanfordOvalArxivRM",
+    "rrf": "RRFRetriever",
 }
 
 
@@ -29,5 +30,9 @@ def get_retriever(name: str) -> Type:
     key = name.lower()
     if key not in RETRIEVER_REGISTRY:
         raise ValueError(f"Unknown retriever provider: {name}")
+    if key == "rrf":
+        from tino_storm.rrf import RRFRetriever
+
+        return RRFRetriever
     module = importlib.import_module("knowledge_storm.rm")
     return getattr(module, RETRIEVER_REGISTRY[key])
