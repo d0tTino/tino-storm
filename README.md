@@ -45,7 +45,24 @@ A short command line interface is available in `examples/cli_example.py`:
 python examples/cli_example.py "Quantum computing"
 ```
 
+
 `OPENAI_API_KEY` and `BING_SEARCH_API_KEY` must be set in the environment (or provided via `secrets.toml`).
+
+## Ingesting research data
+
+Use the command below to monitor a vault directory for new research files and automatically index them:
+
+```bash
+tino-storm ingest --vault my_vault
+```
+
+This watches `research/my_vault/` for PDFs, `urls.txt`, and JSON dumps. Detected files are ingested with
+LlamaIndex and stored in `~/.tino_storm/chroma/my_vault` using Chroma as the vector store. Install the optional
+dependencies with:
+
+```bash
+pip install watchdog llama-index chromadb
+```
 
 
 ## Optional FastAPI mode
