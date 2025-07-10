@@ -32,15 +32,61 @@ def pytest_configure(config):
     class STORMWikiLMConfigs:
         def __init__(self):
             self.conv_simulator_lm = None
+            self.question_asker_lm = None
+            self.outline_gen_lm = None
+            self.article_gen_lm = None
+            self.article_polish_lm = None
 
         def set_conv_simulator_lm(self, lm):
             self.conv_simulator_lm = lm
+
+        def set_question_asker_lm(self, lm):
+            self.question_asker_lm = lm
+
+        def set_outline_gen_lm(self, lm):
+            self.outline_gen_lm = lm
+
+        def set_article_gen_lm(self, lm):
+            self.article_gen_lm = lm
+
+        def set_article_polish_lm(self, lm):
+            self.article_polish_lm = lm
 
         def init_check(self):
             pass
 
     engine_mod.STORMWikiRunnerArguments = STORMWikiRunnerArguments
     engine_mod.STORMWikiLMConfigs = STORMWikiLMConfigs
+    ks.STORMWikiRunnerArguments = STORMWikiRunnerArguments
+    ks.STORMWikiLMConfigs = STORMWikiLMConfigs
+
+    class STORMWikiRunner:
+        def __init__(self, args, lm_configs, rm):
+            self.args = args
+            self.lm_configs = lm_configs
+            self.rm = rm
+            self.calls = []
+
+        def build_outline(self, topic, ground_truth_url="", callback_handler=None):
+            self.calls.append(("build_outline", topic, ground_truth_url))
+            return f"outline:{topic}"
+
+        def generate_article(self, callback_handler=None):
+            self.calls.append(("generate_article",))
+            return "article"
+
+        def polish_article(self, remove_duplicate=False):
+            self.calls.append(("polish_article", remove_duplicate))
+            return "polished"
+
+        def post_run(self):
+            self.calls.append(("post_run",))
+
+    class BaseCallbackHandler:
+        pass
+
+    ks.STORMWikiRunner = STORMWikiRunner
+    ks.BaseCallbackHandler = BaseCallbackHandler
 
     storm_wiki_mod = types.ModuleType("knowledge_storm.storm_wiki")
     storm_wiki_mod.engine = engine_mod
@@ -49,7 +95,8 @@ def pytest_configure(config):
     lm_mod = types.ModuleType("knowledge_storm.lm")
 
     class Base:
-        pass
+        def __init__(self, *args, **kwargs):
+            pass
 
     class LitellmModel(Base):
         def __init__(self, model: str):
@@ -104,34 +151,44 @@ def pytest_configure(config):
     rm_mod = types.ModuleType("knowledge_storm.rm")
 
     class YouRM:
-        pass
+        def __init__(self, *args, **kwargs):
+            pass
 
     class BingSearch:
-        pass
+        def __init__(self, *args, **kwargs):
+            pass
 
     class BraveRM:
-        pass
+        def __init__(self, *args, **kwargs):
+            pass
 
     class SerperRM:
-        pass
+        def __init__(self, *args, **kwargs):
+            pass
 
     class DuckDuckGoSearchRM:
-        pass
+        def __init__(self, *args, **kwargs):
+            pass
 
     class TavilySearchRM:
-        pass
+        def __init__(self, *args, **kwargs):
+            pass
 
     class VectorRM:
-        pass
+        def __init__(self, *args, **kwargs):
+            pass
 
     class SearXNG:
-        pass
+        def __init__(self, *args, **kwargs):
+            pass
 
     class AzureAISearch:
-        pass
+        def __init__(self, *args, **kwargs):
+            pass
 
     class StanfordOvalArxivRM:
-        pass
+        def __init__(self, *args, **kwargs):
+            pass
 
     for cls in [
         YouRM,
@@ -147,12 +204,21 @@ def pytest_configure(config):
     ]:
         setattr(rm_mod, cls.__name__, cls)
 
+    utils_mod = types.ModuleType("knowledge_storm.utils")
+
+    def load_api_key(toml_file_path: str):
+        return None
+
+    utils_mod.load_api_key = load_api_key
+
     ks.storm_wiki = storm_wiki_mod
     ks.lm = lm_mod
     ks.rm = rm_mod
+    ks.utils = utils_mod
 
     sys.modules["knowledge_storm"] = ks
     sys.modules["knowledge_storm.storm_wiki"] = storm_wiki_mod
     sys.modules["knowledge_storm.storm_wiki.engine"] = engine_mod
     sys.modules["knowledge_storm.lm"] = lm_mod
     sys.modules["knowledge_storm.rm"] = rm_mod
+    sys.modules["knowledge_storm.utils"] = utils_mod
