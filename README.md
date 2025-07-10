@@ -37,6 +37,23 @@ article = runner.run(topic="Deep learning", do_research=True, do_generate_outlin
 print(article)
 ```
 
+## DSPy ResearchSkill
+
+The package exposes a small `ResearchSkill` wrapper to compose the outline,
+draft and polish modules. This can be used directly with DSPy tuning utilities.
+
+```python
+from tino_storm.dsp import ResearchSkill
+
+skill = ResearchSkill(
+    outline_lm=lm_configs.outline_gen_lm,
+    draft_lm=lm_configs.article_gen_lm,
+    polish_lm=lm_configs.article_polish_lm,
+)
+# `table` should be a StormInformationTable instance from the curation stage
+article = skill("Deep learning", table)
+```
+
 ## CLI usage
 
 A short command line interface is available in `examples/cli_example.py`:
