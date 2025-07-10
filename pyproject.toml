@@ -2,11 +2,5 @@
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[project]
-name = "knowledge-storm"
-version = "1.1.0"
-requires-python = ">=3.10"
-readme = "README.md"
-
-[project.scripts]
-tino-storm = "tino_storm.cli:main"
+[project.optional-dependencies]
+fastapi = ["fastapi", "uvicorn"]
