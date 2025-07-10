@@ -132,7 +132,9 @@ def main(argv: list[str] | None = None) -> None:
     run_parser.set_defaults(func=_run_storm)
 
     ingest_parser = sub.add_parser("ingest", help="Ingest research files")
-    ingest_parser.add_argument("--vault", required=True, help="Name of the research vault")
+    ingest_parser.add_argument(
+        "--vault", required=True, help="Name of the research vault"
+    )
     ingest_parser.set_defaults(func=_run_ingest)
 
     args = parser.parse_args(argv)

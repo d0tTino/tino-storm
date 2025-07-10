@@ -2,6 +2,9 @@ import sys
 import types
 import importlib.machinery
 from dataclasses import dataclass
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 # Stub modules from knowledge_storm to avoid heavy dependencies in tests
 
