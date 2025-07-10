@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import concurrent.futures
-import dspy
 import httpx
 import json
 import logging
@@ -9,13 +10,17 @@ import re
 import regex
 import sys
 import toml
-from typing import List, Dict
+from typing import List, Dict, TYPE_CHECKING
 from tqdm import tqdm
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from trafilatura import extract
 
 from .lm import LitellmModel
+
+if TYPE_CHECKING:
+    from qdrant_client import QdrantClient
+    from langchain_huggingface import HuggingFaceEmbeddings
 
 logging.getLogger("httpx").setLevel(logging.WARNING)  # Disable INFO logging for httpx.
 
@@ -208,7 +213,7 @@ class QdrantVectorStoreManager:
             raise ValueError("Please provide a file path.")
         # check if the file is a csv file
         if not file_path.endswith(".csv"):
-            raise ValueError(f"Not valid file format. Please provide a csv file.")
+            raise ValueError("Not valid file format. Please provide a csv file.")
         if content_column is None:
             raise ValueError("Please provide the name of the content column.")
         if url_column is None:
@@ -440,7 +445,7 @@ class ArticleTextProcessing:
                 max_ref_num = max(
                     [int(x) for x in re.findall(r"\[(\d+)\]", turn.agent_utterance)]
                 )
-            except Exception as e:
+            except Exception:
                 max_ref_num = 0
             if max_ref_num > len(turn.search_results):
                 for i in range(len(turn.search_results), max_ref_num + 1):

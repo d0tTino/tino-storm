@@ -21,7 +21,6 @@ from knowledge_storm import (
 from knowledge_storm.lm import OpenAIModel
 from knowledge_storm.rm import YouRM
 from knowledge_storm.storm_wiki.modules.callback import BaseCallbackHandler
-from knowledge_storm.utils import truncate_filename
 from stoc import stoc
 
 
@@ -670,8 +669,8 @@ class StreamlitCallbackHandler(BaseCallbackHandler):
 
     def on_direct_outline_generation_end(self, outline: str, **kwargs):
         self.status_container.success(
-            f"Finish leveraging the internal knowledge of the large language model."
+            "Finish leveraging the internal knowledge of the large language model."
         )
 
     def on_outline_refinement_end(self, outline: str, **kwargs):
-        self.status_container.success(f"Finish leveraging the collected information.")
+        self.status_container.success("Finish leveraging the collected information.")

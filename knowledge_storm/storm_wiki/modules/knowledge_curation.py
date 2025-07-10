@@ -16,7 +16,7 @@ try:
     from streamlit.runtime.scriptrunner import add_script_run_ctx
 
     streamlit_connection = True
-except ImportError as err:
+except ImportError:
     streamlit_connection = False
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
