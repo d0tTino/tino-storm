@@ -518,6 +518,11 @@ class CoStormRunner:
         if rm is None:
             self.rm = BingSearch(k=runner_argument.retrieve_top_k)
         else:
+            if isinstance(rm, str):
+                from tino_storm.providers import get_retriever
+
+                rm_class = get_retriever(rm)
+                rm = rm_class(k=runner_argument.retrieve_top_k)
             self.rm = rm
         self.encoder = Encoder()
         self.conversation_history = []
