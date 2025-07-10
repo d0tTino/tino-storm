@@ -21,13 +21,13 @@ from argparse import ArgumentParser
 
 from dspy import Example
 
-from knowledge_storm import (
+from tino_storm import (
     STORMWikiRunnerArguments,
     STORMWikiRunner,
     STORMWikiLMConfigs,
 )
-from knowledge_storm.lm import VLLMClient
-from knowledge_storm.rm import (
+from tino_storm.lm import VLLMClient
+from tino_storm.rm import (
     YouRM,
     BingSearch,
     BraveRM,
@@ -36,7 +36,7 @@ from knowledge_storm.rm import (
     TavilySearchRM,
     SearXNG,
 )
-from knowledge_storm.utils import load_api_key
+from tino_storm.utils import load_api_key
 
 
 def main(args):

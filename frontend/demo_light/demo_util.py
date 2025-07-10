@@ -9,19 +9,19 @@ import markdown
 import pytz
 import streamlit as st
 
-# If you install the source code instead of the `knowledge-storm` package,
+# If you install the source code instead of the `tino-storm` package,
 # Uncomment the following lines:
 # import sys
 # sys.path.append('../../')
-from knowledge_storm import (
+from tino_storm import (
     STORMWikiRunnerArguments,
     STORMWikiRunner,
     STORMWikiLMConfigs,
 )
-from knowledge_storm.lm import OpenAIModel
-from knowledge_storm.rm import YouRM
-from knowledge_storm.storm_wiki.modules.callback import BaseCallbackHandler
-from knowledge_storm.utils import truncate_filename
+from tino_storm.lm import OpenAIModel
+from tino_storm.rm import YouRM
+from tino_storm.storm_wiki.modules.callback import BaseCallbackHandler
+from tino_storm.utils import truncate_filename
 from stoc import stoc
 
 

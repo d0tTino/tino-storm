@@ -9,18 +9,20 @@
 </p>
 **Latest News** 🔥
 
-- [2025/01] We add [litellm](https://github.com/BerriAI/litellm) integration for language models and embedding models in `knowledge-storm` v1.1.0.
+- [2025/01] We add [litellm](https://github.com/BerriAI/litellm) integration for language models and embedding models in `tino-storm` v1.1.0.
 
-- [2024/09] Co-STORM codebase is now released and integrated into `knowledge-storm` python package v1.0.0. Run `pip install knowledge-storm --upgrade` to check it out.
+- [2024/09] Co-STORM codebase is now released and integrated into `tino-storm` python package v1.0.0. Run `pip install tino-storm --upgrade` to check it out.
 
 - [2024/09] We introduce collaborative STORM (Co-STORM) to support human-AI collaborative knowledge curation! [Co-STORM Paper](https://www.arxiv.org/abs/2408.15232) has been accepted to EMNLP 2024 main conference.
 
-- [2024/07] You can now install our package with `pip install knowledge-storm`!
+- [2024/07] You can now install our package with `pip install tino-storm`!
 - [2024/07] We add `VectorRM` to support grounding on user-provided documents, complementing existing support of search engines (`YouRM`, `BingSearch`). (check out [#58](https://github.com/stanford-oval/storm/pull/58))
 - [2024/07] We release demo light for developers a minimal user interface built with streamlit framework in Python, handy for local development and demo hosting (checkout [#54](https://github.com/stanford-oval/storm/pull/54))
 - [2024/06] We will present STORM at NAACL 2024! Find us at Poster Session 2 on June 17 or check our [presentation material](assets/storm_naacl2024_slides.pdf). 
-- [2024/05] We add Bing Search support in [rm.py](knowledge_storm/rm.py). Test STORM with `GPT-4o` - we now configure the article generation part in our demo using `GPT-4o` model.
-- [2024/04] We release refactored version of STORM codebase! We define [interface](knowledge_storm/interface.py) for STORM pipeline and reimplement STORM-wiki (check out [`src/storm_wiki`](knowledge_storm/storm_wiki)) to demonstrate how to instantiate the pipeline. We provide API to support customization of different language models and retrieval/search integration.
+- [2024/05] We add Bing Search support in [rm.py](tino_storm/rm.py). Test STORM with `GPT-4o` - we now configure the article generation part in our demo using `GPT-4o` model.
+- [2024/04] We release refactored version of STORM codebase! We define [interface](tino_storm/interface.py) for STORM pipeline and reimplement STORM-wiki (check out [`src/storm_wiki`](tino_storm/storm_wiki)) to demonstrate how to instantiate the pipeline. We provide API to support customization of different language models and retrieval/search integration.
+
+**Migration note**: The package was renamed from `knowledge_storm` to `tino_storm`. Update your imports accordingly.
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
@@ -72,7 +74,7 @@ Both STORM and Co-STORM are implemented in a highly modular way using [dspy](htt
 ## Installation
 
 
-To install the knowledge storm library, use `pip install knowledge-storm`. 
+To install the `tino-storm` library, use `pip install tino-storm`.
 
 You could also install the source code which allows you to modify the behavior of STORM engine directly.
 1. Clone the git repository.
@@ -97,7 +99,7 @@ Currently, our package support:
 - Embedding model components: All embedding models supported by litellm as listed [here](https://docs.litellm.ai/docs/embedding/supported_embedding)
 - retrieval module components: `YouRM`, `BingSearch`, `VectorRM`, `SerperRM`, `BraveRM`, `SearXNG`, `DuckDuckGoSearchRM`, `TavilySearchRM`, `GoogleSearch`, and `AzureAISearch` as 
 
-:star2: **PRs for integrating more search engines/retrievers into [knowledge_storm/rm.py](knowledge_storm/rm.py) are highly appreciated!**
+:star2: **PRs for integrating more search engines/retrievers into [tino_storm/rm.py](tino_storm/rm.py) are highly appreciated!**
 
 Both STORM and Co-STORM are working in the information curation layer, you need to set up the information retrieval module and language model module to create their `Runner` classes respectively.
 
@@ -107,9 +109,9 @@ The STORM knowledge curation engine is defined as a simple Python `STORMWikiRunn
 
 ```python
 import os
-from knowledge_storm import STORMWikiRunnerArguments, STORMWikiRunner, STORMWikiLMConfigs
-from knowledge_storm.lm import LitellmModel
-from knowledge_storm.rm import YouRM
+from tino_storm import STORMWikiRunnerArguments, STORMWikiRunner, STORMWikiLMConfigs
+from tino_storm.lm import LitellmModel
+from tino_storm.rm import YouRM
 
 lm_configs = STORMWikiLMConfigs()
 openai_kwargs = {
@@ -156,10 +158,10 @@ runner.summary()
 The Co-STORM knowledge curation engine is defined as a simple Python `CoStormRunner` class. Here is an example of using Bing search engine and OpenAI models.
 
 ```python
-from knowledge_storm.collaborative_storm.engine import CollaborativeStormLMConfigs, RunnerArgument, CoStormRunner
-from knowledge_storm.lm import LitellmModel
-from knowledge_storm.logging_wrapper import LoggingWrapper
-from knowledge_storm.rm import BingSearch
+from tino_storm.collaborative_storm.engine import CollaborativeStormLMConfigs, RunnerArgument, CoStormRunner
+from tino_storm.lm import LitellmModel
+from tino_storm.logging_wrapper import LoggingWrapper
+from tino_storm.rm import BingSearch
 
 # Co-STORM adopts the same multi LM system paradigm as STORM 
 lm_config: CollaborativeStormLMConfigs = CollaborativeStormLMConfigs()
@@ -281,14 +283,14 @@ If you have installed the source code, you can customize STORM based on your own
 3. Article Generation Module: Populates the generated outline with the collected information.
 4. Article Polishing Module: Refines and enhances the written article for better presentation.
 
-The interface for each module is defined in `knowledge_storm/interface.py`, while their implementations are instantiated in `knowledge_storm/storm_wiki/modules/*`. These modules can be customized according to your specific requirements (e.g., generating sections in bullet point format instead of full paragraphs).
+The interface for each module is defined in `tino_storm/interface.py`, while their implementations are instantiated in `tino_storm/storm_wiki/modules/*`. These modules can be customized according to your specific requirements (e.g., generating sections in bullet point format instead of full paragraphs).
 
 ### Co-STORM
 
 If you have installed the source code, you can customize Co-STORM based on your own use case
 
-1. Co-STORM introduces multiple LLM agent types (i.e. Co-STORM experts and Moderator). LLM agent interface is defined in `knowledge_storm/interface.py` , while its implementation is instantiated in `knowledge_storm/collaborative_storm/modules/co_storm_agents.py`. Different LLM agent policies can be customized.
-2. Co-STORM introduces a collaborative discourse protocol, with its core function centered on turn policy management. We provide an example implementation of turn policy management through `DiscourseManager` in `knowledge_storm/collaborative_storm/engine.py`. It can be customized and further improved.
+1. Co-STORM introduces multiple LLM agent types (i.e. Co-STORM experts and Moderator). LLM agent interface is defined in `tino_storm/interface.py` , while its implementation is instantiated in `tino_storm/collaborative_storm/modules/co_storm_agents.py`. Different LLM agent policies can be customized.
+2. Co-STORM introduces a collaborative discourse protocol, with its core function centered on turn policy management. We provide an example implementation of turn policy management through `DiscourseManager` in `tino_storm/collaborative_storm/engine.py`. It can be customized and further improved.
 
 ## Datasets
 To facilitate the study of automatic knowledge curation and complex information seeking, our project releases the following datasets:
