@@ -40,9 +40,15 @@ Following the suggested format can lead to a faster review process.
 
 **Code Format:**
 
-We adopt [`black`](https://github.com/psf/black) for arranging and formatting Python code. To streamline the contribution process, we set up a [pre-commit hook](https://pre-commit.com/) to format the code under `knowledge_storm/` before committing. To install the pre-commit hook, run:
+We adopt [`black`](https://github.com/psf/black) for arranging and formatting Python code. To streamline the contribution process, we set up a [pre-commit hook](https://pre-commit.com/) to format the code under `knowledge_storm/` and `tino_storm/` before committing. To install the pre-commit hook, run:
 ```
 pip install pre-commit
 pre-commit install
 ```
 The hook will automatically format the code before each commit.
+
+The pre-commit configuration also runs [`ruff`](https://docs.astral.sh/ruff/) for
+linting and [`pytest`](https://pytest.org/) for tests. You may add
+[`mypy`](https://mypy-lang.org/) for optional type checking. These hooks operate on
+the `knowledge_storm/`, `tino_storm/`, and `tests/` directories. Running
+`pre-commit` locally will execute these checks automatically.

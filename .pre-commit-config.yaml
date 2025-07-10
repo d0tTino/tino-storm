@@ -5,6 +5,22 @@ repos:
       - id: black
         name: Format Python code with black
         entry: black
-        args: ["knowledge_storm/"]
         language: python
+        files: "^(knowledge_storm|tino_storm|tests)/"
         pass_filenames: true
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.2
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+        files: "^(knowledge_storm|tino_storm|tests)/"
+
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: Run tests with pytest
+        entry: pytest
+        language: system
+        pass_filenames: false
