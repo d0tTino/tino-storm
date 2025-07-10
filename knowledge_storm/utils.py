@@ -278,7 +278,7 @@ class QdrantVectorStoreManager:
                 "\uff0c",  # Fullwidth comma
                 "\u3001",  # Ideographic comma
                 " ",
-                "\u200B",  # Zero-width space
+                "\u200b",  # Zero-width space
                 "",
             ],
         )
@@ -666,7 +666,7 @@ class WebPageHelper:
                 "\uff0c",  # Fullwidth comma
                 "\u3001",  # Ideographic comma
                 " ",
-                "\u200B",  # Zero-width space
+                "\u200b",  # Zero-width space
                 "",
             ],
         )
@@ -761,7 +761,8 @@ User input: {user_input}"""
                     )
             return "Sorry, the input is inappropriate. Please try another topic!"
 
-    except Exception as e:
+    except Exception:
+        logging.exception("Topic appropriateness check failed")
         return "Sorry, the input is inappropriate. Please try another topic!"
     return "Approved"
 
@@ -788,6 +789,7 @@ def purpose_appropriateness_check(user_input):
         if response.startswith("No"):
             return "Please provide a more detailed explanation on your purpose of requesting this article."
 
-    except Exception as e:
+    except Exception:
+        logging.exception("Purpose appropriateness check failed")
         return "Please provide a more detailed explanation on your purpose of requesting this article."
     return "Approved"
