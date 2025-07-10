@@ -3,12 +3,6 @@ from __future__ import annotations
 import argparse
 import os
 
-from knowledge_storm import (
-    STORMWikiRunnerArguments,
-    STORMWikiLMConfigs,
-)
-from knowledge_storm.lm import OpenAIModel, AzureOpenAIModel
-from knowledge_storm.utils import load_api_key
 
 from .config import StormConfig
 from .providers import get_retriever
@@ -17,6 +11,13 @@ from .storm import Storm
 
 def make_config(args: argparse.Namespace) -> StormConfig:
     """Create a :class:`StormConfig` from command line ``args``."""
+    from knowledge_storm import (
+        STORMWikiRunnerArguments,
+        STORMWikiLMConfigs,
+    )
+    from knowledge_storm.lm import OpenAIModel, AzureOpenAIModel
+    from knowledge_storm.utils import load_api_key
+
     load_api_key(toml_file_path="secrets.toml")
 
     openai_type = os.getenv("OPENAI_API_TYPE", "openai")

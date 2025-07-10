@@ -1,5 +1,6 @@
 import sys
 import types
+import importlib.machinery
 from dataclasses import dataclass
 
 # Stub modules from knowledge_storm to avoid heavy dependencies in tests
@@ -10,6 +11,9 @@ def pytest_configure(config):
         return
 
     ks = types.ModuleType("knowledge_storm")
+    ks.__spec__ = importlib.machinery.ModuleSpec(
+        "knowledge_storm", loader=None, is_package=True
+    )
 
     # --- storm_wiki.engine stubs ---
     engine_mod = types.ModuleType("knowledge_storm.storm_wiki.engine")

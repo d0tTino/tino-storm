@@ -1,10 +1,13 @@
-from dataclasses import dataclass
-from typing import Any
+from __future__ import annotations
 
-from knowledge_storm.storm_wiki.engine import (
-    STORMWikiRunnerArguments,
-    STORMWikiLMConfigs,
-)
+from dataclasses import dataclass
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover - used only for type checking
+    from knowledge_storm.storm_wiki.engine import (
+        STORMWikiRunnerArguments,
+        STORMWikiLMConfigs,
+    )
 
 
 @dataclass
