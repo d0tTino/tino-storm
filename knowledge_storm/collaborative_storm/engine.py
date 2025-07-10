@@ -423,7 +423,7 @@ class DiscourseManager:
         )
 
     def _parse_expert_names_to_agent(self, expert_descriptions: Union[str, List[str]]):
-        if type(expert_descriptions) == str:
+        if isinstance(expert_descriptions, str):
             expert_descriptions = [expert_descriptions]
         agents: CoStormExpert = []
         for expert_name in expert_descriptions:
@@ -593,9 +593,7 @@ class CoStormRunner:
         It will also generate a first draft of report and use it to produce an engaging and concise conversation presented to the
         user to catch up with system's knowledge about the topic.
         """
-        with self.logging_wrapper.log_pipeline_stage(
-            pipeline_stage=f"warm start stage"
-        ):
+        with self.logging_wrapper.log_pipeline_stage(pipeline_stage="warm start stage"):
             if not self.runner_argument.rag_only_baseline_mode:
                 warm_start_module = WarmStartModule(
                     lm_config=self.lm_config,

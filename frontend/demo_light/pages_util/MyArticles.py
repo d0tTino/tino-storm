@@ -30,7 +30,6 @@ def my_articles_page():
     # if no feature demo selected, display all featured articles as info cards
     def article_card_setup(column_to_add, card_title, article_name):
         with column_to_add:
-            cleaned_article_title = article_name.replace("_", " ")
             hasClicked = card(
                 title=" / ".join(card_title),
                 text=article_name.replace("_", " "),

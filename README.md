@@ -47,6 +47,7 @@ python examples/cli_example.py "Quantum computing"
 
 `OPENAI_API_KEY` and `BING_SEARCH_API_KEY` must be set in the environment (or provided via `secrets.toml`).
 
+
 ## Optional FastAPI mode
 
 The file `examples/fastapi_example.py` exposes the pipeline over HTTP using FastAPI. Start it with:
@@ -56,6 +57,7 @@ uvicorn examples.fastapi_example:app --reload
 ```
 
 Send a POST request to `/storm` with a JSON body such as `{"topic": "Neural networks"}` to receive the generated article.
+
 
 ## Migrating from `knowledge_storm`
 
