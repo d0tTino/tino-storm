@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
-from knowledge_storm import STORMWikiRunner, BaseCallbackHandler
+if TYPE_CHECKING:  # pragma: no cover - only for type checking
+    from knowledge_storm import BaseCallbackHandler
 
 from .config import StormConfig
 
@@ -11,6 +12,8 @@ class Storm:
     """Convenient wrapper around :class:`STORMWikiRunner`."""
 
     def __init__(self, config: StormConfig):
+        from knowledge_storm import STORMWikiRunner
+
         self.config = config
         self.runner = STORMWikiRunner(config.args, config.lm_configs, config.rm)
 
@@ -18,8 +21,10 @@ class Storm:
         self,
         topic: str,
         ground_truth_url: str = "",
-        callback_handler: Optional[BaseCallbackHandler] = None,
+        callback_handler: Optional["BaseCallbackHandler"] = None,
     ):
+        from knowledge_storm import BaseCallbackHandler
+
         return self.runner.build_outline(
             topic=topic,
             ground_truth_url=ground_truth_url,
@@ -28,8 +33,10 @@ class Storm:
 
     def generate_article(
         self,
-        callback_handler: Optional[BaseCallbackHandler] = None,
+        callback_handler: Optional["BaseCallbackHandler"] = None,
     ):
+        from knowledge_storm import BaseCallbackHandler
+
         return self.runner.generate_article(
             callback_handler=callback_handler or BaseCallbackHandler()
         )
@@ -42,7 +49,7 @@ class Storm:
         topic: str,
         ground_truth_url: str = "",
         remove_duplicate: bool = False,
-        callback_handler: Optional[BaseCallbackHandler] = None,
+        callback_handler: Optional["BaseCallbackHandler"] = None,
     ):
         self.build_outline(topic, ground_truth_url, callback_handler=callback_handler)
         self.generate_article(callback_handler=callback_handler)

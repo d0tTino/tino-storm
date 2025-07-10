@@ -4,3 +4,20 @@ line-length = 120
 [tool.ruff.lint]
 extend-ignore = ["F403", "F405"]
 
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tino-storm"
+readme = "README.md"
+dynamic = ["version", "dependencies"]
+scripts = {"tino-storm" = "tino_storm.cli:main"}
+
+[tool.setuptools.dynamic]
+version = {attr = "tino_storm.__version__"}
+dependencies = {file = ["requirements.txt"]}
+
+[tool.setuptools.packages.find]
+include = ["tino_storm", "tino_storm.*", "knowledge_storm", "knowledge_storm.*"]
+
