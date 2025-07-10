@@ -3,8 +3,8 @@
 Thank you for your interest in contributing to STORM! 
 
 Contributions aren't just about code. Currently (last edit: 7/22/2024), we are accepting the following forms of contribution:
-- Pull requests for additional language model support to `knowledge_storm/lm.py`.
-- Pull requests for additional retrieval model/search engine support to `knowledge_storm/rm.py`.
+- Pull requests for additional language model support to `tino_storm/lm.py`.
+- Pull requests for additional retrieval model/search engine support to `tino_storm/rm.py`.
 - Pull requests for new features to `frontend/demo_light` to assist other developers.
 - Identification and reporting of issues or bugs.
 - Helping each other by responding to issues.
@@ -40,7 +40,7 @@ Following the suggested format can lead to a faster review process.
 
 **Code Format:**
 
-We adopt [`black`](https://github.com/psf/black) for arranging and formatting Python code. To streamline the contribution process, we set up a [pre-commit hook](https://pre-commit.com/) to format the code under `knowledge_storm/` before committing. To install the pre-commit hook, run:
+We adopt [`black`](https://github.com/psf/black) for arranging and formatting Python code. To streamline the contribution process, we set up a [pre-commit hook](https://pre-commit.com/) to format the code under `tino_storm/` before committing. To install the pre-commit hook, run:
 ```
 pip install pre-commit
 pre-commit install

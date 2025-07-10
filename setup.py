@@ -15,7 +15,7 @@ with open("requirements.txt", encoding="utf-8") as f:
 
 
 setup(
-    name="knowledge-storm",
+    name="tino-storm",
     version="1.1.0",
     author="Yijia Shao, Yucheng Jiang",
     author_email="shaoyj@stanford.edu, yuchengj@stanford.edu",
@@ -24,7 +24,8 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/stanford-oval/storm",
     license="MIT License",
-    packages=find_packages(),
+    packages=find_packages("src"),
+    package_dir={"": "src"},
     classifiers=[
         "Development Status :: 3 - Alpha",
         "License :: OSI Approved :: MIT License",

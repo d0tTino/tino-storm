@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tino-storm"
+version = "1.1.0"
+description = "STORM: A language model-powered knowledge curation engine."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  {name = "Yijia Shao"},
+  {name = "Yucheng Jiang"}
+]
+license = {text = "MIT"}
+
+[project.scripts]
+tino-storm = "tino_storm.cli:main"
