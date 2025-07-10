@@ -172,11 +172,20 @@ class STORMWikiRunner(Engine):
     """STORM Wiki pipeline runner."""
 
     def __init__(
-        self, args: STORMWikiRunnerArguments, lm_configs: STORMWikiLMConfigs, rm
+        self,
+        args: STORMWikiRunnerArguments,
+        lm_configs: STORMWikiLMConfigs,
+        rm,
     ):
         super().__init__(lm_configs=lm_configs)
         self.args = args
         self.lm_configs = lm_configs
+
+        if isinstance(rm, str):
+            from tino_storm.providers import get_retriever
+
+            rm_class = get_retriever(rm)
+            rm = rm_class(k=self.args.search_top_k)
 
         self.retriever = Retriever(rm=rm, max_thread=self.args.max_thread_num)
         storm_persona_generator = StormPersonaGenerator(

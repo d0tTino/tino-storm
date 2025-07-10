@@ -95,9 +95,18 @@ Currently, our package support:
 
 - Language model components: All language models supported by litellm as listed [here](https://docs.litellm.ai/docs/providers)
 - Embedding model components: All embedding models supported by litellm as listed [here](https://docs.litellm.ai/docs/embedding/supported_embedding)
-- retrieval module components: `YouRM`, `BingSearch`, `VectorRM`, `SerperRM`, `BraveRM`, `SearXNG`, `DuckDuckGoSearchRM`, `TavilySearchRM`, `GoogleSearch`, and `AzureAISearch` as 
+- retrieval module components: `YouRM`, `BingSearch`, `VectorRM`, `SerperRM`, `BraveRM`, `SearXNG`, `DuckDuckGoSearchRM`, `TavilySearchRM`, `GoogleSearch`, and `AzureAISearch` as
 
 :star2: **PRs for integrating more search engines/retrievers into [knowledge_storm/rm.py](knowledge_storm/rm.py) are highly appreciated!**
+
+You can obtain the desired classes through helper registries:
+
+```python
+from tino_storm.providers import get_llm, get_retriever
+
+LLMClass = get_llm("litellm")
+RetrieverClass = get_retriever("bing")
+```
 
 Both STORM and Co-STORM are working in the information curation layer, you need to set up the information retrieval module and language model module to create their `Runner` classes respectively.
 
@@ -108,8 +117,7 @@ The STORM knowledge curation engine is defined as a simple Python `STORMWikiRunn
 ```python
 import os
 from knowledge_storm import STORMWikiRunnerArguments, STORMWikiRunner, STORMWikiLMConfigs
-from knowledge_storm.lm import LitellmModel
-from knowledge_storm.rm import YouRM
+from tino_storm.providers import get_llm, get_retriever
 
 lm_configs = STORMWikiLMConfigs()
 openai_kwargs = {
@@ -120,6 +128,8 @@ openai_kwargs = {
 # STORM is a LM system so different components can be powered by different models to reach a good balance between cost and quality.
 # For a good practice, choose a cheaper/faster model for `conv_simulator_lm` which is used to split queries, synthesize answers in the conversation.
 # Choose a more powerful model for `article_gen_lm` to generate verifiable text with citations.
+LitellmModel = get_llm("litellm")
+YouRetriever = get_retriever("you")
 gpt_35 = LitellmModel(model='gpt-3.5-turbo', max_tokens=500, **openai_kwargs)
 gpt_4 = LitellmModel(model='gpt-4o', max_tokens=3000, **openai_kwargs)
 lm_configs.set_conv_simulator_lm(gpt_35)
@@ -129,7 +139,7 @@ lm_configs.set_article_gen_lm(gpt_4)
 lm_configs.set_article_polish_lm(gpt_4)
 # Check out the STORMWikiRunnerArguments class for more configurations.
 engine_args = STORMWikiRunnerArguments(...)
-rm = YouRM(ydc_api_key=os.getenv('YDC_API_KEY'), k=engine_args.search_top_k)
+rm = YouRetriever(ydc_api_key=os.getenv('YDC_API_KEY'), k=engine_args.search_top_k)
 runner = STORMWikiRunner(engine_args, lm_configs, rm)
 ```
 
@@ -157,9 +167,8 @@ The Co-STORM knowledge curation engine is defined as a simple Python `CoStormRun
 
 ```python
 from knowledge_storm.collaborative_storm.engine import CollaborativeStormLMConfigs, RunnerArgument, CoStormRunner
-from knowledge_storm.lm import LitellmModel
 from knowledge_storm.logging_wrapper import LoggingWrapper
-from knowledge_storm.rm import BingSearch
+from tino_storm.providers import get_llm, get_retriever
 
 # Co-STORM adopts the same multi LM system paradigm as STORM 
 lm_config: CollaborativeStormLMConfigs = CollaborativeStormLMConfigs()
@@ -170,6 +179,7 @@ openai_kwargs = {
     "top_p": 0.9,
     "api_base": None,
 } 
+LitellmModel = get_llm("litellm")
 question_answering_lm = LitellmModel(model=gpt_4o_model_name, max_tokens=1000, **openai_kwargs)
 discourse_manage_lm = LitellmModel(model=gpt_4o_model_name, max_tokens=500, **openai_kwargs)
 utterance_polishing_lm = LitellmModel(model=gpt_4o_model_name, max_tokens=2000, **openai_kwargs)
@@ -188,7 +198,8 @@ lm_config.set_knowledge_base_lm(knowledge_base_lm)
 topic = input('Topic: ')
 runner_argument = RunnerArgument(topic=topic, ...)
 logging_wrapper = LoggingWrapper(lm_config)
-bing_rm = BingSearch(bing_search_api_key=os.environ.get("BING_SEARCH_API_KEY"),
+RetrieverCls = get_retriever("bing")
+bing_rm = RetrieverCls(bing_search_api_key=os.environ.get("BING_SEARCH_API_KEY"),
                      k=runner_argument.retrieve_top_k)
 costorm_runner = CoStormRunner(lm_config=lm_config,
                                runner_argument=runner_argument,
