@@ -17,12 +17,10 @@ args.output_dir/
         storm_gen_article_polished.txt  # Polished final article (if args.do_polish_article is True)
 """
 
+import logging
 import os
 import re
-import logging
 from argparse import ArgumentParser
-
-logger = logging.getLogger(__name__)
 
 from knowledge_storm import (
     STORMWikiRunnerArguments,
@@ -31,10 +29,11 @@ from knowledge_storm import (
 )
 
 # Now import lm directly
-import lm
 from lm import GroqModel
 from tino_storm.providers import get_retriever
 from knowledge_storm.utils import load_api_key
+
+logger = logging.getLogger(__name__)
 
 
 def sanitize_topic(topic):

@@ -1236,7 +1236,7 @@ class GoogleModel(dspy.dsp.modules.lm.LM):
         }
 
         # Google disallows "n" arguments.
-        n = kwargs.pop("n", None)
+        kwargs.pop("n", None)
 
         response = self.llm.generate_content(prompt, generation_config=kwargs)
 

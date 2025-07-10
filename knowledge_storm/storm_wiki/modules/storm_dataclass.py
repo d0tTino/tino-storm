@@ -26,7 +26,7 @@ class DialogueTurn:
 
         if self.search_results:
             for idx in range(len(self.search_results)):
-                if type(self.search_results[idx]) == dict:
+                if isinstance(self.search_results[idx], dict):
                     self.search_results[idx] = Information.from_dict(
                         self.search_results[idx]
                     )
@@ -64,7 +64,7 @@ class StormInformationTable(InformationTable):
 
     @staticmethod
     def construct_url_to_info(
-        conversations: List[Tuple[str, List[DialogueTurn]]]
+        conversations: List[Tuple[str, List[DialogueTurn]]],
     ) -> Dict[str, Information]:
         url_to_info = {}
 
@@ -81,7 +81,7 @@ class StormInformationTable(InformationTable):
 
     @staticmethod
     def construct_log_dict(
-        conversations: List[Tuple[str, List[DialogueTurn]]]
+        conversations: List[Tuple[str, List[DialogueTurn]]],
     ) -> List[Dict[str, Union[str, Any]]]:
         conversation_log = []
         for persona, conv in conversations:
@@ -443,13 +443,11 @@ class StormArticle(Article):
         try:
             lines = outline_str.split("\n")
             lines = [line.strip() for line in lines if line.strip()]
-        except:
+        except Exception:
             pass
 
         instance = cls(topic)
         if lines:
-            a = lines[0].startswith("#") and lines[0].replace("#", "").strip().lower()
-            b = topic.lower().replace("_", " ")
             adjust_level = lines[0].startswith("#") and lines[0].replace(
                 "#", ""
             ).strip().lower() == topic.lower().replace("_", " ")

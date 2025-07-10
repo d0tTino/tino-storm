@@ -2,7 +2,7 @@ import os
 import numpy as np
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Tuple, Union, Optional, Dict, Literal
+from typing import List, Tuple, Union, Optional
 from pathlib import Path
 
 try:
