@@ -266,6 +266,10 @@ python examples/storm_examples/run_storm_wiki_gpt.py \
 ```
 
 **To run STORM using your favorite language models or grounding on your own corpus:** Check out [examples/storm_examples/README.md](examples/storm_examples/README.md).
+You can also run STORM from the command line after installation:
+```bash
+tino-storm --output-dir $OUTPUT_DIR --retriever bing
+```
 
 ### Co-STORM examples
 
@@ -279,6 +283,23 @@ python examples/costorm_examples/run_costorm_gpt.py \
     --output-dir $OUTPUT_DIR \
     --retriever bing
 ```
+
+### Running the FastAPI server
+
+Install the optional FastAPI dependencies:
+
+```bash
+pip install .[fastapi]
+```
+
+Start the API server with:
+
+```bash
+uvicorn tino_storm.fastapi_app:app --reload
+```
+
+Then open `http://localhost:8000/docs` to explore the API.
+
 
 
 ## Customization of the Pipeline
