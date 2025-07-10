@@ -8,6 +8,10 @@ from pathlib import Path
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
 from watchdog.observers import Observer
 
+from tino_storm.loaders import load
+import json
+import hashlib
+
 from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
@@ -33,6 +37,19 @@ class IngestHandler(FileSystemEventHandler):
     def ingest_file(self, path: Path) -> None:
         if not self._should_ingest(path):
             return
+        if path.name == "urls.txt":
+            urls = [u.strip() for u in path.read_text().splitlines() if u.strip()]
+            for url in urls:
+                try:
+                    records = load(url)
+                except Exception as exc:  # pragma: no cover - network
+                    print(f"Failed to scrape {url}: {exc}")
+                    continue
+                out_name = hashlib.sha1(url.encode()).hexdigest()[:8] + ".json"
+                out_path = self.vault_dir / out_name
+                out_path.write_text(json.dumps(records, default=str))
+                self.ingest_file(out_path)
+            return
         docs = SimpleDirectoryReader(input_files=[str(path)]).load_data()
         if not docs:
             return
@@ -40,7 +57,9 @@ class IngestHandler(FileSystemEventHandler):
             self.index.insert_nodes([node])
         self.index.vector_store.persist()
 
-    def on_created(self, event: FileSystemEvent) -> None:  # pragma: no cover - integration
+    def on_created(
+        self, event: FileSystemEvent
+    ) -> None:  # pragma: no cover - integration
         if event.is_directory:
             return
         self.ingest_file(Path(event.src_path))
