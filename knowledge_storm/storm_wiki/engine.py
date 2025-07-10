@@ -205,6 +205,11 @@ class STORMWikiRunner(Engine):
             article_polish_lm=self.lm_configs.article_polish_lm,
         )
 
+        self.information_table: StormInformationTable | None = None
+        self.outline: StormArticle | None = None
+        self.draft_article: StormArticle | None = None
+        self.polished_article: StormArticle | None = None
+
         self.lm_configs.init_check()
         self.apply_decorators()
 
@@ -338,6 +343,91 @@ class STORMWikiRunner(Engine):
             topic_name=topic, article_text=article_text, references=references
         )
 
+    def build_outline(
+        self,
+        topic: str,
+        ground_truth_url: str = "",
+        do_research: bool = True,
+        callback_handler: BaseCallbackHandler = BaseCallbackHandler(),
+    ) -> StormArticle:
+        self.topic = topic
+        self.article_dir_name = truncate_filename(
+            topic.replace(" ", "_").replace("/", "_")
+        )
+        self.article_output_dir = os.path.join(
+            self.args.output_dir, self.article_dir_name
+        )
+        os.makedirs(self.article_output_dir, exist_ok=True)
+
+        if do_research:
+            self.information_table = self.run_knowledge_curation_module(
+                ground_truth_url=ground_truth_url,
+                callback_handler=callback_handler,
+            )
+        else:
+            self.information_table = self._load_information_table_from_local_fs(
+                os.path.join(self.article_output_dir, "conversation_log.json")
+            )
+
+        self.outline = self.run_outline_generation_module(
+            information_table=self.information_table,
+            callback_handler=callback_handler,
+        )
+        return self.outline
+
+    def generate_article(
+        self,
+        outline: StormArticle | None = None,
+        information_table: StormInformationTable | None = None,
+        callback_handler: BaseCallbackHandler = BaseCallbackHandler(),
+    ) -> StormArticle:
+        if information_table is None:
+            information_table = self.information_table
+        if information_table is None:
+            information_table = self._load_information_table_from_local_fs(
+                os.path.join(self.article_output_dir, "conversation_log.json")
+            )
+        if outline is None:
+            outline = self.outline
+        if outline is None:
+            outline = self._load_outline_from_local_fs(
+                topic=self.topic,
+                outline_local_path=os.path.join(
+                    self.article_output_dir, "storm_gen_outline.txt"
+                ),
+            )
+
+        self.draft_article = self.run_article_generation_module(
+            outline=outline,
+            information_table=information_table,
+            callback_handler=callback_handler,
+        )
+        return self.draft_article
+
+    def polish_article(
+        self,
+        draft_article: StormArticle | None = None,
+        remove_duplicate: bool = False,
+    ) -> StormArticle:
+        if draft_article is None:
+            draft_article = self.draft_article
+        if draft_article is None:
+            draft_article = self._load_draft_article_from_local_fs(
+                topic=self.topic,
+                draft_article_path=os.path.join(
+                    self.article_output_dir, "storm_gen_article.txt"
+                ),
+                url_to_info_path=os.path.join(
+                    self.article_output_dir, "url_to_info.json"
+                ),
+            )
+
+        self.polished_article = self.run_article_polishing_module(
+            draft_article=draft_article,
+            remove_duplicate=remove_duplicate,
+        )
+        return self.polished_article
+
     def run(
         self,
         topic: str,
@@ -375,67 +465,30 @@ class STORMWikiRunner(Engine):
             "No action is specified. Please set at least one of --do-research, --do-generate-outline, --do-generate-article, --do-polish-article"
         )
 
-        self.topic = topic
-        self.article_dir_name = truncate_filename(
-            topic.replace(" ", "_").replace("/", "_")
-        )
-        self.article_output_dir = os.path.join(
-            self.args.output_dir, self.article_dir_name
-        )
-        os.makedirs(self.article_output_dir, exist_ok=True)
-
-        # research module
-        information_table: StormInformationTable = None
-        if do_research:
-            information_table = self.run_knowledge_curation_module(
-                ground_truth_url=ground_truth_url, callback_handler=callback_handler
-            )
-        # outline generation module
-        outline: StormArticle = None
         if do_generate_outline:
-            # load information table if it's not initialized
-            if information_table is None:
-                information_table = self._load_information_table_from_local_fs(
-                    os.path.join(self.article_output_dir, "conversation_log.json")
-                )
-            outline = self.run_outline_generation_module(
-                information_table=information_table, callback_handler=callback_handler
-            )
-
-        # article generation module
-        draft_article: StormArticle = None
-        if do_generate_article:
-            if information_table is None:
-                information_table = self._load_information_table_from_local_fs(
-                    os.path.join(self.article_output_dir, "conversation_log.json")
-                )
-            if outline is None:
-                outline = self._load_outline_from_local_fs(
-                    topic=topic,
-                    outline_local_path=os.path.join(
-                        self.article_output_dir, "storm_gen_outline.txt"
-                    ),
-                )
-            draft_article = self.run_article_generation_module(
-                outline=outline,
-                information_table=information_table,
+            self.build_outline(
+                topic=topic,
+                ground_truth_url=ground_truth_url,
+                do_research=do_research,
                 callback_handler=callback_handler,
             )
-
-        # article polishing module
-        if do_polish_article:
-            if draft_article is None:
-                draft_article_path = os.path.join(
-                    self.article_output_dir, "storm_gen_article.txt"
-                )
-                url_to_info_path = os.path.join(
-                    self.article_output_dir, "url_to_info.json"
-                )
-                draft_article = self._load_draft_article_from_local_fs(
-                    topic=topic,
-                    draft_article_path=draft_article_path,
-                    url_to_info_path=url_to_info_path,
-                )
-            self.run_article_polishing_module(
-                draft_article=draft_article, remove_duplicate=remove_duplicate
+        else:
+            self.topic = topic
+            self.article_dir_name = truncate_filename(
+                topic.replace(" ", "_").replace("/", "_")
             )
+            self.article_output_dir = os.path.join(
+                self.args.output_dir, self.article_dir_name
+            )
+            os.makedirs(self.article_output_dir, exist_ok=True)
+            if do_research:
+                self.information_table = self.run_knowledge_curation_module(
+                    ground_truth_url=ground_truth_url,
+                    callback_handler=callback_handler,
+                )
+
+        if do_generate_article:
+            self.generate_article(callback_handler=callback_handler)
+
+        if do_polish_article:
+            self.polish_article(remove_duplicate=remove_duplicate)
