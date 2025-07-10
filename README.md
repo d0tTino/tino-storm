@@ -280,6 +280,23 @@ python examples/costorm_examples/run_costorm_gpt.py \
     --retriever bing
 ```
 
+### Running the FastAPI server
+
+Install the optional FastAPI dependencies:
+
+```bash
+pip install .[fastapi]
+```
+
+Start the API server with:
+
+```bash
+uvicorn tino_storm.fastapi_app:app --reload
+```
+
+Then open `http://localhost:8000/docs` to explore the API.
+
+
 
 ## Customization of the Pipeline
 
