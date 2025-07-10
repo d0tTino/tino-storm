@@ -1,5 +1,10 @@
 # knowledge_storm modules are stubbed in tests/conftest.py
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from tino_storm.config import StormConfig
 from knowledge_storm.storm_wiki.engine import (
     STORMWikiRunnerArguments,

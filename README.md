@@ -10,6 +10,13 @@ Install the Python package from PyPI:
 pip install knowledge-storm
 ```
 
+Alternatively, install the latest source version from this repository to get the
+``tino-storm`` command:
+
+```bash
+pip install .
+```
+
 ## Import-based usage
 
 The `tino_storm` package provides a thin wrapper around the original `knowledge_storm` modules.
@@ -37,16 +44,45 @@ article = runner.run(topic="Deep learning", do_research=True, do_generate_outlin
 print(article)
 ```
 
-## CLI usage
+## DSPy ResearchSkill
 
-A short command line interface is available in `examples/cli_example.py`:
+The package exposes a small `ResearchSkill` wrapper to compose the outline,
+draft and polish modules. This can be used directly with DSPy tuning utilities.
 
-```bash
-python examples/cli_example.py "Quantum computing"
+```python
+from tino_storm.dsp import ResearchSkill
+
+skill = ResearchSkill(
+    outline_lm=lm_configs.outline_gen_lm,
+    draft_lm=lm_configs.article_gen_lm,
+    polish_lm=lm_configs.article_polish_lm,
+)
+# `table` should be a StormInformationTable instance from the curation stage
+article = skill("Deep learning", table)
 ```
 
+## CLI usage
 
-`OPENAI_API_KEY` and `BING_SEARCH_API_KEY` must be set in the environment (or provided via `secrets.toml`).
+After installation, an entrypoint named ``tino-storm`` is available. Run the pipeline interactively with:
+
+```bash
+tino-storm run --retriever bing
+```
+
+The command prompts for a topic and prints the generated article. Pass ``--help`` to see all options.
+
+`OPENAI_API_KEY` and `BING_SEARCH_API_KEY` must be set in the environment (or provided via ``secrets.toml``).
+
+## Configuration
+
+Environment variables can be stored in a ``secrets.toml`` file placed next to your project:
+
+```toml
+OPENAI_API_KEY = "sk-..."
+BING_SEARCH_API_KEY = "your-bing-key"
+```
+
+The CLI loads this file automatically so you don't need to export the variables yourself.
 
 ## Ingesting research data
 
@@ -67,13 +103,13 @@ pip install watchdog llama-index chromadb
 
 ## Optional FastAPI mode
 
-The file `examples/fastapi_example.py` exposes the pipeline over HTTP using FastAPI. Start it with:
+You can integrate STORM into a web service using FastAPI. The repository ships with a small example app:
 
 ```bash
 uvicorn examples.fastapi_example:app --reload
 ```
 
-Send a POST request to `/storm` with a JSON body such as `{"topic": "Neural networks"}` to receive the generated article.
+This launches an HTTP API with ``/storm`` that accepts a JSON payload like `{"topic": "Neural networks"}` and returns the generated article. The same logic is available in ``tino_storm.fastapi_app`` for embedding in your own application.
 
 
 ## Migrating from `knowledge_storm`
