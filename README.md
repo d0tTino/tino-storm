@@ -266,6 +266,10 @@ python examples/storm_examples/run_storm_wiki_gpt.py \
 ```
 
 **To run STORM using your favorite language models or grounding on your own corpus:** Check out [examples/storm_examples/README.md](examples/storm_examples/README.md).
+You can also run STORM from the command line after installation:
+```bash
+tino-storm --output-dir $OUTPUT_DIR --retriever bing
+```
 
 ### Co-STORM examples
 
