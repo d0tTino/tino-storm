@@ -18,6 +18,10 @@ scripts = {"tino-storm" = "tino_storm.cli:main"}
 version = {attr = "tino_storm.__version__"}
 dependencies = {file = ["requirements.txt"]}
 
+[tool.setuptools.package-dir]
+"" = "src"
+
 [tool.setuptools.packages.find]
+where = ["src"]
 include = ["tino_storm", "tino_storm.*", "knowledge_storm", "knowledge_storm.*"]
 

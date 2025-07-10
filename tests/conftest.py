@@ -2,6 +2,10 @@ import sys
 import types
 import importlib.machinery
 from dataclasses import dataclass
+from pathlib import Path
+
+# Add src to sys.path so packages are importable without installation
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 # Stub modules from knowledge_storm to avoid heavy dependencies in tests
 
