@@ -14,6 +14,10 @@ readme = "README.md"
 dynamic = ["version", "dependencies"]
 scripts = {"tino-storm" = "tino_storm.cli:main"}
 
+[project.optional-dependencies]
+ollama = ["ollama-python", "litellm"]
+chroma = ["chromadb", "llama-index"]
+
 [tool.setuptools.dynamic]
 version = {attr = "tino_storm.__version__"}
 dependencies = {file = ["requirements.txt"]}
