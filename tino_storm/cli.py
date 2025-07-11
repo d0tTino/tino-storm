@@ -40,15 +40,15 @@ def main(argv: list[str] | None = None) -> None:
 
     run_parser = sub.add_parser("run", help="Run the STORM pipeline")
     run_parser.add_argument(
-        "--output-dir", type=str, default="./results/cli", help="Directory for outputs"
+        "--output-dir", type=str, default=None, help="Directory for outputs"
     )
     run_parser.add_argument(
-        "--max-thread-num", type=int, default=3, help="Maximum number of threads"
+        "--max-thread-num", type=int, default=None, help="Maximum number of threads"
     )
     run_parser.add_argument(
         "--retriever",
         type=str,
-        required=True,
+        required=False,
         choices=[
             "bing",
             "you",
@@ -61,10 +61,10 @@ def main(argv: list[str] | None = None) -> None:
         ],
         help="Search engine to use",
     )
-    run_parser.add_argument("--max-conv-turn", type=int, default=3)
-    run_parser.add_argument("--max-perspective", type=int, default=3)
-    run_parser.add_argument("--search-top-k", type=int, default=3)
-    run_parser.add_argument("--retrieve-top-k", type=int, default=3)
+    run_parser.add_argument("--max-conv-turn", type=int, default=None)
+    run_parser.add_argument("--max-perspective", type=int, default=None)
+    run_parser.add_argument("--search-top-k", type=int, default=None)
+    run_parser.add_argument("--retrieve-top-k", type=int, default=None)
     run_parser.add_argument(
         "--remove-duplicate", action="store_true", help="Remove duplicate text"
     )
