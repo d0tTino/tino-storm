@@ -16,6 +16,32 @@ def pytest_configure(config):
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+    # --- dspy stubs ---
+    dspy_mod = types.ModuleType("dspy")
+
+    class _LM:
+        def __init__(self, model: str = "stub"):
+            self.model = model
+
+        def basic_request(self, prompt, **kwargs):
+            raise NotImplementedError
+
+    dspy_mod.LM = _LM
+    dspy_mod.Module = object
+
+    dsp_submod = types.ModuleType("dspy.dsp")
+    dsp_submod.LM = _LM
+    dsp_submod.HFModel = _LM
+    dspy_mod.dsp = dsp_submod
+
+    sys.modules["dspy"] = dspy_mod
+    sys.modules["dspy.dsp"] = dsp_submod
+
+    # --- minimal requests stub ---
+    if "requests" not in sys.modules:
+        requests_mod = types.ModuleType("requests")
+        sys.modules["requests"] = requests_mod
+
     ks = types.ModuleType("knowledge_storm")
     ks.__spec__ = importlib.machinery.ModuleSpec(
         "knowledge_storm", loader=None, is_package=True
@@ -96,6 +122,103 @@ def pytest_configure(config):
 
     storm_wiki_mod = types.ModuleType("knowledge_storm.storm_wiki")
     storm_wiki_mod.engine = engine_mod
+
+    # --- collaborative_storm.engine stub ---
+    collab_engine_mod = types.ModuleType("knowledge_storm.collaborative_storm.engine")
+
+    class CollaborativeStormLMConfigs:
+        def __init__(self):
+            self.question_answering_lm = None
+            self.discourse_manage_lm = None
+            self.utterance_polishing_lm = None
+            self.warmstart_outline_gen_lm = None
+            self.question_asking_lm = None
+            self.knowledge_base_lm = None
+
+        def set_question_answering_lm(self, lm):
+            self.question_answering_lm = lm
+
+        def set_discourse_manage_lm(self, lm):
+            self.discourse_manage_lm = lm
+
+        def set_utterance_polishing_lm(self, lm):
+            self.utterance_polishing_lm = lm
+
+        def set_warmstart_outline_gen_lm(self, lm):
+            self.warmstart_outline_gen_lm = lm
+
+        def set_question_asking_lm(self, lm):
+            self.question_asking_lm = lm
+
+        def set_knowledge_base_lm(self, lm):
+            self.knowledge_base_lm = lm
+
+        def to_dict(self):
+            return {
+                "question_answering_lm": {"model": self.question_answering_lm.model},
+                "discourse_manage_lm": {"model": self.discourse_manage_lm.model},
+                "utterance_polishing_lm": {"model": self.utterance_polishing_lm.model},
+                "warmstart_outline_gen_lm": {"model": self.warmstart_outline_gen_lm.model},
+                "question_asking_lm": {"model": self.question_asking_lm.model},
+                "knowledge_base_lm": {"model": self.knowledge_base_lm.model},
+            }
+
+        @classmethod
+        def from_dict(cls, data):
+            cfg = cls()
+            for attr, kwargs in data.items():
+                setattr(cfg, attr, LitellmModel(**kwargs))
+            return cfg
+
+
+    @dataclass
+    class RunnerArgument:
+        topic: str
+
+        def to_dict(self):
+            return {"topic": self.topic}
+
+        @classmethod
+        def from_dict(cls, data):
+            return cls(**data)
+
+
+    class CoStormRunner:
+        def __init__(self, lm_config, runner_argument, logging_wrapper=None, rm=None, callback_handler=None):
+            self.lm_config = lm_config
+            self.runner_argument = runner_argument
+            self.logging_wrapper = logging_wrapper
+            self.rm = rm
+            self.callback_handler = callback_handler
+            self.knowledge_base = types.SimpleNamespace(to_dict=lambda: {"topic": runner_argument.topic})
+            self.discourse_manager = types.SimpleNamespace(serialize_experts=lambda: [], deserialize_experts=lambda x: None)
+
+        def to_dict(self):
+            return {
+                "runner_argument": self.runner_argument.to_dict(),
+                "lm_config": self.lm_config.to_dict(),
+                "conversation_history": [],
+                "warmstart_conv_archive": [],
+                "experts": [],
+                "knowledge_base": self.knowledge_base.to_dict(),
+            }
+
+        @classmethod
+        def from_dict(cls, data, callback_handler=None):
+            lm_config = CollaborativeStormLMConfigs.from_dict(data["lm_config"])
+            runner_argument = RunnerArgument.from_dict(data["runner_argument"])
+            runner = cls(lm_config=lm_config, runner_argument=runner_argument, logging_wrapper=None, callback_handler=callback_handler)
+            return runner
+
+    collab_mod = types.ModuleType("knowledge_storm.collaborative_storm")
+    collab_mod.engine = collab_engine_mod
+
+    collab_engine_mod.CollaborativeStormLMConfigs = CollaborativeStormLMConfigs
+    collab_engine_mod.RunnerArgument = RunnerArgument
+    collab_engine_mod.CoStormRunner = CoStormRunner
+    ks.CollaborativeStormLMConfigs = CollaborativeStormLMConfigs
+    ks.RunnerArgument = RunnerArgument
+    ks.CoStormRunner = CoStormRunner
 
     # --- lm stubs ---
     lm_mod = types.ModuleType("knowledge_storm.lm")
@@ -217,14 +340,43 @@ def pytest_configure(config):
 
     utils_mod.load_api_key = load_api_key
 
+    logging_wrapper_mod = types.ModuleType("knowledge_storm.logging_wrapper")
+
+    class LoggingWrapper:
+        def __init__(self, lm_config):
+            self.lm_config = lm_config
+
+        def log_pipeline_stage(self, pipeline_stage: str):
+            class _Ctx:
+                def __enter__(self_inner):
+                    return None
+
+                def __exit__(self_inner, exc_type, exc, tb):
+                    return False
+
+            return _Ctx()
+
+        def log_event(self, event: str):
+            return self.log_pipeline_stage(event)
+
+        def dump_logging_and_reset(self):
+            return {}
+
+    logging_wrapper_mod.LoggingWrapper = LoggingWrapper
+
     ks.storm_wiki = storm_wiki_mod
+    ks.collaborative_storm = collab_mod
     ks.lm = lm_mod
     ks.rm = rm_mod
     ks.utils = utils_mod
+    ks.logging_wrapper = logging_wrapper_mod
 
     sys.modules["knowledge_storm"] = ks
     sys.modules["knowledge_storm.storm_wiki"] = storm_wiki_mod
     sys.modules["knowledge_storm.storm_wiki.engine"] = engine_mod
+    sys.modules["knowledge_storm.collaborative_storm"] = collab_mod
+    sys.modules["knowledge_storm.collaborative_storm.engine"] = collab_engine_mod
     sys.modules["knowledge_storm.lm"] = lm_mod
     sys.modules["knowledge_storm.rm"] = rm_mod
     sys.modules["knowledge_storm.utils"] = utils_mod
+    sys.modules["knowledge_storm.logging_wrapper"] = logging_wrapper_mod
