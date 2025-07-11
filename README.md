@@ -8,6 +8,8 @@ Install the Python package from PyPI:
 
 ```bash
 pip install knowledge-storm
+pip install 'knowledge-storm[ollama]'  # Ollama backend
+pip install 'knowledge-storm[chroma]'  # Chroma-based ingestion
 ```
 
 Alternatively, install the latest source version from this repository to get the
