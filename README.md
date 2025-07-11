@@ -84,6 +84,16 @@ BING_SEARCH_API_KEY = "your-bing-key"
 
 The CLI loads this file automatically so you don't need to export the variables yourself.
 
+`StormConfig.from_env()` can build the same configuration in code:
+
+```python
+from tino_storm.config import StormConfig
+
+config = StormConfig.from_env()
+```
+This reads API keys from the environment (or ``secrets.toml``) and
+initializes the default models and retriever.
+
 ## Ingesting research data
 
 Use the command below to monitor a vault directory for new research files and automatically index them:

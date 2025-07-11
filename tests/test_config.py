@@ -22,3 +22,13 @@ def test_storm_config_initialization():
     assert cfg.args.output_dir == "out"
     assert cfg.lm_configs.conv_simulator_lm.model == "ollama/tinyllama"
     assert cfg.rm == "arxiv"
+
+
+def test_storm_config_from_env(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk")
+    monkeypatch.setenv("BING_SEARCH_API_KEY", "bing")
+    monkeypatch.setenv("STORM_RETRIEVER", "bing")
+    cfg = StormConfig.from_env()
+
+    assert cfg.lm_configs.conv_simulator_lm is not None
+    assert cfg.rm.__class__.__name__ == "BingSearch"
