@@ -29,3 +29,10 @@ def test_rrf_exclude_urls():
     results = retriever.forward("test", exclude_urls=["b"])
     urls = [r["url"] for r in results]
     assert urls == ["a", "c"]
+
+
+def test_rrf_exclude_urls_iterable_equivalence():
+    retriever = RRFRetriever([DummyA(), DummyB()], k=0)
+    results_list = retriever.forward("test", exclude_urls=["b"])
+    results_set = retriever.forward("test", exclude_urls={"b"})
+    assert results_list == results_set
