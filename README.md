@@ -84,6 +84,18 @@ BING_SEARCH_API_KEY = "your-bing-key"
 
 The CLI loads this file automatically so you don't need to export the variables yourself.
 
+## Using `StormConfig.from_env`
+
+You can construct a ready-to-run pipeline directly from environment variables:
+
+```python
+from tino_storm.config import StormConfig
+from tino_storm.storm import Storm
+
+cfg = StormConfig.from_env()
+storm = Storm(cfg)
+```
+
 ## Ingesting research data
 
 Use the command below to monitor a vault directory for new research files and automatically index them:
