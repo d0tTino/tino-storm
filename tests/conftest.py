@@ -4,7 +4,9 @@ import importlib.machinery
 from dataclasses import dataclass
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+ROOT_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT_DIR / "src"))
+sys.path.insert(0, str(ROOT_DIR))
 
 
 # Stub modules from knowledge_storm to avoid heavy dependencies in tests
@@ -14,7 +16,8 @@ def pytest_configure(config):
     if "knowledge_storm" in sys.modules:
         return
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    sys.path.insert(0, str(ROOT_DIR / "src"))
+    sys.path.insert(0, str(ROOT_DIR))
 
     # --- dspy stubs ---
     dspy_mod = types.ModuleType("dspy")
