@@ -19,7 +19,7 @@ class RRFRetriever:
         self.retrievers = list(self.retrievers)
 
     def forward(
-        self, query: str, exclude_urls: List[str] | None = None
+        self, query: str, exclude_urls: Iterable[str] | None = None
     ) -> List[Mapping]:
         """Return fused search results for ``query``."""
 
@@ -27,7 +27,7 @@ class RRFRetriever:
 
         scores: dict[str, dict[str, float | Mapping]] = {}
         for retriever in self.retrievers:
-            results = retriever.forward(query, exclude_urls=exclude_urls)
+            results = retriever.forward(query, exclude_urls=list(exclude_urls))
             for rank, result in enumerate(results):
                 url = result.get("url")
                 if not url or url in exclude_urls:
