@@ -185,7 +185,6 @@ class CollaborativeStormLMConfigs(LMConfigs):
             config_dict[attr_name] = getattr(self, attr_name).kwargs
         return config_dict
 
-
     @classmethod
     def from_dict(cls, data: Dict[str, Dict]) -> "CollaborativeStormLMConfigs":
         """Load :class:`CollaborativeStormLMConfigs` from a dictionary."""
