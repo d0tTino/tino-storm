@@ -9,8 +9,13 @@ from .providers import get_retriever
 from .storm import Storm
 
 
-def make_config(args: argparse.Namespace) -> StormConfig:
-    """Create a :class:`StormConfig` from command line ``args``."""
+def make_config(args: argparse.Namespace | None = None) -> StormConfig:
+    """Create a :class:`StormConfig` from command line ``args``.
+
+    If ``args`` is ``None`` return :meth:`StormConfig.from_env`.
+    """
+    if args is None:
+        return StormConfig.from_env()
     from knowledge_storm import (
         STORMWikiRunnerArguments,
         STORMWikiLMConfigs,
