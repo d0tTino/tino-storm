@@ -14,25 +14,33 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: "3.11"
-      - name: Compare versions in setup.py and knowledge_storm/__init__.py
+      - name: Compare versions in pyproject.toml and tino_storm/__init__.py
         run: |
-          VERSION_SETUP=$(grep -oP '(?<=version=\").*(?=\")' setup.py)
-          VERSION_INIT=$(grep -oP '(?<=__version__ = \").*(?=\")' knowledge_storm/__init__.py)
-          echo "Version in setup.py: $VERSION_SETUP"
+          VERSION_PYPROJECT=$(python - <<'EOF'
+import tomllib, importlib
+with open('pyproject.toml', 'rb') as f:
+    data = tomllib.load(f)
+attr = data['tool']['setuptools']['dynamic']['version']['attr']
+module_name, attr_name = attr.split('.')
+module = importlib.import_module(module_name)
+print(getattr(module, attr_name))
+EOF
+          )
+          VERSION_INIT=$(grep -oP '(?<=__version__ = \").*(?=\")' tino_storm/__init__.py)
+          echo "Version in pyproject.toml: $VERSION_PYPROJECT"
           echo "Version in __init__.py: $VERSION_INIT"
-          if [ "$VERSION_SETUP" != "$VERSION_INIT" ]; then
-            echo "Error: Version mismatch between setup.py ($VERSION_SETUP) and knowledge_storm/__init__.py ($VERSION_INIT)"
+          if [ "$VERSION_PYPROJECT" != "$VERSION_INIT" ]; then
+            echo "Error: Version mismatch between pyproject.toml ($VERSION_PYPROJECT) and tino_storm/__init__.py ($VERSION_INIT)"
             exit 1
           fi
         shell: bash
-      - name: Install dependencies
-        run: python3 -m pip install setuptools wheel twine
-      - name: Install dependencies
+      - name: Install build dependencies
+        run: python3 -m pip install --upgrade pip build
+      - name: Install project dependencies
         run: |
-          python3 -m pip install --upgrade pip setuptools wheel
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Build a binary wheel
-        run: python3 setup.py sdist bdist_wheel
+        run: python -m build
       - name: Publish package to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
