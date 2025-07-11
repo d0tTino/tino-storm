@@ -158,7 +158,9 @@ def pytest_configure(config):
                 "question_answering_lm": {"model": self.question_answering_lm.model},
                 "discourse_manage_lm": {"model": self.discourse_manage_lm.model},
                 "utterance_polishing_lm": {"model": self.utterance_polishing_lm.model},
-                "warmstart_outline_gen_lm": {"model": self.warmstart_outline_gen_lm.model},
+                "warmstart_outline_gen_lm": {
+                    "model": self.warmstart_outline_gen_lm.model
+                },
                 "question_asking_lm": {"model": self.question_asking_lm.model},
                 "knowledge_base_lm": {"model": self.knowledge_base_lm.model},
             }
@@ -169,7 +171,6 @@ def pytest_configure(config):
             for attr, kwargs in data.items():
                 setattr(cfg, attr, LitellmModel(**kwargs))
             return cfg
-
 
     @dataclass
     class RunnerArgument:
@@ -182,16 +183,26 @@ def pytest_configure(config):
         def from_dict(cls, data):
             return cls(**data)
 
-
     class CoStormRunner:
-        def __init__(self, lm_config, runner_argument, logging_wrapper=None, rm=None, callback_handler=None):
+        def __init__(
+            self,
+            lm_config,
+            runner_argument,
+            logging_wrapper=None,
+            rm=None,
+            callback_handler=None,
+        ):
             self.lm_config = lm_config
             self.runner_argument = runner_argument
             self.logging_wrapper = logging_wrapper
             self.rm = rm
             self.callback_handler = callback_handler
-            self.knowledge_base = types.SimpleNamespace(to_dict=lambda: {"topic": runner_argument.topic})
-            self.discourse_manager = types.SimpleNamespace(serialize_experts=lambda: [], deserialize_experts=lambda x: None)
+            self.knowledge_base = types.SimpleNamespace(
+                to_dict=lambda: {"topic": runner_argument.topic}
+            )
+            self.discourse_manager = types.SimpleNamespace(
+                serialize_experts=lambda: [], deserialize_experts=lambda x: None
+            )
 
         def to_dict(self):
             return {
@@ -207,7 +218,12 @@ def pytest_configure(config):
         def from_dict(cls, data, callback_handler=None):
             lm_config = CollaborativeStormLMConfigs.from_dict(data["lm_config"])
             runner_argument = RunnerArgument.from_dict(data["runner_argument"])
-            runner = cls(lm_config=lm_config, runner_argument=runner_argument, logging_wrapper=None, callback_handler=callback_handler)
+            runner = cls(
+                lm_config=lm_config,
+                runner_argument=runner_argument,
+                logging_wrapper=None,
+                callback_handler=callback_handler,
+            )
             return runner
 
     collab_mod = types.ModuleType("knowledge_storm.collaborative_storm")

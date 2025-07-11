@@ -18,7 +18,9 @@ class RRFRetriever:
         """Ensure retrievers is stored as a list."""
         self.retrievers = list(self.retrievers)
 
-    def forward(self, query: str, exclude_urls: List[str] | None = None) -> List[Mapping]:
+    def forward(
+        self, query: str, exclude_urls: List[str] | None = None
+    ) -> List[Mapping]:
         """Return fused search results for ``query``."""
 
         exclude_urls = set(exclude_urls or [])
