@@ -3,7 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable, List, Mapping
+from typing import Iterable, List, Mapping, TypedDict
+
+
+class ScoreEntry(TypedDict):
+    """Internal structure for storing a ranked result."""
+
+    score: float
+    result: Mapping
 
 
 @dataclass
@@ -25,7 +32,7 @@ class RRFRetriever:
 
         exclude_urls = set(exclude_urls or [])
 
-        scores: dict[str, dict[str, float | Mapping]] = {}
+        scores: dict[str, ScoreEntry] = {}
         for retriever in self.retrievers:
             results = retriever.forward(query, exclude_urls=list(exclude_urls))
             for rank, result in enumerate(results):
@@ -36,7 +43,9 @@ class RRFRetriever:
                     scores[url] = {"score": 0.0, "result": result}
                 scores[url]["score"] += 1.0 / (rank + 1 + self.k)
 
-        ranked = sorted(scores.values(), key=lambda x: x["score"], reverse=True)
+        ranked: List[ScoreEntry] = sorted(
+            scores.values(), key=lambda x: x["score"], reverse=True
+        )
         fused = [entry["result"] for entry in ranked]
         if self.top_n is not None:
             fused = fused[: self.top_n]
