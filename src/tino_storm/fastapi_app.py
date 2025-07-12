@@ -5,7 +5,8 @@ from __future__ import annotations
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from .config import StormConfig, create_retriever
+from .config import StormConfig
+from .providers import get_retriever
 from .storm import Storm
 
 
@@ -24,8 +25,13 @@ def _create_storm(
     config = StormConfig.from_env()
     if output_dir is not None:
         config.args.output_dir = output_dir
+    if retriever is None:
+        import os
+
+        retriever = os.getenv("STORM_RETRIEVER")
     if retriever is not None:
-        config.rm = create_retriever(retriever, config.args.search_top_k)
+        rm_cls = get_retriever(retriever)
+        config.rm = rm_cls(k=config.args.search_top_k)
     return Storm(config)
 
 

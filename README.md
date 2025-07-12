@@ -126,9 +126,16 @@ This helper reads the environment (or ``secrets.toml``) for API keys and optiona
 ``STORM_RETRIEVER`` or ``STORM_OUTPUT_DIR``. It then sets up the default LLMs and retriever so you
 can immediately run a pipeline:
 
+
 ```python
 article = config.run(topic="Quantum computing")
 ```
+
+### Environment variables
+
+The ``tino_storm.fastapi_app`` module also consults ``STORM_RETRIEVER`` to
+select the search backend. Set this variable to one of the supported providers,
+for example ``bing`` or ``serper``.
 
 ## Ingesting research data
 
