@@ -7,9 +7,16 @@ STORM is a modular pipeline for generating Wikipedia-style articles using extern
 Install the Python package from PyPI:
 
 ```bash
-pip install knowledge-storm
-pip install 'knowledge-storm[ollama]'  # Ollama backend
-pip install 'knowledge-storm[chroma]'  # Chroma-based ingestion
+pip install tino-storm
+```
+
+### Optional extras
+
+Install optional dependencies for different backends with:
+
+```bash
+pip install 'tino-storm[ollama]'   # Ollama backend
+pip install 'tino-storm[chroma]'   # Chroma-based ingestion
 ```
 
 Alternatively, install the latest source version from this repository to get the
@@ -86,15 +93,23 @@ BING_SEARCH_API_KEY = "your-bing-key"
 
 The CLI loads this file automatically so you don't need to export the variables yourself.
 
-`StormConfig.from_env()` can build the same configuration in code:
+### ``StormConfig.from_env()``
+
+You can programmatically create the same configuration using:
 
 ```python
 from tino_storm.config import StormConfig
 
 config = StormConfig.from_env()
 ```
-This reads API keys from the environment (or ``secrets.toml``) and
-initializes the default models and retriever.
+
+This helper reads the environment (or ``secrets.toml``) for API keys and optional variables like
+``STORM_RETRIEVER`` or ``STORM_OUTPUT_DIR``. It then sets up the default LLMs and retriever so you
+can immediately run a pipeline:
+
+```python
+article = config.run(topic="Quantum computing")
+```
 
 ## Ingesting research data
 
@@ -121,7 +136,31 @@ You can integrate STORM into a web service using FastAPI. The repository ships w
 uvicorn examples.fastapi_example:app --reload
 ```
 
-This launches an HTTP API with ``/storm`` that accepts a JSON payload like `{"topic": "Neural networks"}` and returns the generated article. The same logic is available in ``tino_storm.fastapi_app`` for embedding in your own application.
+This launches an HTTP API with ``/storm`` that accepts a JSON payload like
+`{"topic": "Neural networks"}` and returns the generated article. The same logic is
+available in ``tino_storm.fastapi_app`` for embedding in your own application.
+
+### Calling the API
+
+With the server running you can hit the endpoint using ``curl``:
+
+```bash
+curl -X POST http://127.0.0.1:8000/storm \
+  -H "Content-Type: application/json" \
+  -d '{"topic": "Neural networks"}'
+```
+
+Or from Python using ``requests``:
+
+```python
+import requests
+
+resp = requests.post(
+    "http://127.0.0.1:8000/storm",
+    json={"topic": "Neural networks"},
+)
+print(resp.json()["article"])
+```
 
 
 ## Migrating from `knowledge_storm`
