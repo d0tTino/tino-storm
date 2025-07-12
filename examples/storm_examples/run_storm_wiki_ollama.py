@@ -22,7 +22,7 @@ from argparse import ArgumentParser
 from dspy import Example
 
 from knowledge_storm.lm import OllamaClient
-from tino_storm.providers import get_retriever
+from tino_storm import get_retriever
 from knowledge_storm import (
     STORMWikiRunnerArguments,
     STORMWikiRunner,
