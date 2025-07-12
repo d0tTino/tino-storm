@@ -31,9 +31,14 @@ pip install .
 The `tino_storm` package provides a thin wrapper around the original `knowledge_storm` modules.
 A minimal example for generating an article is shown below.
 
+
 ```python
 import os
-from knowledge_storm import STORMWikiRunnerArguments, STORMWikiRunner, STORMWikiLMConfigs
+from knowledge_storm import (
+    STORMWikiRunnerArguments,
+    STORMWikiRunner,
+    STORMWikiLMConfigs,
+)
 from tino_storm import get_llm, get_retriever
 
 args = STORMWikiRunnerArguments()
@@ -50,6 +55,20 @@ lm_configs.set_article_gen_lm(openai_lm)
 rm = Retriever(bing_search_api_key=os.getenv("BING_SEARCH_API_KEY"), k=args.search_top_k)
 runner = STORMWikiRunner(args, lm_configs, rm)
 article = runner.run(topic="Deep learning", do_research=True, do_generate_outline=True, do_generate_article=True)
+print(article)
+```
+
+## Python API
+
+The high-level :class:`~tino_storm.storm.Storm` class provides a minimal wrapper
+around ``knowledge_storm``. Instantiate it with a :class:`StormConfig` and call
+``run_pipeline``:
+
+```python
+from tino_storm import Storm, StormConfig
+
+config = StormConfig.from_env()
+article = Storm(config).run_pipeline(topic="Deep learning")
 print(article)
 ```
 

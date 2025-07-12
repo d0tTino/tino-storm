@@ -1,4 +1,4 @@
-"""Utility functions for scraping URLs listed in manifests."""
+"""Loader helpers for scraping supported URLs."""
 
 from __future__ import annotations
 
