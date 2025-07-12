@@ -1,4 +1,4 @@
-"""File system watcher for ingesting research files."""
+"""Watch a research vault for new files and index them."""
 
 from __future__ import annotations
 

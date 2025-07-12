@@ -1,3 +1,5 @@
+"""High-level interface for running the STORM pipeline."""
+
 from __future__ import annotations
 
 from typing import Optional, TYPE_CHECKING
