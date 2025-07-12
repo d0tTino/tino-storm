@@ -26,7 +26,7 @@ from knowledge_storm.collaborative_storm.modules.callback import (
 )
 from knowledge_storm.lm import OpenAIModel, AzureOpenAIModel
 from knowledge_storm.logging_wrapper import LoggingWrapper
-from tino_storm.providers import get_retriever
+from tino_storm import get_retriever
 from knowledge_storm.utils import load_api_key
 
 

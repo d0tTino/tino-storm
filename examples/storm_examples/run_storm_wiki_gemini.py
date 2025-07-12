@@ -25,7 +25,7 @@ from knowledge_storm import (
     STORMWikiLMConfigs,
 )
 from knowledge_storm.lm import GoogleModel
-from tino_storm.providers import get_retriever
+from tino_storm import get_retriever
 from knowledge_storm.utils import load_api_key
 
 

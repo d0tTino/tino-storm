@@ -30,7 +30,7 @@ from knowledge_storm import (
 
 # Now import lm directly
 from lm import GroqModel
-from tino_storm.providers import get_retriever
+from tino_storm import get_retriever
 from knowledge_storm.utils import load_api_key
 
 logger = logging.getLogger(__name__)

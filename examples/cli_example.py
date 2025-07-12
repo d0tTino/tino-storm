@@ -8,7 +8,7 @@ from knowledge_storm import (
     STORMWikiRunner,
     STORMWikiLMConfigs,
 )
-from tino_storm.providers import get_llm, get_retriever
+from tino_storm import get_llm, get_retriever
 
 
 def run(topic: str) -> None:

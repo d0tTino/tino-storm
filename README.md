@@ -34,7 +34,7 @@ A minimal example for generating an article is shown below.
 ```python
 import os
 from knowledge_storm import STORMWikiRunnerArguments, STORMWikiRunner, STORMWikiLMConfigs
-from tino_storm.providers import get_llm, get_retriever
+from tino_storm import get_llm, get_retriever
 
 args = STORMWikiRunnerArguments()
 lm_configs = STORMWikiLMConfigs()
@@ -98,7 +98,7 @@ The CLI loads this file automatically so you don't need to export the variables 
 You can programmatically create the same configuration using:
 
 ```python
-from tino_storm.config import StormConfig
+from tino_storm import StormConfig
 
 config = StormConfig.from_env()
 ```
