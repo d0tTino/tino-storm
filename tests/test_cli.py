@@ -1,4 +1,6 @@
 import argparse
+import sys
+import types
 from tino_storm.cli import make_config, main
 from tino_storm.storm import Storm
 
@@ -32,7 +34,9 @@ def test_run_uses_topic_arg(monkeypatch):
     _setup_env(monkeypatch)
     recorded = {}
 
-    def run_pipeline(self, topic: str, ground_truth_url: str = "", remove_duplicate: bool = False):
+    def run_pipeline(
+        self, topic: str, ground_truth_url: str = "", remove_duplicate: bool = False
+    ):
         recorded["topic"] = topic
         return "article"
 
@@ -46,7 +50,9 @@ def test_run_prompts_for_topic(monkeypatch):
     _setup_env(monkeypatch)
     recorded = {}
 
-    def run_pipeline(self, topic: str, ground_truth_url: str = "", remove_duplicate: bool = False):
+    def run_pipeline(
+        self, topic: str, ground_truth_url: str = "", remove_duplicate: bool = False
+    ):
         recorded["topic"] = topic
         return "article"
 
@@ -55,3 +61,18 @@ def test_run_prompts_for_topic(monkeypatch):
     main(["run", "--retriever", "bing"])
 
     assert recorded["topic"] == "dogs"
+
+
+def test_ingest_calls_watch_vault(monkeypatch):
+    recorded = {}
+
+    stub = types.ModuleType("tino_storm.ingest")
+
+    def watch(vault: str) -> None:
+        recorded["vault"] = vault
+
+    stub.watch_vault = watch
+    monkeypatch.setitem(sys.modules, "tino_storm.ingest", stub)
+    main(["ingest", "--vault", "v"])
+
+    assert recorded["vault"] == "v"
