@@ -10,6 +10,35 @@ if TYPE_CHECKING:  # pragma: no cover - used only for type checking
     )
 
 
+def create_retriever(name: str, k: int) -> Any:
+    """Instantiate a retriever ``name`` using environment variables."""
+    import os
+
+    from .providers import get_retriever
+
+    rm_cls = get_retriever(name)
+    rm_kwargs = {"k": k}
+    if name == "bing":
+        rm_kwargs["bing_search_api_key"] = os.getenv("BING_SEARCH_API_KEY")
+    elif name == "you":
+        rm_kwargs["ydc_api_key"] = os.getenv("YDC_API_KEY")
+    elif name == "brave":
+        rm_kwargs["brave_search_api_key"] = os.getenv("BRAVE_API_KEY")
+    elif name == "duckduckgo":
+        rm_kwargs.update({"safe_search": "On", "region": "us-en"})
+    elif name == "serper":
+        rm_kwargs["serper_search_api_key"] = os.getenv("SERPER_API_KEY")
+        rm_kwargs["query_params"] = {"autocorrect": True, "num": 10, "page": 1}
+    elif name == "tavily":
+        rm_kwargs["tavily_search_api_key"] = os.getenv("TAVILY_API_KEY")
+        rm_kwargs["include_raw_content"] = True
+    elif name == "searxng":
+        rm_kwargs["searxng_api_key"] = os.getenv("SEARXNG_API_KEY")
+    elif name == "azure_ai_search":
+        rm_kwargs["azure_ai_search_api_key"] = os.getenv("AZURE_AI_SEARCH_API_KEY")
+    return rm_cls(**rm_kwargs)
+
+
 @dataclass
 class StormConfig:
     """Aggregate configuration for running a STORM pipeline."""
@@ -29,7 +58,7 @@ class StormConfig:
             STORMWikiRunnerArguments,
         )
 
-        from .providers import get_llm, get_retriever
+        from .providers import get_llm
 
         load_api_key(toml_file_path="secrets.toml")
 
@@ -66,26 +95,6 @@ class StormConfig:
         lm_configs.set_article_gen_lm(article_gen_lm)
         lm_configs.set_article_polish_lm(article_polish_lm)
 
-        rm_cls = get_retriever(retriever_name)
-        rm_kwargs = {"k": args.search_top_k}
-        if retriever_name == "bing":
-            rm_kwargs["bing_search_api_key"] = os.getenv("BING_SEARCH_API_KEY")
-        elif retriever_name == "you":
-            rm_kwargs["ydc_api_key"] = os.getenv("YDC_API_KEY")
-        elif retriever_name == "brave":
-            rm_kwargs["brave_search_api_key"] = os.getenv("BRAVE_API_KEY")
-        elif retriever_name == "duckduckgo":
-            rm_kwargs.update({"safe_search": "On", "region": "us-en"})
-        elif retriever_name == "serper":
-            rm_kwargs["serper_search_api_key"] = os.getenv("SERPER_API_KEY")
-            rm_kwargs["query_params"] = {"autocorrect": True, "num": 10, "page": 1}
-        elif retriever_name == "tavily":
-            rm_kwargs["tavily_search_api_key"] = os.getenv("TAVILY_API_KEY")
-            rm_kwargs["include_raw_content"] = True
-        elif retriever_name == "searxng":
-            rm_kwargs["searxng_api_key"] = os.getenv("SEARXNG_API_KEY")
-        elif retriever_name == "azure_ai_search":
-            rm_kwargs["azure_ai_search_api_key"] = os.getenv("AZURE_AI_SEARCH_API_KEY")
-        rm = rm_cls(**rm_kwargs)
+        rm = create_retriever(retriever_name, args.search_top_k)
 
         return cls(args=args, lm_configs=lm_configs, rm=rm)
