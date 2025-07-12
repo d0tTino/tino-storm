@@ -89,7 +89,7 @@ def make_config(args: argparse.Namespace | None = None) -> StormConfig:
 def _run_storm(args: argparse.Namespace) -> None:
     config = make_config(args)
     storm = Storm(config)
-    topic = input("Topic: ")
+    topic = args.topic or input("Topic: ")
     article = storm.run_pipeline(topic, remove_duplicate=args.remove_duplicate)
     print(article)
 
@@ -133,6 +133,13 @@ def main(argv: list[str] | None = None) -> None:
     run_parser.add_argument("--retrieve-top-k", type=int, default=3)
     run_parser.add_argument(
         "--remove-duplicate", action="store_true", help="Remove duplicate text"
+    )
+    run_parser.add_argument(
+        "--topic",
+        "-t",
+        type=str,
+        default=None,
+        help="Topic to research. Prompted if omitted",
     )
     run_parser.set_defaults(func=_run_storm)
 

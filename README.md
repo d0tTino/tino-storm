@@ -72,13 +72,13 @@ article = skill("Deep learning", table)
 
 ## CLI usage
 
-After installation, an entrypoint named ``tino-storm`` is available. Run the pipeline interactively with:
+After installation, an entrypoint named ``tino-storm`` is available. Run the pipeline from the command line with:
 
 ```bash
-tino-storm run --retriever bing
+tino-storm run --retriever bing --topic "Quantum computing"
 ```
 
-The command prompts for a topic and prints the generated article. Pass ``--help`` to see all options.
+The command prints the generated article. Omit ``--topic`` to be prompted interactively or pass it to run non-interactively. Use ``--help`` to see all options.
 
 `OPENAI_API_KEY` and `BING_SEARCH_API_KEY` must be set in the environment (or provided via ``secrets.toml``).
 
