@@ -17,6 +17,7 @@ Install optional dependencies for different backends with:
 ```bash
 pip install 'tino-storm[ollama]'   # Ollama backend
 pip install 'tino-storm[chroma]'   # Chroma-based ingestion
+pip install 'tino-storm[fastapi]'  # FastAPI web server
 ```
 
 Alternatively, install the latest source version from this repository to get the
