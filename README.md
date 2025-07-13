@@ -117,9 +117,10 @@ The CLI loads this file automatically so you don't need to export the variables 
 You can programmatically create the same configuration using:
 
 ```python
-from tino_storm import StormConfig
+from tino_storm import Storm, StormConfig
 
 config = StormConfig.from_env()
+article = Storm(config).run_pipeline("Quantum computing")
 ```
 
 This helper reads the environment (or ``secrets.toml``) for API keys and optional variables like
@@ -128,7 +129,7 @@ can immediately run a pipeline:
 
 
 ```python
-article = config.run(topic="Quantum computing")
+article = Storm(config).run_pipeline("Quantum computing")
 ```
 
 ### Environment variables
