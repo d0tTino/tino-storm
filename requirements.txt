@@ -14,3 +14,4 @@ snscrape
 praw
 requests
 pytesseract
+httpx<0.28
