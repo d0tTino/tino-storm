@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import FastAPI
+from fastapi import Query
 from pydantic import BaseModel
 
 from .config import StormConfig
@@ -36,9 +37,13 @@ def _create_storm(
 
 
 @app.post("/outline")
-async def generate_outline(req: OutlineRequest):
+async def generate_outline(
+    req: OutlineRequest,
+    output_dir: str | None = Query(None),
+    retriever: str | None = Query(None),
+):
     """Generate an outline for ``req.topic``."""
-    storm = _create_storm()
+    storm = _create_storm(output_dir=output_dir, retriever=retriever)
     outline = storm.build_outline(
         req.topic, ground_truth_url=req.ground_truth_url or ""
     )
@@ -46,8 +51,12 @@ async def generate_outline(req: OutlineRequest):
 
 
 @app.post("/article")
-async def generate_article(req: OutlineRequest):
+async def generate_article(
+    req: OutlineRequest,
+    output_dir: str | None = Query(None),
+    retriever: str | None = Query(None),
+):
     """Run the full pipeline to produce an article for ``req.topic``."""
-    storm = _create_storm()
+    storm = _create_storm(output_dir=output_dir, retriever=retriever)
     article = storm.run_pipeline(req.topic, ground_truth_url=req.ground_truth_url or "")
     return {"article": article.to_string()}
