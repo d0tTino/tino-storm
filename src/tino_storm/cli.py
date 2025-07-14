@@ -35,6 +35,28 @@ def _run_storm(args: argparse.Namespace) -> None:
     print(article)
 
 
+def _run_outline(args: argparse.Namespace) -> None:
+    config = make_config(args)
+    storm = Storm(config)
+    topic = args.topic or input("Topic: ")
+    outline = storm.build_outline(topic)
+    print(outline)
+
+
+def _run_draft(args: argparse.Namespace) -> None:
+    config = make_config(args)
+    storm = Storm(config)
+    draft = storm.generate_article()
+    print(draft)
+
+
+def _run_polish(args: argparse.Namespace) -> None:
+    config = make_config(args)
+    storm = Storm(config)
+    article = storm.polish_article(remove_duplicate=args.remove_duplicate)
+    print(article)
+
+
 def _run_ingest(args: argparse.Namespace) -> None:
     from .ingest import watch_vault
 
@@ -83,6 +105,99 @@ def main(argv: list[str] | None = None) -> None:
         help="Topic to research. Prompted if omitted",
     )
     run_parser.set_defaults(func=_run_storm)
+
+    outline_parser = sub.add_parser("outline", help="Generate an outline")
+    outline_parser.add_argument(
+        "--output-dir", type=str, default="./results/cli", help="Directory for outputs"
+    )
+    outline_parser.add_argument(
+        "--max-thread-num", type=int, default=3, help="Maximum number of threads"
+    )
+    outline_parser.add_argument(
+        "--retriever",
+        type=str,
+        required=True,
+        choices=[
+            "bing",
+            "you",
+            "brave",
+            "serper",
+            "duckduckgo",
+            "tavily",
+            "searxng",
+            "azure_ai_search",
+        ],
+        help="Search engine to use",
+    )
+    outline_parser.add_argument("--max-conv-turn", type=int, default=3)
+    outline_parser.add_argument("--max-perspective", type=int, default=3)
+    outline_parser.add_argument("--search-top-k", type=int, default=3)
+    outline_parser.add_argument("--retrieve-top-k", type=int, default=3)
+    outline_parser.add_argument(
+        "--topic", "-t", type=str, default=None, help="Topic to research. Prompted if omitted"
+    )
+    outline_parser.set_defaults(func=_run_outline)
+
+    draft_parser = sub.add_parser("draft", help="Generate an article draft")
+    draft_parser.add_argument(
+        "--output-dir", type=str, default="./results/cli", help="Directory for outputs"
+    )
+    draft_parser.add_argument(
+        "--max-thread-num", type=int, default=3, help="Maximum number of threads"
+    )
+    draft_parser.add_argument(
+        "--retriever",
+        type=str,
+        required=True,
+        choices=[
+            "bing",
+            "you",
+            "brave",
+            "serper",
+            "duckduckgo",
+            "tavily",
+            "searxng",
+            "azure_ai_search",
+        ],
+        help="Search engine to use",
+    )
+    draft_parser.add_argument("--max-conv-turn", type=int, default=3)
+    draft_parser.add_argument("--max-perspective", type=int, default=3)
+    draft_parser.add_argument("--search-top-k", type=int, default=3)
+    draft_parser.add_argument("--retrieve-top-k", type=int, default=3)
+    draft_parser.set_defaults(func=_run_draft)
+
+    polish_parser = sub.add_parser("polish", help="Polish a draft article")
+    polish_parser.add_argument(
+        "--output-dir", type=str, default="./results/cli", help="Directory for outputs"
+    )
+    polish_parser.add_argument(
+        "--max-thread-num", type=int, default=3, help="Maximum number of threads"
+    )
+    polish_parser.add_argument(
+        "--retriever",
+        type=str,
+        required=True,
+        choices=[
+            "bing",
+            "you",
+            "brave",
+            "serper",
+            "duckduckgo",
+            "tavily",
+            "searxng",
+            "azure_ai_search",
+        ],
+        help="Search engine to use",
+    )
+    polish_parser.add_argument("--max-conv-turn", type=int, default=3)
+    polish_parser.add_argument("--max-perspective", type=int, default=3)
+    polish_parser.add_argument("--search-top-k", type=int, default=3)
+    polish_parser.add_argument("--retrieve-top-k", type=int, default=3)
+    polish_parser.add_argument(
+        "--remove-duplicate", action="store_true", help="Remove duplicate text"
+    )
+    polish_parser.set_defaults(func=_run_polish)
 
     ingest_parser = sub.add_parser("ingest", help="Ingest research files")
     ingest_parser.add_argument(
