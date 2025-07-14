@@ -18,6 +18,7 @@ scripts = {"tino-storm" = "tino_storm.cli:main"}
 ollama = ["ollama-python", "litellm"]
 chroma = ["chromadb", "llama-index"]
 fastapi = ["fastapi", "starlette", "httpx<0.28"]
+ingest = ["watchdog"]
 
 [tool.setuptools.dynamic]
 version = {attr = "tino_storm.__version__"}

@@ -18,6 +18,7 @@ Install optional dependencies for different backends with:
 pip install 'tino-storm[ollama]'   # Ollama backend
 pip install 'tino-storm[chroma]'   # Chroma-based ingestion
 pip install 'tino-storm[fastapi]'  # FastAPI web server
+pip install 'tino-storm[ingest]'   # File watching for ingestion
 ```
 
 Alternatively, install the latest source version from this repository to get the
@@ -152,7 +153,7 @@ LlamaIndex and stored in `~/.tino_storm/chroma/my_vault` using Chroma as the vec
 dependencies with:
 
 ```bash
-pip install watchdog llama-index chromadb
+pip install 'tino-storm[chroma,ingest]'
 ```
 
 
