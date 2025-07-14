@@ -53,3 +53,39 @@ def test_article_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     resp = client.post("/article", json={"topic": "topic"})
     assert resp.status_code == 200
     assert resp.json() == {"article": "polished"}
+
+
+def test_outline_invalid_payload() -> None:
+    client = TestClient(fastapi_app.app)
+    resp = client.post("/outline", json={})
+    assert resp.status_code == 422
+
+
+def test_article_invalid_payload() -> None:
+    client = TestClient(fastapi_app.app)
+    resp = client.post("/article", json={})
+    assert resp.status_code == 422
+
+
+def test_query_params(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str | None, str | None]] = []
+
+    class Dummy:
+        def build_outline(self, topic: str, ground_truth_url: str = ""):
+            return _Doc(f"outline:{topic}")
+
+        def run_pipeline(self, topic: str, ground_truth_url: str = ""):
+            return _Doc("article")
+
+    def fake_create_storm(*, output_dir: str | None = None, retriever: str | None = None):
+        calls.append((output_dir, retriever))
+        return Dummy()
+
+    monkeypatch.setattr(fastapi_app, "_create_storm", fake_create_storm)
+
+    client = TestClient(fastapi_app.app)
+    resp = client.post("/outline?output_dir=a&retriever=you", json={"topic": "t"})
+    assert resp.status_code == 200
+    resp = client.post("/article?output_dir=b&retriever=bing", json={"topic": "t"})
+    assert resp.status_code == 200
+    assert calls == [("a", "you"), ("b", "bing")]
