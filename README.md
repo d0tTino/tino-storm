@@ -98,6 +98,24 @@ After installation, an entrypoint named ``tino-storm`` is available. Run the pip
 tino-storm run --retriever bing --topic "Quantum computing"
 ```
 
+Generate the outline only:
+
+```bash
+tino-storm outline --retriever bing --topic "Quantum computing"
+```
+
+Draft the article from a saved outline:
+
+```bash
+tino-storm draft --retriever bing
+```
+
+Polish an existing draft:
+
+```bash
+tino-storm polish --retriever bing --remove-duplicate
+```
+
 The command prints the generated article. Omit ``--topic`` to be prompted interactively or pass it to run non-interactively. Use ``--help`` to see all options.
 
 `OPENAI_API_KEY` and `BING_SEARCH_API_KEY` must be set in the environment (or provided via ``secrets.toml``).

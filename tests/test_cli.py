@@ -76,3 +76,60 @@ def test_ingest_calls_watch_vault(monkeypatch):
     main(["ingest", "--vault", "v"])
 
     assert recorded["vault"] == "v"
+
+
+def test_outline_uses_topic_arg(monkeypatch):
+    _setup_env(monkeypatch)
+    recorded = {}
+
+    def build_outline(self, topic: str, ground_truth_url: str = "", callback_handler=None):
+        recorded["topic"] = topic
+        return "outline"
+
+    monkeypatch.setattr(Storm, "build_outline", build_outline)
+    main(["outline", "--retriever", "bing", "--topic", "cats"])
+
+    assert recorded["topic"] == "cats"
+
+
+def test_outline_prompts_for_topic(monkeypatch):
+    _setup_env(monkeypatch)
+    recorded = {}
+
+    def build_outline(self, topic: str, ground_truth_url: str = "", callback_handler=None):
+        recorded["topic"] = topic
+        return "outline"
+
+    monkeypatch.setattr(Storm, "build_outline", build_outline)
+    monkeypatch.setattr("builtins.input", lambda _: "dogs")
+    main(["outline", "--retriever", "bing"])
+
+    assert recorded["topic"] == "dogs"
+
+
+def test_draft_calls_generate_article(monkeypatch):
+    _setup_env(monkeypatch)
+    called = {}
+
+    def generate_article(self, callback_handler=None):
+        called["called"] = True
+        return "draft"
+
+    monkeypatch.setattr(Storm, "generate_article", generate_article)
+    main(["draft", "--retriever", "bing"])
+
+    assert called.get("called")
+
+
+def test_polish_calls_polish_article(monkeypatch):
+    _setup_env(monkeypatch)
+    recorded = {}
+
+    def polish_article(self, remove_duplicate: bool = False):
+        recorded["dup"] = remove_duplicate
+        return "polished"
+
+    monkeypatch.setattr(Storm, "polish_article", polish_article)
+    main(["polish", "--retriever", "bing", "--remove-duplicate"])
+
+    assert recorded["dup"] is True
