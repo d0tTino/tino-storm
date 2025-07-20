@@ -28,7 +28,7 @@ def _choose_loader(url: str):
         from . import reddit
 
         return reddit.fetch_post
-    if "4chan.org" in netloc:
+    if "4chan.org" in netloc or "4channel.org" in netloc:
         from . import chan
 
         return chan.fetch_thread

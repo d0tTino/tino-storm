@@ -25,6 +25,13 @@ def test_choose_loader_chan():
     )
 
 
+def test_choose_loader_4channel():
+    assert (
+        loaders._choose_loader("https://boards.4channel.org/g/thread/123")
+        is loaders.chan.fetch_thread
+    )
+
+
 def test_load_dispatch(monkeypatch):
     called = {}
 
