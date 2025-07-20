@@ -49,6 +49,28 @@ class _DummyObserver:
         pass
 
 
+class _RecordingObserver:
+    """Record calls made to the Observer methods."""
+
+    def __init__(self):
+        self.scheduled = []
+        self.started = False
+        self.stopped = False
+        self.joined = False
+
+    def schedule(self, handler, path, recursive=False):
+        self.scheduled.append((handler, path, recursive))
+
+    def start(self):
+        self.started = True
+
+    def stop(self):
+        self.stopped = True
+
+    def join(self):
+        self.joined = True
+
+
 @pytest.fixture(autouse=True)
 def stub_dependencies(monkeypatch):
     core_mod = types.ModuleType("llama_index.core")
