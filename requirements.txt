@@ -15,3 +15,5 @@ praw
 requests
 pytesseract
 httpx<0.28
+pyyaml
+cryptography
