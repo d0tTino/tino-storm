@@ -13,7 +13,6 @@ import yaml
 from cryptography.fernet import Fernet
 
 from tino_storm.loaders import load
-from tino_storm.events import ResearchAdded, save_event
 import json
 import hashlib
 
@@ -127,6 +126,10 @@ class IngestHandler(FileSystemEventHandler):
                 except Exception:
                     pass
             self.index.insert_nodes([node])
+        try:
+            self.index.vector_store.persist()
+        except AttributeError:  # pragma: no cover - test stubs
+            pass
         if self._fernet:
             _encrypt_dir(self.storage_dir, self._fernet)
 
