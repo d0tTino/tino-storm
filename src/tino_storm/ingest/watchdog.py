@@ -13,6 +13,7 @@ import yaml
 from cryptography.fernet import Fernet
 
 from tino_storm.loaders import load
+from tino_storm.events import ResearchAdded, save_event
 import json
 import hashlib
 
