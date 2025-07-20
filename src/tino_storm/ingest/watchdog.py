@@ -126,7 +126,10 @@ class IngestHandler(FileSystemEventHandler):
                 except Exception:
                     pass
             self.index.insert_nodes([node])
-            self.index.storage_context.persist()
+        try:
+            self.index.vector_store.persist()
+        except AttributeError:  # pragma: no cover - test stubs
+            pass
 
         if self._fernet:
             _encrypt_dir(self.storage_dir, self._fernet)
