@@ -52,3 +52,21 @@ linting and [`pytest`](https://pytest.org/) for tests. You may add
 [`mypy`](https://mypy-lang.org/) for optional type checking. These hooks operate on
 the `knowledge_storm/`, `tino_storm/`, and `tests/` directories. Running
 `pre-commit` locally will execute these checks automatically.
+
+### Running `ruff` and `pytest`
+
+Install the optional `test` extras so that `pytest` and other testing
+dependencies are available:
+
+```bash
+pip install 'tino-storm[test]'
+```
+
+Run `ruff` and `pytest` on just the files you modified by specifying them with
+`pre-commit`:
+
+```bash
+pre-commit run --files <changed-files>
+```
+
+Use `--all-files` to lint and test the whole project.
