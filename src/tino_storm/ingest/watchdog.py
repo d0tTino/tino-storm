@@ -127,8 +127,17 @@ class IngestHandler(FileSystemEventHandler):
                     pass
             self.index.insert_nodes([node])
             self.index.storage_context.persist()
+
         if self._fernet:
             _encrypt_dir(self.storage_dir, self._fernet)
+        event = ResearchAdded(
+            vault=self.vault,
+            path=str(path),
+            file_hash=file_hash,
+            ingested_at=ingested_at,
+            source_url=source_url,
+        )
+        save_event(event, self.event_dir)
 
 
     def on_created(

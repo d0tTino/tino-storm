@@ -118,6 +118,7 @@ def test_ingest_handler_ingests(tmp_path, monkeypatch):
     monkeypatch.setattr("watchdog.observers.Observer", _DummyObserver)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("STORM_EVENT_DIR", str(tmp_path / "events"))
     vault = "vault"
     vault_dir = Path("research") / vault
     vault_dir.mkdir(parents=True)
@@ -150,6 +151,7 @@ def test_ingest_handler_encrypts(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     home = tmp_path / "home"
     monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("STORM_EVENT_DIR", str(tmp_path / "events"))
     cfg_dir = home / ".tino_storm"
     cfg_dir.mkdir(parents=True)
     from cryptography.fernet import Fernet
