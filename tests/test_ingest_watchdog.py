@@ -50,6 +50,28 @@ class _DummyObserver:
         pass
 
 
+class _RecordingObserver:
+    """Record calls made to the Observer methods."""
+
+    def __init__(self):
+        self.scheduled = []
+        self.started = False
+        self.stopped = False
+        self.joined = False
+
+    def schedule(self, handler, path, recursive=False):
+        self.scheduled.append((handler, path, recursive))
+
+    def start(self):
+        self.started = True
+
+    def stop(self):
+        self.stopped = True
+
+    def join(self):
+        self.joined = True
+
+
 @pytest.fixture(autouse=True)
 def stub_dependencies(monkeypatch):
     core_mod = types.ModuleType("llama_index.core")
@@ -116,6 +138,7 @@ def test_ingest_handler_ingests(tmp_path, monkeypatch):
 
 def test_ingest_handler_emits_event(tmp_path, monkeypatch):
     monkeypatch.setattr("watchdog.observers.Observer", _DummyObserver)
+
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     vault = "vault"
@@ -138,4 +161,5 @@ def test_ingest_handler_emits_event(tmp_path, monkeypatch):
     assert len(events) == 1
     data = json.loads(events[0].read_text())
     assert data["path"].endswith("file.pdf")
+
 
