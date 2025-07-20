@@ -34,10 +34,10 @@ def _ocr_image(url: str) -> str:
     if not pytesseract or not Image:  # pragma: no cover - optional dependency
         return ""
     try:
-        resp = requests.get(url, timeout=10)
-        resp.raise_for_status()
-        with Image.open(BytesIO(resp.content)) as img:
-            return pytesseract.image_to_string(img)
+        with requests.get(url, timeout=10) as resp:
+            resp.raise_for_status()
+            with Image.open(BytesIO(resp.content)) as img:
+                return pytesseract.image_to_string(img)
     except Exception:
         return ""
 
