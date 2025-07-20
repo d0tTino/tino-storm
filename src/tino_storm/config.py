@@ -12,10 +12,21 @@ if TYPE_CHECKING:  # pragma: no cover - used only for type checking
 
 
 def create_retriever(name: str, k: int) -> Any:
-    """Instantiate a retriever ``name`` using environment variables."""
+    """Instantiate a retriever ``name`` using environment variables.
+
+    ``name`` can be a single provider like ``"bing"`` or a comma separated list
+    prefixed with ``"rrf="`` to compose a :class:`~tino_storm.rrf.RRFRetriever`.
+    """
     import os
 
     from .providers import get_retriever
+
+    if name.startswith("rrf="):
+        from .rrf import RRFRetriever
+
+        names = [n.strip() for n in name.split("=", 1)[1].split(",") if n.strip()]
+        retrievers = [create_retriever(n, k) for n in names]
+        return RRFRetriever(retrievers=retrievers, top_n=k)
 
     rm_cls = get_retriever(name)
     rm_kwargs = {"k": k}

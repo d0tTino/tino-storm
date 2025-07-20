@@ -120,6 +120,13 @@ tino-storm polish --retriever bing --remove-duplicate
 
 The command prints the generated article. Omit ``--topic`` to be prompted interactively or pass it to run non-interactively. Use ``--help`` to see all options.
 
+To combine multiple search engines, prefix the retriever with ``rrf=`` and provide
+a comma-separated list:
+
+```bash
+tino-storm run --retriever "rrf=bing,you" --topic "Quantum computing"
+```
+
 `OPENAI_API_KEY` and `BING_SEARCH_API_KEY` must be set in the environment (or provided via ``secrets.toml``).
 
 ## Configuration
@@ -156,8 +163,8 @@ article = Storm(config).run_pipeline("Quantum computing")
 ### Environment variables
 
 The ``tino_storm.fastapi_app`` module also consults ``STORM_RETRIEVER`` to
-select the search backend. Set this variable to one of the supported providers,
-for example ``bing`` or ``serper``.
+select the search backend. Set this variable to one of the supported providers
+or use ``rrf=`` to combine them, e.g. ``STORM_RETRIEVER=rrf=bing,you``.
 
 ## Ingesting research data
 
