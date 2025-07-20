@@ -92,6 +92,17 @@ skill = ResearchSkill(
 article = skill("Deep learning", table)
 ```
 
+### Tuning
+
+Each research vault can include a small `eval.jsonl` file with evaluation topics. The
+`ResearchSkill.tune()` method loads this data and evaluates the skill. This can be
+used with simple stub LMs for local experiments:
+
+```python
+accuracy = skill.tune("example_vault")
+print("Accuracy", accuracy)
+```
+
 ## CLI usage
 
 After installation, an entrypoint named ``tino-storm`` is available. Run the pipeline from the command line with:
