@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Optional
+import json
+from pathlib import Path
+from typing import Optional, Iterable, Dict
 
 
 class ResearchSkill:
@@ -40,6 +42,40 @@ class ResearchSkill:
         self.outline_module = outline_module
         self.draft_module = draft_module
         self.polish_module = polish_module
+
+    def evaluate(self, sample: Dict[str, str]) -> bool:
+        """Run the full pipeline on ``sample`` and check the result."""
+        outline = self.outline_module.generate_outline(
+            topic=sample["topic"], information_table=None, callback_handler=None
+        )
+        draft = self.draft_module.generate_article(
+            topic=sample["topic"],
+            information_table=None,
+            article_with_outline=outline,
+            callback_handler=None,
+        )
+        article = self.polish_module.polish_article(
+            topic=sample["topic"], draft_article=draft, remove_duplicate=False
+        )
+        return article == sample.get("expected")
+
+    def tune(self, vault: str) -> float:
+        """Evaluate the skill on the dataset stored in ``research/<vault>/eval.jsonl``."""
+        path = Path(__file__).resolve().parents[3] / "research" / vault / "eval.jsonl"
+        if not path.exists():
+            raise FileNotFoundError(f"Eval set not found: {path}")
+        samples = []
+        with open(path, "r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if line:
+                    samples.append(json.loads(line))
+
+        if not samples:
+            return 0.0
+
+        results = [self.evaluate(sample) for sample in samples]
+        return sum(results) / len(results)
 
     def __call__(
         self,
