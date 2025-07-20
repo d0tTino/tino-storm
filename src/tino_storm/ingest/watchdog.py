@@ -7,6 +7,7 @@ from pathlib import Path
 
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
 from watchdog.observers import Observer
+from datetime import datetime, timezone
 
 from tino_storm.loaders import load
 import json
@@ -53,7 +54,34 @@ class IngestHandler(FileSystemEventHandler):
         docs = SimpleDirectoryReader(input_files=[str(path)]).load_data()
         if not docs:
             return
+        file_hash = hashlib.sha1(path.read_bytes()).hexdigest()
+        ingested_at = datetime.now(timezone.utc).isoformat()
+        source_url = str(path)
+        if path.suffix.lower() == ".json":
+            try:
+                data = json.loads(path.read_text())
+                if (
+                    isinstance(data, list)
+                    and data
+                    and isinstance(data[0], dict)
+                    and "url" in data[0]
+                ):
+                    source_url = data[0]["url"]
+            except Exception:
+                pass
+        metadata = {
+            "file_hash": file_hash,
+            "ingested_at": ingested_at,
+            "source_url": source_url,
+        }
         for node in docs:
+            if hasattr(node, "metadata") and isinstance(node.metadata, dict):
+                node.metadata.update(metadata)
+            else:  # pragma: no cover - depends on reader implementation
+                try:
+                    node.metadata = metadata
+                except Exception:
+                    pass
             self.index.insert_nodes([node])
         self.index.vector_store.persist()
 
