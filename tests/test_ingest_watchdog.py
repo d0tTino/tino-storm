@@ -112,3 +112,64 @@ def test_ingest_handler_ingests(tmp_path, monkeypatch):
     handler.ingest_file(urls)
 
     assert any(handler.storage_dir.iterdir())
+
+
+@pytest.mark.parametrize("fail_loader", ["twitter", "reddit", "chan"])
+def test_ingest_continues_on_loader_error(tmp_path, monkeypatch, fail_loader):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    vault = "vault"
+    vault_dir = Path("research") / vault
+    vault_dir.mkdir(parents=True)
+
+    from datetime import datetime
+    from tino_storm.ingest.watchdog import IngestHandler
+    from tino_storm.loaders import twitter, reddit, chan
+
+    def err(*args, **kwargs):
+        raise Exception("network")
+
+    def ok_tweet(url: str):
+        return [
+            twitter.TweetRecord(
+                text="t", url=url, timestamp=datetime.utcnow(), images=[]
+            )
+        ]
+
+    def ok_reddit(url: str, client_id=None, client_secret=None):
+        return [
+            reddit.RedditRecord(
+                text="r", url=url, timestamp=datetime.utcnow(), images=[]
+            )
+        ]
+
+    def ok_chan(url: str):
+        return [
+            chan.ChanRecord(text="c", url=url, timestamp=datetime.utcnow(), images=[])
+        ]
+
+    monkeypatch.setattr(
+        twitter, "fetch_tweet", err if fail_loader == "twitter" else ok_tweet
+    )
+    monkeypatch.setattr(
+        reddit, "fetch_post", err if fail_loader == "reddit" else ok_reddit
+    )
+    monkeypatch.setattr(chan, "fetch_thread", err if fail_loader == "chan" else ok_chan)
+
+    handler = IngestHandler(vault)
+
+    urls = vault_dir / "urls.txt"
+    urls.write_text(
+        "\n".join(
+            [
+                "https://twitter.com/user/status/1",
+                "https://www.reddit.com/r/test/comments/abc/post/",
+                "https://boards.4chan.org/g/thread/123",
+            ]
+        )
+    )
+    handler.ingest_file(urls)
+
+    out_files = list(vault_dir.glob("*.json"))
+    assert len(out_files) == 2
+    assert len(handler.index.nodes) == 2
