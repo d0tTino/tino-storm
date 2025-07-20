@@ -1,6 +1,7 @@
 import sys
 import types
 from pathlib import Path
+import json
 
 import pytest
 
@@ -112,3 +113,29 @@ def test_ingest_handler_ingests(tmp_path, monkeypatch):
     handler.ingest_file(urls)
 
     assert any(handler.storage_dir.iterdir())
+
+def test_ingest_handler_emits_event(tmp_path, monkeypatch):
+    monkeypatch.setattr("watchdog.observers.Observer", _DummyObserver)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    vault = "vault"
+    vault_dir = Path("research") / vault
+    vault_dir.mkdir(parents=True)
+
+    from tino_storm.ingest.watchdog import IngestHandler
+
+    monkeypatch.setattr(
+        sys.modules["tino_storm.ingest.watchdog"], "load", lambda url: [{"text": "x"}]
+    )
+
+    handler = IngestHandler(vault, event_dir=tmp_path / "events")
+
+    pdf = vault_dir / "file.pdf"
+    pdf.write_text("pdf")
+    handler.ingest_file(pdf)
+
+    events = list((tmp_path / "events").iterdir())
+    assert len(events) == 1
+    data = json.loads(events[0].read_text())
+    assert data["path"].endswith("file.pdf")
+
