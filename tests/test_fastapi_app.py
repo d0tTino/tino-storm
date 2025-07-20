@@ -1,4 +1,6 @@
 import pytest
+
+pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
 from tino_storm import fastapi_app
@@ -77,7 +79,9 @@ def test_query_params(monkeypatch: pytest.MonkeyPatch) -> None:
         def run_pipeline(self, topic: str, ground_truth_url: str = ""):
             return _Doc("article")
 
-    def fake_create_storm(*, output_dir: str | None = None, retriever: str | None = None):
+    def fake_create_storm(
+        *, output_dir: str | None = None, retriever: str | None = None
+    ):
         calls.append((output_dir, retriever))
         return Dummy()
 

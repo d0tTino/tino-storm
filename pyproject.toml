@@ -19,6 +19,12 @@ ollama = ["ollama-python", "litellm"]
 chroma = ["chromadb", "llama-index"]
 fastapi = ["fastapi", "starlette", "httpx<0.28"]
 ingest = ["watchdog"]
+test = [
+    "pytest",
+    "httpx<0.28",
+    "pyyaml",
+    "cryptography",
+]
 
 [tool.setuptools.dynamic]
 version = {attr = "tino_storm.__version__"}

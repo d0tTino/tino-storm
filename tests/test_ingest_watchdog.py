@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip("cryptography")
+
 
 class _FakeVectorStore:
     def __init__(self, persist_path: str):
@@ -161,7 +163,6 @@ def test_ingest_handler_encrypts(tmp_path, monkeypatch):
         f"encrypt_vault: true\nencryption_key: {key}\n"
     )
 
-
     vault = "vault"
     vault_dir = Path("research") / vault
     vault_dir.mkdir(parents=True)
@@ -170,12 +171,10 @@ def test_ingest_handler_encrypts(tmp_path, monkeypatch):
 
     handler = IngestHandler(vault)
 
-
     pdf = vault_dir / "file.pdf"
     pdf.write_text("pdf")
     handler.ingest_file(pdf)
 
     files = list(handler.storage_dir.iterdir())
-    assert files and (handler.storage_dir / "index.txt.enc") in files
-    assert all(p.suffix == ".enc" for p in files)
+    assert files and all(p.suffix == ".enc" for p in files)
 

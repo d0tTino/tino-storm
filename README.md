@@ -19,6 +19,7 @@ pip install 'tino-storm[ollama]'   # Ollama backend
 pip install 'tino-storm[chroma]'   # Chroma-based ingestion
 pip install 'tino-storm[fastapi]'  # FastAPI web server
 pip install 'tino-storm[ingest]'   # File watching for ingestion
+pip install 'tino-storm[test]'     # Run the test suite
 ```
 
 Alternatively, install the latest source version from this repository to get the
