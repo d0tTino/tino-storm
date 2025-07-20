@@ -63,18 +63,16 @@ def _run_ingest(args: argparse.Namespace) -> None:
     watch_vault(args.vault)
 
 
-def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="tino-storm command line")
-    sub = parser.add_subparsers(dest="command", required=True)
+def _add_common_args(parser: argparse.ArgumentParser) -> None:
+    """Register arguments shared across commands."""
 
-    run_parser = sub.add_parser("run", help="Run the STORM pipeline")
-    run_parser.add_argument(
+    parser.add_argument(
         "--output-dir", type=str, default="./results/cli", help="Directory for outputs"
     )
-    run_parser.add_argument(
+    parser.add_argument(
         "--max-thread-num", type=int, default=3, help="Maximum number of threads"
     )
-    run_parser.add_argument(
+    parser.add_argument(
         "--retriever",
         type=str,
         required=True,
@@ -90,10 +88,18 @@ def main(argv: list[str] | None = None) -> None:
         ],
         help="Search engine to use",
     )
-    run_parser.add_argument("--max-conv-turn", type=int, default=3)
-    run_parser.add_argument("--max-perspective", type=int, default=3)
-    run_parser.add_argument("--search-top-k", type=int, default=3)
-    run_parser.add_argument("--retrieve-top-k", type=int, default=3)
+    parser.add_argument("--max-conv-turn", type=int, default=3)
+    parser.add_argument("--max-perspective", type=int, default=3)
+    parser.add_argument("--search-top-k", type=int, default=3)
+    parser.add_argument("--retrieve-top-k", type=int, default=3)
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="tino-storm command line")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    run_parser = sub.add_parser("run", help="Run the STORM pipeline")
+    _add_common_args(run_parser)
     run_parser.add_argument(
         "--remove-duplicate", action="store_true", help="Remove duplicate text"
     )
@@ -107,93 +113,22 @@ def main(argv: list[str] | None = None) -> None:
     run_parser.set_defaults(func=_run_storm)
 
     outline_parser = sub.add_parser("outline", help="Generate an outline")
+    _add_common_args(outline_parser)
     outline_parser.add_argument(
-        "--output-dir", type=str, default="./results/cli", help="Directory for outputs"
-    )
-    outline_parser.add_argument(
-        "--max-thread-num", type=int, default=3, help="Maximum number of threads"
-    )
-    outline_parser.add_argument(
-        "--retriever",
+        "--topic",
+        "-t",
         type=str,
-        required=True,
-        choices=[
-            "bing",
-            "you",
-            "brave",
-            "serper",
-            "duckduckgo",
-            "tavily",
-            "searxng",
-            "azure_ai_search",
-        ],
-        help="Search engine to use",
-    )
-    outline_parser.add_argument("--max-conv-turn", type=int, default=3)
-    outline_parser.add_argument("--max-perspective", type=int, default=3)
-    outline_parser.add_argument("--search-top-k", type=int, default=3)
-    outline_parser.add_argument("--retrieve-top-k", type=int, default=3)
-    outline_parser.add_argument(
-        "--topic", "-t", type=str, default=None, help="Topic to research. Prompted if omitted"
+        default=None,
+        help="Topic to research. Prompted if omitted",
     )
     outline_parser.set_defaults(func=_run_outline)
 
     draft_parser = sub.add_parser("draft", help="Generate an article draft")
-    draft_parser.add_argument(
-        "--output-dir", type=str, default="./results/cli", help="Directory for outputs"
-    )
-    draft_parser.add_argument(
-        "--max-thread-num", type=int, default=3, help="Maximum number of threads"
-    )
-    draft_parser.add_argument(
-        "--retriever",
-        type=str,
-        required=True,
-        choices=[
-            "bing",
-            "you",
-            "brave",
-            "serper",
-            "duckduckgo",
-            "tavily",
-            "searxng",
-            "azure_ai_search",
-        ],
-        help="Search engine to use",
-    )
-    draft_parser.add_argument("--max-conv-turn", type=int, default=3)
-    draft_parser.add_argument("--max-perspective", type=int, default=3)
-    draft_parser.add_argument("--search-top-k", type=int, default=3)
-    draft_parser.add_argument("--retrieve-top-k", type=int, default=3)
+    _add_common_args(draft_parser)
     draft_parser.set_defaults(func=_run_draft)
 
     polish_parser = sub.add_parser("polish", help="Polish a draft article")
-    polish_parser.add_argument(
-        "--output-dir", type=str, default="./results/cli", help="Directory for outputs"
-    )
-    polish_parser.add_argument(
-        "--max-thread-num", type=int, default=3, help="Maximum number of threads"
-    )
-    polish_parser.add_argument(
-        "--retriever",
-        type=str,
-        required=True,
-        choices=[
-            "bing",
-            "you",
-            "brave",
-            "serper",
-            "duckduckgo",
-            "tavily",
-            "searxng",
-            "azure_ai_search",
-        ],
-        help="Search engine to use",
-    )
-    polish_parser.add_argument("--max-conv-turn", type=int, default=3)
-    polish_parser.add_argument("--max-perspective", type=int, default=3)
-    polish_parser.add_argument("--search-top-k", type=int, default=3)
-    polish_parser.add_argument("--retrieve-top-k", type=int, default=3)
+    _add_common_args(polish_parser)
     polish_parser.add_argument(
         "--remove-duplicate", action="store_true", help="Remove duplicate text"
     )
