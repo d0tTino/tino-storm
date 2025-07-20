@@ -5,6 +5,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import pytest
+
 from tino_storm.config import StormConfig
 from knowledge_storm.storm_wiki.engine import (
     STORMWikiRunnerArguments,
@@ -32,3 +34,24 @@ def test_storm_config_from_env(monkeypatch):
 
     assert cfg.lm_configs.conv_simulator_lm is not None
     assert cfg.rm.__class__.__name__ == "BingSearch"
+    assert cfg.cloud_allowed is True
+
+
+def test_storm_config_cloud_disabled(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk")
+    monkeypatch.setenv("BING_SEARCH_API_KEY", "bing")
+    monkeypatch.setenv("STORM_RETRIEVER", "bing")
+    monkeypatch.setenv("STORM_CLOUD_ALLOWED", "false")
+    monkeypatch.setenv("OPENAI_API_TYPE", "vllm")
+    cfg = StormConfig.from_env()
+
+    assert cfg.cloud_allowed is False
+
+
+def test_storm_config_cloud_block(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk")
+    monkeypatch.setenv("BING_SEARCH_API_KEY", "bing")
+    monkeypatch.setenv("STORM_RETRIEVER", "bing")
+    monkeypatch.setenv("STORM_CLOUD_ALLOWED", "false")
+    with pytest.raises(ValueError):
+        StormConfig.from_env()
