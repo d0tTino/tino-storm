@@ -16,10 +16,19 @@ class _FakeVectorStore:
         (self.persist_path / "index.txt").write_text("persisted")
 
 
+class _FakeStorageContext:
+    def __init__(self, store: _FakeVectorStore):
+        self.store = store
+
+    def persist(self):
+        self.store.persist()
+
+
 class _FakeIndex:
     def __init__(self, store: _FakeVectorStore | None = None):
         self.nodes = []
         self.vector_store = store or _FakeVectorStore("/tmp")
+        self.storage_context = _FakeStorageContext(self.vector_store)
 
     @classmethod
     def from_vector_store(cls, store: _FakeVectorStore) -> "_FakeIndex":
@@ -111,6 +120,7 @@ def test_ingest_handler_ingests(tmp_path, monkeypatch):
     monkeypatch.setattr("watchdog.observers.Observer", _DummyObserver)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("STORM_EVENT_DIR", str(tmp_path / "events"))
     vault = "vault"
     vault_dir = Path("research") / vault
     vault_dir.mkdir(parents=True)
@@ -135,7 +145,7 @@ def test_ingest_handler_ingests(tmp_path, monkeypatch):
     urls.write_text("http://example.com")
     handler.ingest_file(urls)
 
-    assert any(handler.storage_dir.iterdir())
+    assert (handler.storage_dir / "index.txt").exists()
 
 
 def test_ingest_handler_encrypts(tmp_path, monkeypatch):
@@ -143,6 +153,7 @@ def test_ingest_handler_encrypts(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     home = tmp_path / "home"
     monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("STORM_EVENT_DIR", str(tmp_path / "events"))
     cfg_dir = home / ".tino_storm"
     cfg_dir.mkdir(parents=True)
     from cryptography.fernet import Fernet
@@ -166,3 +177,4 @@ def test_ingest_handler_encrypts(tmp_path, monkeypatch):
 
     files = list(handler.storage_dir.iterdir())
     assert files and all(p.suffix == ".enc" for p in files)
+
