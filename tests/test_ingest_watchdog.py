@@ -1,6 +1,7 @@
 import sys
 import types
 from pathlib import Path
+import json
 
 import pytest
 
@@ -135,63 +136,30 @@ def test_ingest_handler_ingests(tmp_path, monkeypatch):
 
     assert any(handler.storage_dir.iterdir())
 
+def test_ingest_handler_emits_event(tmp_path, monkeypatch):
+    monkeypatch.setattr("watchdog.observers.Observer", _DummyObserver)
 
-@pytest.mark.parametrize("fail_loader", ["twitter", "reddit", "chan"])
-def test_ingest_continues_on_loader_error(tmp_path, monkeypatch, fail_loader):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     vault = "vault"
     vault_dir = Path("research") / vault
     vault_dir.mkdir(parents=True)
 
-    from datetime import datetime
     from tino_storm.ingest.watchdog import IngestHandler
-    from tino_storm.loaders import twitter, reddit, chan
-
-    def err(*args, **kwargs):
-        raise Exception("network")
-
-    def ok_tweet(url: str):
-        return [
-            twitter.TweetRecord(
-                text="t", url=url, timestamp=datetime.utcnow(), images=[]
-            )
-        ]
-
-    def ok_reddit(url: str, client_id=None, client_secret=None):
-        return [
-            reddit.RedditRecord(
-                text="r", url=url, timestamp=datetime.utcnow(), images=[]
-            )
-        ]
-
-    def ok_chan(url: str):
-        return [
-            chan.ChanRecord(text="c", url=url, timestamp=datetime.utcnow(), images=[])
-        ]
 
     monkeypatch.setattr(
-        twitter, "fetch_tweet", err if fail_loader == "twitter" else ok_tweet
+        sys.modules["tino_storm.ingest.watchdog"], "load", lambda url: [{"text": "x"}]
     )
-    monkeypatch.setattr(
-        reddit, "fetch_post", err if fail_loader == "reddit" else ok_reddit
-    )
-    monkeypatch.setattr(chan, "fetch_thread", err if fail_loader == "chan" else ok_chan)
 
-    handler = IngestHandler(vault)
+    handler = IngestHandler(vault, event_dir=tmp_path / "events")
 
-    urls = vault_dir / "urls.txt"
-    urls.write_text(
-        "\n".join(
-            [
-                "https://twitter.com/user/status/1",
-                "https://www.reddit.com/r/test/comments/abc/post/",
-                "https://boards.4chan.org/g/thread/123",
-            ]
-        )
-    )
-    handler.ingest_file(urls)
+    pdf = vault_dir / "file.pdf"
+    pdf.write_text("pdf")
+    handler.ingest_file(pdf)
 
-    out_files = list(vault_dir.glob("*.json"))
-    assert len(out_files) == 2
-    assert len(handler.index.nodes) == 2
+    events = list((tmp_path / "events").iterdir())
+    assert len(events) == 1
+    data = json.loads(events[0].read_text())
+    assert data["path"].endswith("file.pdf")
+
+

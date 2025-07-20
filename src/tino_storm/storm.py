@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from typing import Optional, TYPE_CHECKING
+from datetime import datetime
 
 if TYPE_CHECKING:  # pragma: no cover - only for type checking
     from knowledge_storm import BaseCallbackHandler
 
 from .config import StormConfig
+from .events import DocGenerated, save_event
 
 
 class Storm:
@@ -57,6 +59,10 @@ class Storm:
         self.generate_article(callback_handler=callback_handler)
         article = self.polish_article(remove_duplicate=remove_duplicate)
         self.runner.post_run()
+        save_event(
+            DocGenerated(topic=topic, generated_at=datetime.utcnow().isoformat()),
+            self.config.event_dir,
+        )
         return article
 
 

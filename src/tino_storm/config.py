@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - used only for type checking
@@ -47,6 +48,7 @@ class StormConfig:
     lm_configs: STORMWikiLMConfigs
     rm: Any
     cloud_allowed: bool = True
+    event_dir: Path = Path("events")
 
     @classmethod
     def from_env(cls) -> "StormConfig":
@@ -65,6 +67,7 @@ class StormConfig:
 
         output_dir = os.getenv("STORM_OUTPUT_DIR", "./results/from_env")
         retriever_name = os.getenv("STORM_RETRIEVER", "bing")
+        event_dir = Path(os.getenv("STORM_EVENT_DIR", "events"))
 
         args = STORMWikiRunnerArguments(output_dir=output_dir)
 
@@ -100,4 +103,10 @@ class StormConfig:
 
         rm = create_retriever(retriever_name, args.search_top_k)
 
-        return cls(args=args, lm_configs=lm_configs, rm=rm, cloud_allowed=cloud_allowed)
+        return cls(
+            args=args,
+            lm_configs=lm_configs,
+            rm=rm,
+            cloud_allowed=cloud_allowed,
+            event_dir=event_dir,
+        )

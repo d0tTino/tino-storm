@@ -1,5 +1,7 @@
 from tino_storm.storm import Storm
 from tino_storm.config import StormConfig
+import json
+from pathlib import Path
 from knowledge_storm.storm_wiki.engine import (
     STORMWikiRunnerArguments,
     STORMWikiLMConfigs,
@@ -38,3 +40,14 @@ def test_run_pipeline_sequence(monkeypatch):
         ("polish_article", True),
         ("post_run",),
     ]
+def test_run_pipeline_emits_event(tmp_path):
+    cfg = make_config()
+    cfg.event_dir = tmp_path
+    storm = Storm(cfg)
+    storm.run_pipeline("topic")
+
+    files = list(Path(tmp_path).iterdir())
+    assert len(files) == 1
+    data = json.loads(files[0].read_text())
+    assert data["topic"] == "topic"
+
