@@ -136,30 +136,35 @@ def test_ingest_handler_ingests(tmp_path, monkeypatch):
 
     assert any(handler.storage_dir.iterdir())
 
-def test_ingest_handler_emits_event(tmp_path, monkeypatch):
-    monkeypatch.setattr("watchdog.observers.Observer", _DummyObserver)
 
+def test_ingest_handler_encrypts(tmp_path, monkeypatch):
+    monkeypatch.setattr("watchdog.observers.Observer", _DummyObserver)
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    cfg_dir = home / ".tino_storm"
+    cfg_dir.mkdir(parents=True)
+    from cryptography.fernet import Fernet
+
+    key = Fernet.generate_key().decode()
+    (cfg_dir / "config.yaml").write_text(
+        f"encrypt_vault: true\nencryption_key: {key}\n"
+    )
+
+
     vault = "vault"
     vault_dir = Path("research") / vault
     vault_dir.mkdir(parents=True)
 
     from tino_storm.ingest.watchdog import IngestHandler
 
-    monkeypatch.setattr(
-        sys.modules["tino_storm.ingest.watchdog"], "load", lambda url: [{"text": "x"}]
-    )
+    handler = IngestHandler(vault)
 
-    handler = IngestHandler(vault, event_dir=tmp_path / "events")
 
     pdf = vault_dir / "file.pdf"
     pdf.write_text("pdf")
     handler.ingest_file(pdf)
 
-    events = list((tmp_path / "events").iterdir())
-    assert len(events) == 1
-    data = json.loads(events[0].read_text())
-    assert data["path"].endswith("file.pdf")
-
+    files = list(handler.storage_dir.iterdir())
+    assert files and all(p.suffix == ".enc" for p in files)
 

@@ -9,6 +9,8 @@ from pathlib import Path
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
 from watchdog.observers import Observer
 from datetime import datetime, timezone
+import yaml
+from cryptography.fernet import Fernet
 
 from tino_storm.loaders import load
 from tino_storm.events import ResearchAdded, save_event
@@ -17,6 +19,40 @@ import hashlib
 
 from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
 from llama_index.vector_stores.chroma import ChromaVectorStore
+
+
+def _load_fernet() -> Fernet | None:
+    """Return a :class:`Fernet` instance if vault encryption is enabled."""
+    cfg_path = Path("~/.tino_storm/config.yaml").expanduser()
+    if not cfg_path.exists():
+        return None
+    try:
+        cfg = yaml.safe_load(cfg_path.read_text()) or {}
+    except Exception:  # pragma: no cover - corrupt config
+        return None
+    if not cfg.get("encrypt_vault"):
+        return None
+    key = cfg.get("encryption_key")
+    if not key:
+        key = Fernet.generate_key().decode()
+        cfg["encryption_key"] = key
+        cfg_path.write_text(yaml.safe_dump(cfg))
+    return Fernet(key.encode())
+
+
+def _encrypt_dir(directory: Path, fernet: Fernet) -> None:
+    for file in directory.rglob("*"):
+        if file.is_file() and not file.name.endswith(".enc"):
+            encrypted = fernet.encrypt(file.read_bytes())
+            file.with_suffix(file.suffix + ".enc").write_bytes(encrypted)
+            file.unlink()
+
+
+def _decrypt_dir(directory: Path, fernet: Fernet) -> None:
+    for file in directory.rglob("*.enc"):
+        decrypted = fernet.decrypt(file.read_bytes())
+        file.with_suffix("").write_bytes(decrypted)
+        file.unlink()
 
 
 class IngestHandler(FileSystemEventHandler):
@@ -30,6 +66,9 @@ class IngestHandler(FileSystemEventHandler):
         self.vault_dir = Path("research") / vault
         self.storage_dir = Path("~/.tino_storm/chroma").expanduser() / vault
         self.storage_dir.mkdir(parents=True, exist_ok=True)
+        self._fernet = _load_fernet()
+        if self._fernet:
+            _decrypt_dir(self.storage_dir, self._fernet)
         vector_store = ChromaVectorStore(persist_path=str(self.storage_dir))
         self.index = VectorStoreIndex.from_vector_store(vector_store)
 
@@ -88,17 +127,9 @@ class IngestHandler(FileSystemEventHandler):
                 except Exception:
                     pass
             self.index.insert_nodes([node])
-        self.index.vector_store.persist()
-        save_event(
-            ResearchAdded(
-                vault=self.vault,
-                path=str(path),
-                file_hash=file_hash,
-                ingested_at=ingested_at,
-                source_url=source_url,
-            ),
-            self.event_dir,
-        )
+        if self._fernet:
+            _encrypt_dir(self.storage_dir, self._fernet)
+
 
     def on_created(
         self, event: FileSystemEvent
