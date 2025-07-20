@@ -55,3 +55,34 @@ def test_storm_config_cloud_block(monkeypatch):
     monkeypatch.setenv("STORM_CLOUD_ALLOWED", "false")
     with pytest.raises(ValueError):
         StormConfig.from_env()
+
+
+def test_storm_config_custom_llm(monkeypatch):
+    class CustomModel:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    from tino_storm import providers
+
+    monkeypatch.setitem(providers.llm.LLM_REGISTRY, "custom", "CustomModel")
+    monkeypatch.setattr(
+        sys.modules["knowledge_storm.lm"], "CustomModel", CustomModel, raising=False
+    )
+    monkeypatch.setenv("OPENAI_API_KEY", "sk")
+    monkeypatch.setenv("BING_SEARCH_API_KEY", "bing")
+    monkeypatch.setenv("STORM_RETRIEVER", "bing")
+    monkeypatch.setenv("OPENAI_API_TYPE", "custom")
+
+    cfg = StormConfig.from_env()
+
+    assert cfg.lm_configs.conv_simulator_lm.__class__.__name__ == "CustomModel"
+
+
+def test_storm_config_invalid_llm(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk")
+    monkeypatch.setenv("BING_SEARCH_API_KEY", "bing")
+    monkeypatch.setenv("STORM_RETRIEVER", "bing")
+    monkeypatch.setenv("OPENAI_API_TYPE", "missing")
+
+    with pytest.raises(ValueError):
+        StormConfig.from_env()

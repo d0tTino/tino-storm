@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import os
 from pathlib import Path
 
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
@@ -12,6 +13,7 @@ import yaml
 from cryptography.fernet import Fernet
 
 from tino_storm.loaders import load
+from tino_storm.events import ResearchAdded, save_event
 import json
 import hashlib
 
@@ -56,8 +58,11 @@ def _decrypt_dir(directory: Path, fernet: Fernet) -> None:
 class IngestHandler(FileSystemEventHandler):
     """Handle new files in a research vault."""
 
-    def __init__(self, vault: str):
+    def __init__(self, vault: str, event_dir: str | Path | None = None):
         self.vault = vault
+        self.event_dir = Path(event_dir) if event_dir is not None else Path(
+            os.getenv("STORM_EVENT_DIR", "events")
+        )
         self.vault_dir = Path("research") / vault
         self.storage_dir = Path("~/.tino_storm/chroma").expanduser() / vault
         self.storage_dir.mkdir(parents=True, exist_ok=True)
@@ -122,9 +127,9 @@ class IngestHandler(FileSystemEventHandler):
                 except Exception:
                     pass
             self.index.insert_nodes([node])
-        self.index.vector_store.persist()
         if self._fernet:
             _encrypt_dir(self.storage_dir, self._fernet)
+
 
     def on_created(
         self, event: FileSystemEvent

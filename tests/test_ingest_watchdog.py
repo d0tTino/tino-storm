@@ -1,6 +1,7 @@
 import sys
 import types
 from pathlib import Path
+import json
 
 import pytest
 
@@ -47,6 +48,28 @@ class _DummyObserver:
 
     def join(self):
         pass
+
+
+class _RecordingObserver:
+    """Record calls made to the Observer methods."""
+
+    def __init__(self):
+        self.scheduled = []
+        self.started = False
+        self.stopped = False
+        self.joined = False
+
+    def schedule(self, handler, path, recursive=False):
+        self.scheduled.append((handler, path, recursive))
+
+    def start(self):
+        self.started = True
+
+    def stop(self):
+        self.stopped = True
+
+    def join(self):
+        self.joined = True
 
 
 @pytest.fixture(autouse=True)
@@ -128,6 +151,7 @@ def test_ingest_handler_encrypts(tmp_path, monkeypatch):
         f"encrypt_vault: true\nencryption_key: {key}\n"
     )
 
+
     vault = "vault"
     vault_dir = Path("research") / vault
     vault_dir.mkdir(parents=True)
@@ -136,9 +160,11 @@ def test_ingest_handler_encrypts(tmp_path, monkeypatch):
 
     handler = IngestHandler(vault)
 
+
     pdf = vault_dir / "file.pdf"
     pdf.write_text("pdf")
     handler.ingest_file(pdf)
 
     files = list(handler.storage_dir.iterdir())
     assert files and all(p.suffix == ".enc" for p in files)
+
