@@ -49,6 +49,28 @@ class _DummyObserver:
         pass
 
 
+class _RecordingObserver:
+    """Record calls made to the Observer methods."""
+
+    def __init__(self):
+        self.scheduled = []
+        self.started = False
+        self.stopped = False
+        self.joined = False
+
+    def schedule(self, handler, path, recursive=False):
+        self.scheduled.append((handler, path, recursive))
+
+    def start(self):
+        self.started = True
+
+    def stop(self):
+        self.stopped = True
+
+    def join(self):
+        self.joined = True
+
+
 @pytest.fixture(autouse=True)
 def stub_dependencies(monkeypatch):
     core_mod = types.ModuleType("llama_index.core")
@@ -112,3 +134,35 @@ def test_ingest_handler_ingests(tmp_path, monkeypatch):
     handler.ingest_file(urls)
 
     assert any(handler.storage_dir.iterdir())
+
+
+def test_watch_vault_uses_observer(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+
+    observer = _RecordingObserver()
+    monkeypatch.setattr("watchdog.observers.Observer", lambda: observer)
+    monkeypatch.setattr("tino_storm.ingest.watchdog.Observer", lambda: observer)
+
+    def stop_after_first_sleep(_):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr("time.sleep", stop_after_first_sleep)
+
+    from tino_storm.ingest.watchdog import watch_vault, IngestHandler
+    import threading
+
+    thread = threading.Thread(target=watch_vault, args=("vault",))
+    thread.start()
+    thread.join(timeout=1)
+
+    assert not thread.is_alive()
+
+    expected_path = str(Path("research") / "vault")
+    from unittest.mock import ANY
+
+    assert observer.scheduled == [(ANY, expected_path, False)]
+    assert isinstance(observer.scheduled[0][0], IngestHandler)
+    assert observer.started
+    assert observer.stopped
+    assert observer.joined
