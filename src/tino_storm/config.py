@@ -46,6 +46,7 @@ class StormConfig:
     args: STORMWikiRunnerArguments
     lm_configs: STORMWikiLMConfigs
     rm: Any
+    cloud_allowed: bool = True
 
     @classmethod
     def from_env(cls) -> "StormConfig":
@@ -67,8 +68,10 @@ class StormConfig:
 
         args = STORMWikiRunnerArguments(output_dir=output_dir)
 
+        cloud_allowed = os.getenv("STORM_CLOUD_ALLOWED", "true").lower() != "false"
+
         openai_type = os.getenv("OPENAI_API_TYPE", "openai")
-        llm_cls = get_llm(openai_type)
+        llm_cls = get_llm(openai_type, cloud_allowed=cloud_allowed)
 
         openai_kwargs = {
             "api_key": os.getenv("OPENAI_API_KEY"),
@@ -97,4 +100,4 @@ class StormConfig:
 
         rm = create_retriever(retriever_name, args.search_top_k)
 
-        return cls(args=args, lm_configs=lm_configs, rm=rm)
+        return cls(args=args, lm_configs=lm_configs, rm=rm, cloud_allowed=cloud_allowed)
