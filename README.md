@@ -15,11 +15,13 @@ pip install tino-storm
 Install optional dependencies for different backends with:
 
 ```bash
-pip install 'tino-storm[ollama]'   # Ollama backend
-pip install 'tino-storm[chroma]'   # Chroma-based ingestion
-pip install 'tino-storm[fastapi]'  # FastAPI web server
-pip install 'tino-storm[ingest]'   # File watching for ingestion
-pip install 'tino-storm[test]'     # Run the test suite
+pip install 'tino-storm[ollama]'           # Ollama backend
+pip install 'tino-storm[fastapi]'          # FastAPI web server
+pip install 'tino-storm[chroma]'           # Chroma-based ingestion
+pip install 'tino-storm[ingest]'           # File watching for ingestion
+pip install 'tino-storm[chroma,ingest]'    # Combined ingestion extras
+pip install 'tino-storm[fastapi,ollama]'   # FastAPI with local LLM
+pip install 'tino-storm[test]'             # Run the test suite
 ```
 
 Alternatively, install the latest source version from this repository to get the
@@ -129,6 +131,12 @@ Polish an existing draft:
 tino-storm polish --retriever bing --remove-duplicate
 ```
 
+Evaluate a research vault:
+
+```bash
+tino-storm tune --vault example_vault
+```
+
 The command prints the generated article. Omit ``--topic`` to be prompted interactively or pass it to run non-interactively. Use ``--help`` to see all options.
 
 To combine multiple search engines, prefix the retriever with ``rrf=`` and provide
@@ -176,6 +184,9 @@ article = Storm(config).run_pipeline("Quantum computing")
 The ``tino_storm.fastapi_app`` module also consults ``STORM_RETRIEVER`` to
 select the search backend. Set this variable to one of the supported providers
 or use ``rrf=`` to combine them, e.g. ``STORM_RETRIEVER=rrf=bing,you``.
+
+Set ``STORM_CLOUD_ALLOWED=false`` to disable cloud-based LLM providers and
+restrict the pipeline to local models like Ollama.
 
 ## Ingesting research data
 
