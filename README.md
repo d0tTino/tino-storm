@@ -129,6 +129,12 @@ Polish an existing draft:
 tino-storm polish --retriever bing --remove-duplicate
 ```
 
+Evaluate a research vault:
+
+```bash
+tino-storm tune --vault example_vault
+```
+
 The command prints the generated article. Omit ``--topic`` to be prompted interactively or pass it to run non-interactively. Use ``--help`` to see all options.
 
 To combine multiple search engines, prefix the retriever with ``rrf=`` and provide

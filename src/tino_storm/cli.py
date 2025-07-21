@@ -63,6 +63,14 @@ def _run_ingest(args: argparse.Namespace) -> None:
     watch_vault(args.vault)
 
 
+def _run_tune(args: argparse.Namespace) -> None:
+    from .dsp import ResearchSkill
+
+    skill = ResearchSkill()
+    accuracy = skill.tune(args.vault)
+    print(accuracy)
+
+
 def _add_common_args(parser: argparse.ArgumentParser) -> None:
     """Register arguments shared across commands."""
 
@@ -139,6 +147,12 @@ def main(argv: list[str] | None = None) -> None:
         "--vault", required=True, help="Name of the research vault"
     )
     ingest_parser.set_defaults(func=_run_ingest)
+
+    tune_parser = sub.add_parser("tune", help="Evaluate a research vault")
+    tune_parser.add_argument(
+        "--vault", required=True, help="Name of the research vault"
+    )
+    tune_parser.set_defaults(func=_run_tune)
 
     args = parser.parse_args(argv)
     args.func(args)
