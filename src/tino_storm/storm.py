@@ -54,13 +54,20 @@ class Storm:
         ground_truth_url: str = "",
         remove_duplicate: bool = False,
         callback_handler: Optional["BaseCallbackHandler"] = None,
+        vault: str = "",
     ):
         self.build_outline(topic, ground_truth_url, callback_handler=callback_handler)
         self.generate_article(callback_handler=callback_handler)
         article = self.polish_article(remove_duplicate=remove_duplicate)
         self.runner.post_run()
+        citation_hashes = getattr(self.runner, "citation_hashes", [])
         save_event(
-            DocGenerated(topic=topic, generated_at=datetime.utcnow().isoformat()),
+            DocGenerated(
+                topic=topic,
+                generated_at=datetime.utcnow().isoformat(),
+                vault=vault,
+                citation_hashes=citation_hashes,
+            ),
             self.config.event_dir,
         )
         return article
@@ -71,7 +78,8 @@ def run_pipeline(
     topic: str,
     ground_truth_url: str = "",
     remove_duplicate: bool = False,
+    vault: str = "",
 ):
     """Run the full STORM pipeline with one function call."""
     storm = Storm(config)
-    return storm.run_pipeline(topic, ground_truth_url, remove_duplicate)
+    return storm.run_pipeline(topic, ground_truth_url, remove_duplicate, vault=vault)

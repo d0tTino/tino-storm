@@ -175,6 +175,7 @@ def test_ingest_handler_writes_event(tmp_path, monkeypatch):
     assert len(files) == 1
     data = json.loads(files[0].read_text())
     assert data["vault"] == vault
+    assert data["citation_hashes"] == [data["file_hash"]]
 
 
 def test_ingest_handler_encrypts(tmp_path, monkeypatch):
@@ -246,4 +247,3 @@ def test_encrypted_vault_decrypts_on_restart(tmp_path, monkeypatch):
     assert all(f.suffix != ".enc" for f in files)
     decrypted = (handler.storage_dir / "index.txt").read_text()
     assert decrypted == "persisted"
-

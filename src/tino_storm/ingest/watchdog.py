@@ -140,6 +140,7 @@ class IngestHandler(FileSystemEventHandler):
             file_hash=file_hash,
             ingested_at=ingested_at,
             source_url=source_url,
+            citation_hashes=[file_hash],
         )
         save_event(event, self.event_dir)
 

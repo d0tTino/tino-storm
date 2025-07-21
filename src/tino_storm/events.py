@@ -19,12 +19,15 @@ class ResearchAdded:
     file_hash: str
     ingested_at: str
     source_url: str
+    citation_hashes: list[str]
 
 
 @dataclass
 class DocGenerated:
     topic: str
     generated_at: str
+    vault: str
+    citation_hashes: list[str]
 
 
 def save_event(event: ResearchAdded | DocGenerated, event_dir: Path | None = None) -> Path:
