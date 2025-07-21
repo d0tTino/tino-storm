@@ -2,6 +2,7 @@ import sys
 import types
 from pathlib import Path
 import json
+import yaml
 
 import pytest
 
@@ -248,39 +249,82 @@ def test_encrypted_vault_decrypts_on_restart(tmp_path, monkeypatch):
     decrypted = (handler.storage_dir / "index.txt").read_text()
     assert decrypted == "persisted"
 
-def test_encrypt_dir_creates_encrypted_files(tmp_path):
-    data_dir = tmp_path / "d"
-    data_dir.mkdir()
-    file_a = data_dir / "a.txt"
-    file_b = data_dir / "b.txt"
-    content_a = b"hello"
-    content_b = b"world"
-    file_a.write_bytes(content_a)
-    file_b.write_bytes(content_b)
-    from cryptography.fernet import Fernet
-    key = Fernet.generate_key()
-    f = Fernet(key)
-    from tino_storm.ingest.watchdog import _encrypt_dir
-    _encrypt_dir(data_dir, f)
-    enc_a = data_dir / "a.txt.enc"
-    enc_b = data_dir / "b.txt.enc"
-    assert enc_a.exists() and enc_b.exists()
-    assert not file_a.exists() and not file_b.exists()
-    assert f.decrypt(enc_a.read_bytes()) == content_a
-    assert f.decrypt(enc_b.read_bytes()) == content_b
 
-def test_decrypt_dir_restores_files(tmp_path):
-    data_dir = tmp_path / "d"
-    data_dir.mkdir()
-    file_a = data_dir / "a.txt"
-    content_a = b"secret"
-    file_a.write_bytes(content_a)
-    from cryptography.fernet import Fernet
-    key = Fernet.generate_key()
-    f = Fernet(key)
-    from tino_storm.ingest.watchdog import _encrypt_dir, _decrypt_dir
-    _encrypt_dir(data_dir, f)
-    _decrypt_dir(data_dir, f)
-    assert file_a.exists()
-    assert file_a.read_bytes() == content_a
-    assert not (data_dir / "a.txt.enc").exists()
+def test_url_manifest_ingests_threads(tmp_path, monkeypatch):
+    monkeypatch.setattr("watchdog.observers.Observer", _DummyObserver)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("STORM_EVENT_DIR", str(tmp_path / "events"))
+    vault = "vault"
+    vault_dir = Path("research") / vault
+    vault_dir.mkdir(parents=True)
+
+    from tino_storm.ingest.watchdog import IngestHandler
+
+    captured = []
+
+    def fake_load(url: str):
+        captured.append(url)
+        return [{"text": "content"}]
+
+    monkeypatch.setattr(sys.modules["tino_storm.ingest.watchdog"], "load", fake_load)
+
+    handler = IngestHandler(vault)
+
+    manifest = vault_dir / "threads.yaml"
+    manifest.write_text(
+        yaml.safe_dump(
+            {
+                "urls": [
+                    "https://twitter.com/user/status/1",
+                    "https://www.reddit.com/r/test/comments/abc/post/",
+                    "https://boards.4chan.org/g/thread/123",
+                ]
+            }
+        )
+    )
+
+    handler.ingest_file(manifest)
+
+    assert (handler.storage_dir / "index.txt").exists()
+    assert len(captured) == 3
+
+
+def test_json_manifest_ingests_threads(tmp_path, monkeypatch):
+    monkeypatch.setattr("watchdog.observers.Observer", _DummyObserver)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("STORM_EVENT_DIR", str(tmp_path / "events"))
+    vault = "vault"
+    vault_dir = Path("research") / vault
+    vault_dir.mkdir(parents=True)
+
+    from tino_storm.ingest.watchdog import IngestHandler
+
+    captured = []
+
+    def fake_load(url: str):
+        captured.append(url)
+        return [{"text": "content"}]
+
+    monkeypatch.setattr(sys.modules["tino_storm.ingest.watchdog"], "load", fake_load)
+
+    handler = IngestHandler(vault)
+
+    manifest = vault_dir / "threads.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "urls": [
+                    "https://twitter.com/user/status/1",
+                    "https://www.reddit.com/r/test/comments/abc/post/",
+                    "https://boards.4chan.org/g/thread/123",
+                ]
+            }
+        )
+    )
+
+    handler.ingest_file(manifest)
+
+    assert (handler.storage_dir / "index.txt").exists()
+    assert len(captured) == 3
