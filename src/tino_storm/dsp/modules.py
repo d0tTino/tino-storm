@@ -1,6 +1,4 @@
-import json
-from pathlib import Path
-from typing import Iterable, List, Dict, Optional
+from typing import Iterable, Dict, Optional
 
 import dspy
 
