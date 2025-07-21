@@ -118,6 +118,17 @@ class IngestHandler(FileSystemEventHandler):
             "ingested_at": ingested_at,
             "source_url": source_url,
         }
+        meta_path = path.with_suffix(path.suffix + ".meta")
+        if meta_path.exists():
+            try:
+                meta_data = json.loads(meta_path.read_text())
+                if isinstance(meta_data, dict):
+                    if "authority_rank" in meta_data:
+                        metadata["authority_rank"] = meta_data["authority_rank"]
+                    elif "authority" in meta_data:
+                        metadata["authority_rank"] = meta_data["authority"]
+            except Exception:
+                pass
         for node in docs:
             if hasattr(node, "metadata") and isinstance(node.metadata, dict):
                 node.metadata.update(metadata)

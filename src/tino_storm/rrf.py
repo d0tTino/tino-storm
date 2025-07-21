@@ -11,6 +11,8 @@ class ScoreEntry(TypedDict):
 
     score: float
     result: Mapping
+    recency_rank: float | None
+    authority_rank: float | None
 
 
 @dataclass
@@ -39,12 +41,33 @@ class RRFRetriever:
                 url = result.get("url")
                 if not url or url in exclude_urls:
                     continue
+                recency_rank = result.get("recency_rank")
+                authority_rank = result.get("authority_rank")
                 if url not in scores:
-                    scores[url] = {"score": 0.0, "result": result}
+                    scores[url] = {
+                        "score": 0.0,
+                        "result": result,
+                        "recency_rank": recency_rank,
+                        "authority_rank": authority_rank,
+                    }
+                else:
+                    if recency_rank is not None:
+                        existing = scores[url].get("recency_rank")
+                        if existing is None or recency_rank < existing:
+                            scores[url]["recency_rank"] = recency_rank
+                    if authority_rank is not None:
+                        existing = scores[url].get("authority_rank")
+                        if existing is None or authority_rank < existing:
+                            scores[url]["authority_rank"] = authority_rank
                 scores[url]["score"] += 1.0 / (rank + 1 + self.k)
 
         ranked: List[ScoreEntry] = sorted(
-            scores.values(), key=lambda x: x["score"], reverse=True
+            scores.values(),
+            key=lambda x: (
+                -x["score"],
+                x.get("recency_rank", float("inf")),
+                x.get("authority_rank", float("inf")),
+            ),
         )
         fused = [entry["result"] for entry in ranked]
         if self.top_n is not None:

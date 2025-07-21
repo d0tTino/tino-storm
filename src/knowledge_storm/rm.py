@@ -1,5 +1,6 @@
 import logging
 import os
+from datetime import datetime
 from typing import Callable, Union, List
 
 import backoff
@@ -8,6 +9,16 @@ import requests
 from dsp import backoff_hdlr, giveup_hdlr
 
 from .utils import WebPageHelper
+
+
+def _recency_rank(ts: str | None) -> float | None:
+    """Convert ISO timestamp ``ts`` to a sortable recency rank."""
+    if not ts:
+        return None
+    try:
+        return -datetime.fromisoformat(ts).timestamp()
+    except Exception:
+        return None
 
 
 class YouRM(dspy.Retrieve):
@@ -331,6 +342,8 @@ class VectorRM(dspy.Retrieve):
                         "snippets": [doc.page_content],
                         "title": doc.metadata["title"],
                         "url": doc.metadata["url"],
+                        "recency_rank": _recency_rank(doc.metadata.get("ingested_at")),
+                        "authority_rank": doc.metadata.get("authority_rank"),
                     }
                 )
 
