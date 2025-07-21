@@ -133,3 +133,20 @@ def test_polish_calls_polish_article(monkeypatch):
     main(["polish", "--retriever", "bing", "--remove-duplicate"])
 
     assert recorded["dup"] is True
+
+
+def test_tune_calls_research_skill(monkeypatch):
+    recorded = {}
+
+    class StubSkill:
+        def __init__(self):
+            pass
+
+        def tune(self, vault: str) -> float:
+            recorded["vault"] = vault
+            return 0.5
+
+    monkeypatch.setattr("tino_storm.dsp.ResearchSkill", StubSkill)
+    main(["tune", "--vault", "v1"])
+
+    assert recorded["vault"] == "v1"
