@@ -2,6 +2,7 @@ import sys
 import types
 from pathlib import Path
 import json
+import yaml
 
 import pytest
 
@@ -247,3 +248,83 @@ def test_encrypted_vault_decrypts_on_restart(tmp_path, monkeypatch):
     assert all(f.suffix != ".enc" for f in files)
     decrypted = (handler.storage_dir / "index.txt").read_text()
     assert decrypted == "persisted"
+
+
+def test_url_manifest_ingests_threads(tmp_path, monkeypatch):
+    monkeypatch.setattr("watchdog.observers.Observer", _DummyObserver)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("STORM_EVENT_DIR", str(tmp_path / "events"))
+    vault = "vault"
+    vault_dir = Path("research") / vault
+    vault_dir.mkdir(parents=True)
+
+    from tino_storm.ingest.watchdog import IngestHandler
+
+    captured = []
+
+    def fake_load(url: str):
+        captured.append(url)
+        return [{"text": "content"}]
+
+    monkeypatch.setattr(sys.modules["tino_storm.ingest.watchdog"], "load", fake_load)
+
+    handler = IngestHandler(vault)
+
+    manifest = vault_dir / "threads.yaml"
+    manifest.write_text(
+        yaml.safe_dump(
+            {
+                "urls": [
+                    "https://twitter.com/user/status/1",
+                    "https://www.reddit.com/r/test/comments/abc/post/",
+                    "https://boards.4chan.org/g/thread/123",
+                ]
+            }
+        )
+    )
+
+    handler.ingest_file(manifest)
+
+    assert (handler.storage_dir / "index.txt").exists()
+    assert len(captured) == 3
+
+
+def test_json_manifest_ingests_threads(tmp_path, monkeypatch):
+    monkeypatch.setattr("watchdog.observers.Observer", _DummyObserver)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("STORM_EVENT_DIR", str(tmp_path / "events"))
+    vault = "vault"
+    vault_dir = Path("research") / vault
+    vault_dir.mkdir(parents=True)
+
+    from tino_storm.ingest.watchdog import IngestHandler
+
+    captured = []
+
+    def fake_load(url: str):
+        captured.append(url)
+        return [{"text": "content"}]
+
+    monkeypatch.setattr(sys.modules["tino_storm.ingest.watchdog"], "load", fake_load)
+
+    handler = IngestHandler(vault)
+
+    manifest = vault_dir / "threads.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "urls": [
+                    "https://twitter.com/user/status/1",
+                    "https://www.reddit.com/r/test/comments/abc/post/",
+                    "https://boards.4chan.org/g/thread/123",
+                ]
+            }
+        )
+    )
+
+    handler.ingest_file(manifest)
+
+    assert (handler.storage_dir / "index.txt").exists()
+    assert len(captured) == 3

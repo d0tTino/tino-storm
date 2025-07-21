@@ -55,6 +55,51 @@ def _decrypt_dir(directory: Path, fernet: Fernet) -> None:
         file.unlink()
 
 
+_THREAD_DOMAINS = {
+    "twitter.com",
+    "x.com",
+    "reddit.com",
+    "4chan.org",
+    "4channel.org",
+}
+
+
+def _parse_url_manifest(path: Path) -> list[str] | None:
+    """Return a list of thread URLs if ``path`` looks like a manifest."""
+    try:
+        text = path.read_text()
+    except Exception:
+        return None
+
+    urls: list[str] | None = None
+    if path.suffix.lower() in {".json", ".yaml", ".yml"}:
+        try:
+            data = yaml.safe_load(text)
+        except Exception:
+            data = None
+        if isinstance(data, dict) and "urls" in data and isinstance(data["urls"], list):
+            urls = [str(u) for u in data["urls"]]
+        elif isinstance(data, list):
+            found: list[str] = []
+            for item in data:
+                if isinstance(item, str):
+                    found.append(item)
+                elif isinstance(item, dict) and set(item.keys()) == {"url"}:
+                    found.append(str(item["url"]))
+                else:
+                    found = []
+                    break
+            if found:
+                urls = found
+    else:
+        urls = [u.strip() for u in text.splitlines() if u.strip()]
+
+    if not urls:
+        return None
+    filtered = [u for u in urls if any(d in u for d in _THREAD_DOMAINS)]
+    return filtered or None
+
+
 class IngestHandler(FileSystemEventHandler):
     """Handle new files in a research vault."""
 
@@ -75,15 +120,20 @@ class IngestHandler(FileSystemEventHandler):
     def _should_ingest(self, path: Path) -> bool:
         if path.name == "urls.txt":
             return True
-        if path.suffix.lower() in {".pdf", ".json", ".txt"}:
+        if path.suffix.lower() in {".pdf", ".json", ".txt", ".yaml", ".yml"}:
             return True
         return False
 
     def ingest_file(self, path: Path) -> None:
         if not self._should_ingest(path):
             return
+        urls = None
         if path.name == "urls.txt":
             urls = [u.strip() for u in path.read_text().splitlines() if u.strip()]
+        elif path.suffix.lower() in {".yaml", ".yml", ".json", ".txt"}:
+            urls = _parse_url_manifest(path)
+
+        if urls:
             for url in urls:
                 try:
                     records = load(url)
