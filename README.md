@@ -193,6 +193,20 @@ dependencies with:
 pip install 'tino-storm[chroma,ingest]'
 ```
 
+### Consuming events with UME
+
+STORM writes JSON events to the directory specified by `STORM_EVENT_DIR`.
+UME can monitor this folder and load the event data:
+
+```python
+import json
+from pathlib import Path
+
+for p in Path("events").glob("*.json"):
+    event = json.loads(p.read_text())
+    print(event["vault"], event["citation_hashes"])
+```
+
 
 ## Optional FastAPI mode
 
