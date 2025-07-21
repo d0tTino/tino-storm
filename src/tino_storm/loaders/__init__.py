@@ -19,7 +19,8 @@ class Record:
 
 
 def _choose_loader(url: str):
-    netloc = urlparse(url).netloc.lower()
+    parsed = urlparse(url)
+    netloc = parsed.netloc.lower()
     if "twitter.com" in netloc or "x.com" in netloc:
         from . import twitter
 
@@ -32,6 +33,10 @@ def _choose_loader(url: str):
         from . import chan
 
         return chan.fetch_thread
+    if parsed.scheme in ("http", "https", "file") or (parsed.scheme == "" and parsed.path):
+        from . import generic
+
+        return generic.fetch_url
     raise ValueError(f"No loader for URL: {url}")
 
 
