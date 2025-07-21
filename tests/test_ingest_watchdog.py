@@ -247,3 +247,40 @@ def test_encrypted_vault_decrypts_on_restart(tmp_path, monkeypatch):
     assert all(f.suffix != ".enc" for f in files)
     decrypted = (handler.storage_dir / "index.txt").read_text()
     assert decrypted == "persisted"
+
+def test_encrypt_dir_creates_encrypted_files(tmp_path):
+    data_dir = tmp_path / "d"
+    data_dir.mkdir()
+    file_a = data_dir / "a.txt"
+    file_b = data_dir / "b.txt"
+    content_a = b"hello"
+    content_b = b"world"
+    file_a.write_bytes(content_a)
+    file_b.write_bytes(content_b)
+    from cryptography.fernet import Fernet
+    key = Fernet.generate_key()
+    f = Fernet(key)
+    from tino_storm.ingest.watchdog import _encrypt_dir
+    _encrypt_dir(data_dir, f)
+    enc_a = data_dir / "a.txt.enc"
+    enc_b = data_dir / "b.txt.enc"
+    assert enc_a.exists() and enc_b.exists()
+    assert not file_a.exists() and not file_b.exists()
+    assert f.decrypt(enc_a.read_bytes()) == content_a
+    assert f.decrypt(enc_b.read_bytes()) == content_b
+
+def test_decrypt_dir_restores_files(tmp_path):
+    data_dir = tmp_path / "d"
+    data_dir.mkdir()
+    file_a = data_dir / "a.txt"
+    content_a = b"secret"
+    file_a.write_bytes(content_a)
+    from cryptography.fernet import Fernet
+    key = Fernet.generate_key()
+    f = Fernet(key)
+    from tino_storm.ingest.watchdog import _encrypt_dir, _decrypt_dir
+    _encrypt_dir(data_dir, f)
+    _decrypt_dir(data_dir, f)
+    assert file_a.exists()
+    assert file_a.read_bytes() == content_a
+    assert not (data_dir / "a.txt.enc").exists()
