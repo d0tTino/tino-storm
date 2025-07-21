@@ -198,6 +198,9 @@ pip install 'tino-storm[chroma,ingest]'
 
 You can integrate STORM into a web service using FastAPI. The repository ships with a small example app:
 
+STORM pins the `httpx` dependency to `<0.28` for compatibility. When installing the FastAPI extra this constraint
+is applied automatically:
+
 ```bash
 uvicorn examples.fastapi_example:app --reload
 ```
