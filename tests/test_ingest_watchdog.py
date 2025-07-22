@@ -187,9 +187,9 @@ def test_ingest_handler_encrypts(tmp_path, monkeypatch):
     monkeypatch.setenv("STORM_EVENT_DIR", str(tmp_path / "events"))
     cfg_dir = home / ".tino_storm"
     cfg_dir.mkdir(parents=True)
-    from cryptography.fernet import Fernet
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-    key = Fernet.generate_key().decode()
+    key = AESGCM.generate_key(bit_length=256).hex()
     (cfg_dir / "config.yaml").write_text(
         f"encrypt_vault: true\nencryption_key: {key}\n"
     )
@@ -219,9 +219,9 @@ def test_encrypted_vault_decrypts_on_restart(tmp_path, monkeypatch):
     monkeypatch.setenv("STORM_EVENT_DIR", str(event_dir))
     cfg_dir = home / ".tino_storm"
     cfg_dir.mkdir(parents=True)
-    from cryptography.fernet import Fernet
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-    key = Fernet.generate_key().decode()
+    key = AESGCM.generate_key(bit_length=256).hex()
     (cfg_dir / "config.yaml").write_text(
         f"encrypt_vault: true\nencryption_key: {key}\n"
     )
@@ -248,6 +248,26 @@ def test_encrypted_vault_decrypts_on_restart(tmp_path, monkeypatch):
     assert all(f.suffix != ".enc" for f in files)
     decrypted = (handler.storage_dir / "index.txt").read_text()
     assert decrypted == "persisted"
+
+
+def test_encrypt_decrypt_round_trip(tmp_path):
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    from tino_storm.ingest.watchdog import _encrypt_dir, _decrypt_dir
+
+    key = AESGCM.generate_key(bit_length=256)
+    aesgcm = AESGCM(key)
+
+    file = tmp_path / "file.txt"
+    content = b"secret"
+    file.write_bytes(content)
+
+    _encrypt_dir(tmp_path, aesgcm)
+    enc_files = list(tmp_path.glob("*.enc"))
+    assert len(enc_files) == 1
+
+    _decrypt_dir(tmp_path, aesgcm)
+    assert file.read_bytes() == content
 
 
 def test_url_manifest_ingests_threads(tmp_path, monkeypatch):
