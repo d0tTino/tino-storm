@@ -1,6 +1,11 @@
 from datetime import datetime
 import os
 import base64
+import json
+from pathlib import Path
+import pytest
+
+from tino_storm.loaders import reddit, chan
 
 
 from tino_storm import loaders
@@ -37,8 +42,7 @@ def test_choose_loader_4channel():
 
 def test_choose_loader_generic_url():
     assert (
-        loaders._choose_loader("https://example.com/page")
-        is loaders.generic.fetch_url
+        loaders._choose_loader("https://example.com/page") is loaders.generic.fetch_url
     )
 
 
@@ -96,3 +100,64 @@ def test_generic_loader_local(monkeypatch):
         assert records[0].images == ["file://" + os.path.abspath(img_path)]
     finally:
         os.remove(img_path)
+
+
+@pytest.mark.parametrize(
+    "json_file,loader,url,expected",
+    [
+        (
+            "reddit_pushshift.json",
+            reddit.fetch_post,
+            "https://www.reddit.com/r/test/comments/abc/post/",
+            {
+                "text": "Hello Reddit",
+                "url": "https://www.reddit.com/r/test/comments/abc/post/",
+                "timestamp": datetime.fromtimestamp(1609459200),
+                "images": ["https://i.redd.it/test.png"],
+            },
+        ),
+        (
+            "chan_thread.json",
+            chan.fetch_thread,
+            "https://boards.4chan.org/g/thread/123",
+            {
+                "text": "First post",
+                "url": "https://boards.4chan.org/g/thread/123#123456",
+                "timestamp": datetime.fromtimestamp(1609459200),
+                "images": ["https://i.4cdn.org/g/123456789.png"],
+            },
+        ),
+    ],
+)
+def test_loaders_from_samples(monkeypatch, json_file, loader, url, expected):
+    sample_path = Path("tests/data") / json_file
+
+    class FakeResponse:
+        def __init__(self, data):
+            self._data = data
+
+        def json(self):
+            return self._data
+
+        def raise_for_status(self):
+            pass
+
+    with open(sample_path) as f:
+        data = json.load(f)
+
+    target_module = reddit if loader is reddit.fetch_post else chan
+    monkeypatch.setattr(
+        target_module.requests,
+        "get",
+        lambda *a, **k: FakeResponse(data),
+        raising=False,
+    )
+    if loader is reddit.fetch_post:
+        monkeypatch.setattr(reddit, "praw", None)
+
+    records = loader(url)
+    record = records[0]
+    assert record.text == expected["text"]
+    assert record.url == expected["url"]
+    assert record.timestamp == expected["timestamp"]
+    assert record.images == expected["images"]
