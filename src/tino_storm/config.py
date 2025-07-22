@@ -60,6 +60,7 @@ class StormConfig:
     rm: Any
     cloud_allowed: bool = True
     event_dir: Path = Path("events")
+    vaults: list[str] | None = None
 
     @classmethod
     def from_env(cls) -> "StormConfig":
@@ -114,10 +115,14 @@ class StormConfig:
 
         rm = create_retriever(retriever_name, args.search_top_k)
 
+        vault_env = os.getenv("STORM_VAULTS")
+        vaults = [v.strip() for v in vault_env.split(",") if v.strip()] if vault_env else None
+
         return cls(
             args=args,
             lm_configs=lm_configs,
             rm=rm,
             cloud_allowed=cloud_allowed,
             event_dir=event_dir,
+            vaults=vaults,
         )

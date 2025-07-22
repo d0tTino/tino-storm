@@ -383,3 +383,35 @@ def test_json_manifest_ingests_threads(tmp_path, monkeypatch):
 
     assert (handler.storage_dir / "index.txt").exists()
     assert len(captured) == 3
+
+
+def test_open_vaults_merges_and_queries(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("STORM_EVENT_DIR", str(tmp_path / "events"))
+
+    from tino_storm.ingest.watchdog import IngestHandler
+    from tino_storm.ingest import open_vaults
+
+    v1 = "vault1"
+    v2 = "vault2"
+    d1 = Path("research") / v1
+    d2 = Path("research") / v2
+    d1.mkdir(parents=True)
+    d2.mkdir(parents=True)
+
+    h1 = IngestHandler(v1)
+    h2 = IngestHandler(v2)
+
+    f1 = d1 / "a.txt"
+    f2 = d2 / "b.txt"
+    f1.write_text("a")
+    f2.write_text("b")
+    h1.ingest_file(f1)
+    h2.ingest_file(f2)
+
+    idx = open_vaults([v1, v2])
+
+    assert sorted(idx.nodes) == [f"doc:{f1.name}", f"doc:{f2.name}"]
+    results = [n for n in idx.nodes if "b" in n]
+    assert results == [f"doc:{f2.name}"]
