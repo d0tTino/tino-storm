@@ -19,7 +19,7 @@ def test_storm_config_initialization():
     args = STORMWikiRunnerArguments(output_dir="out")
     lm_configs = STORMWikiLMConfigs()
     lm_configs.set_conv_simulator_lm(LitellmModel(model="ollama/tinyllama"))
-    cfg = StormConfig(args=args, lm_configs=lm_configs, rm="arxiv")
+    cfg = StormConfig(args=args, lm_configs=lm_configs, rm="arxiv", vaults=["v1"])
 
     assert cfg.args.output_dir == "out"
     assert cfg.lm_configs.conv_simulator_lm.model == "ollama/tinyllama"
