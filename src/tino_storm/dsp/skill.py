@@ -60,10 +60,11 @@ class ResearchSkill:
         return article == sample.get("expected")
 
     def tune(self, vault: str) -> float:
-        """Evaluate the skill on the dataset stored in ``research/<vault>/eval.jsonl``."""
+        """Refine submodules using DSPy and return the resulting accuracy."""
         path = Path(__file__).resolve().parents[3] / "research" / vault / "eval.jsonl"
         if not path.exists():
             raise FileNotFoundError(f"Eval set not found: {path}")
+
         samples = []
         with open(path, "r", encoding="utf-8") as fh:
             for line in fh:
@@ -73,6 +74,15 @@ class ResearchSkill:
 
         if not samples:
             return 0.0
+
+        import dspy
+
+        dataset = dspy.Dataset(samples)
+
+        optimizer = getattr(dspy, "optimize", getattr(dspy, "tune", None))
+        if optimizer is not None:
+            for module in (self.outline_module, self.draft_module, self.polish_module):
+                optimizer(module, dataset)
 
         results = [self.evaluate(sample) for sample in samples]
         return sum(results) / len(results)
