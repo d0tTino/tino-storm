@@ -49,6 +49,37 @@ class DummyAuthorityB:
         ]
 
 
+class DummyFirstA:
+    def forward(self, query, exclude_urls=None):
+        return [
+            {"url": "a"},
+        ]
+
+
+class DummySecondBA:
+    def forward(self, query, exclude_urls=None):
+        return [
+            {"url": "b"},
+            {"url": "a"},
+        ]
+
+
+class DummyRecencyBias:
+    def forward(self, query, exclude_urls=None):
+        return [
+            {"url": "b", "recency_rank": 0},
+            {"url": "a", "recency_rank": 10},
+        ]
+
+
+class DummyAuthorityBias:
+    def forward(self, query, exclude_urls=None):
+        return [
+            {"url": "b", "authority_rank": 0},
+            {"url": "a", "authority_rank": 10},
+        ]
+
+
 def test_rrf_ranking_order():
     retriever = RRFRetriever([DummyA(), DummyB()], k=0)
     results = retriever.forward("test")
@@ -79,6 +110,26 @@ def test_rrf_recency_rank_tiebreak():
 
 def test_rrf_authority_rank_tiebreak():
     retriever = RRFRetriever([DummyAuthorityA(), DummyAuthorityB()], k=0)
+    results = retriever.forward("test")
+    urls = [r["url"] for r in results]
+    assert urls[:2] == ["b", "a"]
+
+
+def test_rrf_recency_influences_fused_score():
+    retriever = RRFRetriever(
+        [DummyFirstA(), DummySecondBA(), DummyRecencyBias()],
+        k=0,
+    )
+    results = retriever.forward("test")
+    urls = [r["url"] for r in results]
+    assert urls[:2] == ["b", "a"]
+
+
+def test_rrf_authority_influences_fused_score():
+    retriever = RRFRetriever(
+        [DummyFirstA(), DummySecondBA(), DummyAuthorityBias()],
+        k=0,
+    )
     results = retriever.forward("test")
     urls = [r["url"] for r in results]
     assert urls[:2] == ["b", "a"]

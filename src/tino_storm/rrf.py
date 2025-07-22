@@ -15,6 +15,21 @@ class ScoreEntry(TypedDict):
     authority_rank: float | None
 
 
+def fused_score(entry: ScoreEntry, k: int) -> float:
+    """Return a combined score using reciprocal, recency and authority ranks."""
+
+    score = entry["score"]
+    recency_rank = entry.get("recency_rank")
+    authority_rank = entry.get("authority_rank")
+
+    if recency_rank is not None:
+        score += 1.0 / (recency_rank + 1 + k)
+    if authority_rank is not None:
+        score += 1.0 / (authority_rank + 1 + k)
+
+    return score
+
+
 @dataclass
 class RRFRetriever:
     """Combine results from multiple retrievers using Reciprocal Rank Fusion (RRF)."""
@@ -62,12 +77,7 @@ class RRFRetriever:
                 scores[url]["score"] += 1.0 / (rank + 1 + self.k)
 
         ranked: List[ScoreEntry] = sorted(
-            scores.values(),
-            key=lambda x: (
-                -x["score"],
-                x.get("recency_rank", float("inf")),
-                x.get("authority_rank", float("inf")),
-            ),
+            scores.values(), key=lambda x: -fused_score(x, self.k)
         )
         fused = [entry["result"] for entry in ranked]
         if self.top_n is not None:
