@@ -10,7 +10,7 @@ from watchdog.events import FileSystemEventHandler, FileSystemEvent
 from watchdog.observers import Observer
 from datetime import datetime, timezone
 import yaml
-from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from tino_storm.loaders import load
 from tino_storm.events import ResearchAdded, save_event
@@ -21,8 +21,18 @@ from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
 
-def _load_fernet() -> Fernet | None:
-    """Return a :class:`Fernet` instance if vault encryption is enabled."""
+def _load_aesgcm() -> AESGCM | None:
+    """Return an :class:`AESGCM` instance if vault encryption is enabled.
+
+    The configuration file ``~/.tino_storm/config.yaml`` controls vault
+    encryption and stores the AES key as a 64 character hex string::
+
+        encrypt_vault: true
+        encryption_key: "<64 hex characters>"
+
+    The key is 32 bytes (256 bits).  If missing, a new key is generated and
+    written back to the configuration file.
+    """
     cfg_path = Path("~/.tino_storm/config.yaml").expanduser()
     if not cfg_path.exists():
         return None
@@ -32,25 +42,39 @@ def _load_fernet() -> Fernet | None:
         return None
     if not cfg.get("encrypt_vault"):
         return None
-    key = cfg.get("encryption_key")
-    if not key:
-        key = Fernet.generate_key().decode()
-        cfg["encryption_key"] = key
+    key_hex = cfg.get("encryption_key")
+    if not key_hex:
+        key = AESGCM.generate_key(bit_length=256)
+        key_hex = key.hex()
+        cfg["encryption_key"] = key_hex
         cfg_path.write_text(yaml.safe_dump(cfg))
-    return Fernet(key.encode())
+    else:
+        key = bytes.fromhex(key_hex)
+    return AESGCM(key)
 
 
-def _encrypt_dir(directory: Path, fernet: Fernet) -> None:
+def _encrypt_dir(directory: Path, aesgcm: AESGCM) -> None:
+    """Encrypt all files within ``directory`` using ``aesgcm``.
+
+    Each file is encrypted with a fresh 96-bit nonce and replaced by a new file
+    with an additional ``.enc`` suffix.  The nonce is prepended to the ciphertext
+    so :func:`_decrypt_dir` can restore the original contents.
+    """
     for file in directory.rglob("*"):
         if file.is_file() and not file.name.endswith(".enc"):
-            encrypted = fernet.encrypt(file.read_bytes())
+            data = file.read_bytes()
+            nonce = os.urandom(12)
+            encrypted = nonce + aesgcm.encrypt(nonce, data, None)
             file.with_suffix(file.suffix + ".enc").write_bytes(encrypted)
             file.unlink()
 
 
-def _decrypt_dir(directory: Path, fernet: Fernet) -> None:
+def _decrypt_dir(directory: Path, aesgcm: AESGCM) -> None:
+    """Decrypt ``.enc`` files within ``directory`` using ``aesgcm``."""
     for file in directory.rglob("*.enc"):
-        decrypted = fernet.decrypt(file.read_bytes())
+        data = file.read_bytes()
+        nonce, ciphertext = data[:12], data[12:]
+        decrypted = aesgcm.decrypt(nonce, ciphertext, None)
         file.with_suffix("").write_bytes(decrypted)
         file.unlink()
 
@@ -111,9 +135,9 @@ class IngestHandler(FileSystemEventHandler):
         self.vault_dir = Path("research") / vault
         self.storage_dir = Path("~/.tino_storm/chroma").expanduser() / vault
         self.storage_dir.mkdir(parents=True, exist_ok=True)
-        self._fernet = _load_fernet()
-        if self._fernet:
-            _decrypt_dir(self.storage_dir, self._fernet)
+        self._aesgcm = _load_aesgcm()
+        if self._aesgcm:
+            _decrypt_dir(self.storage_dir, self._aesgcm)
         vector_store = ChromaVectorStore(persist_path=str(self.storage_dir))
         self.index = VectorStoreIndex.from_vector_store(vector_store)
 
@@ -208,8 +232,8 @@ class IngestHandler(FileSystemEventHandler):
         except AttributeError:  # pragma: no cover - test stubs
             pass
 
-        if self._fernet:
-            _encrypt_dir(self.storage_dir, self._fernet)
+        if self._aesgcm:
+            _encrypt_dir(self.storage_dir, self._aesgcm)
         event = ResearchAdded(
             vault=self.vault,
             path=str(path),
