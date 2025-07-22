@@ -219,6 +219,9 @@ def watch_vault(vault: str) -> None:
     watch_path = Path("research") / vault
     watch_path.mkdir(parents=True, exist_ok=True)
     handler = IngestHandler(vault)
+    for file in watch_path.iterdir():
+        if file.is_file():
+            handler.ingest_file(file)
     observer = Observer()
     observer.schedule(handler, str(watch_path), recursive=False)
     observer.start()
