@@ -179,15 +179,30 @@ class IngestHandler(FileSystemEventHandler):
                         metadata["authority_rank"] = meta_data["authority"]
             except Exception:
                 pass
+        node_hashes: list[str] = []
         for node in docs:
             if hasattr(node, "metadata") and isinstance(node.metadata, dict):
                 node.metadata.update(metadata)
             else:  # pragma: no cover - depends on reader implementation
                 try:
-                    node.metadata = metadata
+                    node.metadata = dict(metadata)
                 except Exception:
                     pass
+            node_hash = None
+            try:
+                text = getattr(node, "text", str(node))
+                node_hash = hashlib.sha1(text.encode()).hexdigest()
+                if hasattr(node, "metadata") and isinstance(node.metadata, dict):
+                    node.metadata["hash"] = node_hash
+            except Exception:
+                pass
             self.index.insert_nodes([node])
+            if node_hash:
+                node_hashes.append(node_hash)
+            elif hasattr(node, "metadata") and isinstance(node.metadata, dict):
+                h = node.metadata.get("hash")
+                if h:
+                    node_hashes.append(h)
         try:
             self.index.vector_store.persist()
         except AttributeError:  # pragma: no cover - test stubs
@@ -201,7 +216,7 @@ class IngestHandler(FileSystemEventHandler):
             file_hash=file_hash,
             ingested_at=ingested_at,
             source_url=source_url,
-            citation_hashes=[file_hash],
+            citation_hashes=node_hashes,
         )
         save_event(event, self.event_dir)
 

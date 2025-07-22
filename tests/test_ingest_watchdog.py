@@ -3,6 +3,7 @@ import types
 from pathlib import Path
 import json
 import yaml
+import hashlib
 
 import pytest
 
@@ -176,7 +177,8 @@ def test_ingest_handler_writes_event(tmp_path, monkeypatch):
     assert len(files) == 1
     data = json.loads(files[0].read_text())
     assert data["vault"] == vault
-    assert data["citation_hashes"] == [data["file_hash"]]
+    expected_hash = hashlib.sha1("doc:file.pdf".encode()).hexdigest()
+    assert data["citation_hashes"] == [expected_hash]
 
 
 def test_ingest_handler_encrypts(tmp_path, monkeypatch):
