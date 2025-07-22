@@ -25,7 +25,7 @@ jobs:
       - name: Run Ruff
         run: |
           pip install ruff
-          ruff check src/knowledge_storm src/tino_storm tests
+          ruff check .
       - name: Run tests
         run: |
           PYTHONPATH=. pytest
