@@ -119,6 +119,12 @@ Generate the outline only:
 tino-storm outline --retriever bing --topic "Quantum computing"
 ```
 
+Create a project plan in Markdown:
+
+```bash
+tino-storm plan-project --retriever bing --topic "Quantum computing"
+```
+
 Draft the article from a saved outline:
 
 ```bash

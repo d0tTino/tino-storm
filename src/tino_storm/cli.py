@@ -43,6 +43,21 @@ def _run_outline(args: argparse.Namespace) -> None:
     print(outline)
 
 
+def _run_plan_project(args: argparse.Namespace) -> None:
+    """Generate a markdown outline for ``args.topic``."""
+    config = make_config(args)
+    storm = Storm(config)
+    topic = args.topic or input("Topic: ")
+    outline = storm.build_outline(topic)
+    try:
+        items = outline.get_outline_as_list(add_hashtags=True, include_root=False)
+    except AttributeError:
+        text = str(outline)
+        items = [line for line in text.splitlines() if line.strip()]
+    md = "\n".join(f"- {item}" for item in items)
+    print(md)
+
+
 def _run_draft(args: argparse.Namespace) -> None:
     config = make_config(args)
     storm = Storm(config)
@@ -130,6 +145,19 @@ def main(argv: list[str] | None = None) -> None:
         help="Topic to research. Prompted if omitted",
     )
     outline_parser.set_defaults(func=_run_outline)
+
+    plan_parser = sub.add_parser(
+        "plan-project", help="Generate a project plan outline in Markdown"
+    )
+    _add_common_args(plan_parser)
+    plan_parser.add_argument(
+        "--topic",
+        "-t",
+        type=str,
+        default=None,
+        help="Topic to research. Prompted if omitted",
+    )
+    plan_parser.set_defaults(func=_run_plan_project)
 
     draft_parser = sub.add_parser("draft", help="Generate an article draft")
     _add_common_args(draft_parser)
