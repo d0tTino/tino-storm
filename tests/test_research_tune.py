@@ -13,7 +13,19 @@ class TopicLM(dspy.LM):
         return "UNKNOWN"
 
 
-def test_tune_example_vault(tmp_path):
+def _patch_optimizer(monkeypatch, recorded):
+    monkeypatch.setattr(dspy, "Dataset", lambda data: data, raising=False)
+
+    def _optimize(module, dataset):
+        recorded.setdefault("modules", []).append(module)
+        return type("Result", (), {"accuracy": 1.0})()
+
+    monkeypatch.setattr(dspy, "optimize", _optimize, raising=False)
+
+
+def test_tune_example_vault(tmp_path, monkeypatch):
+    recorded = {}
+    _patch_optimizer(monkeypatch, recorded)
     lm = TopicLM(model="stub")
     skill = ResearchSkill(
         outline_module=OutlineModule(lm),
@@ -24,7 +36,9 @@ def test_tune_example_vault(tmp_path):
     assert acc == 1.0
 
 
-def test_tune_another_vault(tmp_path):
+def test_tune_another_vault(tmp_path, monkeypatch):
+    recorded = {}
+    _patch_optimizer(monkeypatch, recorded)
     lm = TopicLM(model="stub")
     skill = ResearchSkill(
         outline_module=OutlineModule(lm),
@@ -32,4 +46,22 @@ def test_tune_another_vault(tmp_path):
         polish_module=PolishModule(lm),
     )
     acc = skill.tune("another_vault")
+    assert acc == 1.0
+
+
+def test_tune_calls_optimizer(monkeypatch):
+    recorded = {}
+    _patch_optimizer(monkeypatch, recorded)
+    lm = TopicLM(model="stub")
+    skill = ResearchSkill(
+        outline_module=OutlineModule(lm),
+        draft_module=DraftModule(lm),
+        polish_module=PolishModule(lm),
+    )
+    acc = skill.tune("example_vault")
+    assert recorded["modules"] == [
+        skill.outline_module,
+        skill.draft_module,
+        skill.polish_module,
+    ]
     assert acc == 1.0
