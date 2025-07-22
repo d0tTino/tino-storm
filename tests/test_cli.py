@@ -158,6 +158,29 @@ def test_draft_calls_generate_article(monkeypatch):
     assert called.get("called")
 
 
+def test_cli_uses_env_retriever_when_flag_absent(monkeypatch):
+    _setup_env(monkeypatch)
+    monkeypatch.setenv("STORM_RETRIEVER", "arxiv")
+
+    recorded = {}
+
+    def fake_create_retriever(name: str, k: int):
+        recorded["name"] = name
+
+        class Dummy:
+            pass
+
+        return Dummy()
+
+    monkeypatch.setattr("tino_storm.config.create_retriever", fake_create_retriever)
+    monkeypatch.setattr("tino_storm.cli.create_retriever", fake_create_retriever)
+    monkeypatch.setattr(Storm, "run_pipeline", lambda *args, **kwargs: "article")
+
+    main(["run", "--topic", "cats"])
+
+    assert recorded["name"] == "arxiv"
+
+
 def test_polish_calls_polish_article(monkeypatch):
     _setup_env(monkeypatch)
     recorded = {}

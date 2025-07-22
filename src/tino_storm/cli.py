@@ -22,7 +22,8 @@ def make_config(args: argparse.Namespace | None = None) -> StormConfig:
     config.args.max_thread_num = args.max_thread_num
     config.args.retrieve_top_k = args.retrieve_top_k
 
-    config.rm = create_retriever(args.retriever, config.args.search_top_k)
+    if args.retriever is not None:
+        config.rm = create_retriever(args.retriever, config.args.search_top_k)
 
     return config
 
@@ -98,7 +99,7 @@ def _add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--retriever",
         type=str,
-        required=True,
+        default=None,
         choices=[
             "bing",
             "you",
@@ -109,7 +110,7 @@ def _add_common_args(parser: argparse.ArgumentParser) -> None:
             "searxng",
             "azure_ai_search",
         ],
-        help="Search engine to use",
+        help="Search engine to use (defaults to STORM_RETRIEVER)",
     )
     parser.add_argument("--max-conv-turn", type=int, default=3)
     parser.add_argument("--max-perspective", type=int, default=3)
