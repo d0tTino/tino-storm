@@ -82,7 +82,9 @@ def test_outline_uses_topic_arg(monkeypatch):
     _setup_env(monkeypatch)
     recorded = {}
 
-    def build_outline(self, topic: str, ground_truth_url: str = "", callback_handler=None):
+    def build_outline(
+        self, topic: str, ground_truth_url: str = "", callback_handler=None
+    ):
         recorded["topic"] = topic
         return "outline"
 
@@ -96,13 +98,48 @@ def test_outline_prompts_for_topic(monkeypatch):
     _setup_env(monkeypatch)
     recorded = {}
 
-    def build_outline(self, topic: str, ground_truth_url: str = "", callback_handler=None):
+    def build_outline(
+        self, topic: str, ground_truth_url: str = "", callback_handler=None
+    ):
         recorded["topic"] = topic
         return "outline"
 
     monkeypatch.setattr(Storm, "build_outline", build_outline)
     monkeypatch.setattr("builtins.input", lambda _: "dogs")
     main(["outline", "--retriever", "bing"])
+
+    assert recorded["topic"] == "dogs"
+
+
+def test_plan_project_uses_topic_arg(monkeypatch):
+    _setup_env(monkeypatch)
+    recorded = {}
+
+    def build_outline(
+        self, topic: str, ground_truth_url: str = "", callback_handler=None
+    ):
+        recorded["topic"] = topic
+        return "outline"
+
+    monkeypatch.setattr(Storm, "build_outline", build_outline)
+    main(["plan-project", "--retriever", "bing", "--topic", "cats"])
+
+    assert recorded["topic"] == "cats"
+
+
+def test_plan_project_prompts_for_topic(monkeypatch):
+    _setup_env(monkeypatch)
+    recorded = {}
+
+    def build_outline(
+        self, topic: str, ground_truth_url: str = "", callback_handler=None
+    ):
+        recorded["topic"] = topic
+        return "outline"
+
+    monkeypatch.setattr(Storm, "build_outline", build_outline)
+    monkeypatch.setattr("builtins.input", lambda _: "dogs")
+    main(["plan-project", "--retriever", "bing"])
 
     assert recorded["topic"] == "dogs"
 
