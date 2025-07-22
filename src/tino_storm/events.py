@@ -20,6 +20,7 @@ class ResearchAdded:
     ingested_at: str
     source_url: str
     citation_hashes: list[str]
+    encrypted_path: str | None = None
 
 
 @dataclass

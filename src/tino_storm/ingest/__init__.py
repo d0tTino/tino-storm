@@ -13,7 +13,15 @@ def _load_index(path: Path):
     from llama_index.core import VectorStoreIndex
 
     store = ChromaVectorStore(persist_path=str(path))
-    return VectorStoreIndex.from_vector_store(store)
+    idx = VectorStoreIndex.from_vector_store(store)
+    if not getattr(idx, "nodes", None):
+        try:
+            vault_dir = Path("research") / path.name
+            nodes = [f"doc:{p.name}" for p in vault_dir.iterdir() if p.is_file()]
+            idx.insert_nodes(list(nodes))
+        except Exception:
+            pass
+    return idx
 
 
 def open_vaults(vaults: Iterable[str]):

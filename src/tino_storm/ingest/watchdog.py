@@ -232,8 +232,13 @@ class IngestHandler(FileSystemEventHandler):
         except AttributeError:  # pragma: no cover - test stubs
             pass
 
+        encrypted_path = str(path)
         if self._aesgcm:
             _encrypt_dir(self.storage_dir, self._aesgcm)
+            _encrypt_dir(self.vault_dir, self._aesgcm)
+            enc_file = path.with_suffix(path.suffix + ".enc")
+            if enc_file.exists():
+                encrypted_path = str(enc_file)
         event = ResearchAdded(
             vault=self.vault,
             path=str(path),
@@ -241,6 +246,7 @@ class IngestHandler(FileSystemEventHandler):
             ingested_at=ingested_at,
             source_url=source_url,
             citation_hashes=node_hashes,
+            encrypted_path=encrypted_path,
         )
         save_event(event, self.event_dir)
 

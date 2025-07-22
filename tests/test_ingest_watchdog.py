@@ -179,6 +179,7 @@ def test_ingest_handler_writes_event(tmp_path, monkeypatch):
     assert data["vault"] == vault
     expected_hash = hashlib.sha1("doc:file.pdf".encode()).hexdigest()
     assert data["citation_hashes"] == [expected_hash]
+    assert data["encrypted_path"] == str(pdf)
 
 
 def test_ingest_handler_encrypts(tmp_path, monkeypatch):
@@ -210,6 +211,10 @@ def test_ingest_handler_encrypts(tmp_path, monkeypatch):
 
     files = list(handler.storage_dir.iterdir())
     assert files and all(p.suffix == ".enc" for p in files)
+    events = list((tmp_path / "events").iterdir())
+    assert events
+    data = json.loads(events[0].read_text())
+    assert data["encrypted_path"].endswith(".enc")
 
 
 def test_encrypted_vault_decrypts_on_restart(tmp_path, monkeypatch):
