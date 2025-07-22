@@ -24,6 +24,7 @@ test = [
     "httpx<0.28",
     "pyyaml",
     "cryptography",
+    "pytest-cov",
 ]
 
 [tool.setuptools.dynamic]
