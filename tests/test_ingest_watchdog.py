@@ -290,6 +290,39 @@ def test_url_manifest_ingests_threads(tmp_path, monkeypatch):
     assert len(captured) == 3
 
 
+def test_watch_vault_ingests_existing_files(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("STORM_EVENT_DIR", str(tmp_path / "events"))
+    vault = "vault"
+    vault_dir = Path("research") / vault
+    vault_dir.mkdir(parents=True)
+
+    pdf = vault_dir / "file.pdf"
+    pdf.write_text("pdf")
+
+    from tino_storm.ingest.watchdog import watch_vault, IngestHandler
+
+    recorded: list[Path] = []
+
+    def ingest_file(self, path: Path) -> None:
+        recorded.append(path)
+
+    monkeypatch.setattr(IngestHandler, "ingest_file", ingest_file, raising=False)
+
+    rec = _RecordingObserver()
+    monkeypatch.setattr("tino_storm.ingest.watchdog.Observer", lambda: rec)
+
+    def raise_(*args, **kwargs):
+        raise KeyboardInterrupt()
+
+    monkeypatch.setattr("tino_storm.ingest.watchdog.time.sleep", raise_)
+
+    watch_vault(vault)
+
+    assert recorded == [pdf]
+
+
 def test_json_manifest_ingests_threads(tmp_path, monkeypatch):
     monkeypatch.setattr("watchdog.observers.Observer", _DummyObserver)
     monkeypatch.chdir(tmp_path)
