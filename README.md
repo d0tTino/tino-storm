@@ -97,8 +97,10 @@ article = skill("Deep learning", table)
 ### Tuning
 
 Each research vault can include a small `eval.jsonl` file with evaluation topics. The
-`ResearchSkill.tune()` method loads this data and evaluates the skill. This can be
-used with simple stub LMs for local experiments:
+`ResearchSkill.tune()` method loads this data and evaluates the skill. Vaults are
+searched relative to ``STORM_RESEARCH_DIR`` (defaults to ``./research``) or a custom
+``base_dir`` passed to ``tune()``. This can be used with simple stub LMs for local
+experiments:
 
 ```python
 accuracy = skill.tune("example_vault")
@@ -193,6 +195,10 @@ or use ``rrf=`` to combine them, e.g. ``STORM_RETRIEVER=rrf=bing,you``.
 
 Set ``STORM_CLOUD_ALLOWED=false`` to disable cloud-based LLM providers and
 restrict the pipeline to local models like Ollama.
+Set ``STORM_RESEARCH_DIR`` to point to the directory containing research vaults
+(defaults to ``./research``). ``ResearchSkill.tune()`` will look for
+``eval.jsonl`` in ``$STORM_RESEARCH_DIR/<vault>`` unless you pass a different
+``base_dir`` argument.
 
 ## Ingesting research data
 

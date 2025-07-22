@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Optional, Dict
 
@@ -59,9 +60,23 @@ class ResearchSkill:
         )
         return article == sample.get("expected")
 
-    def tune(self, vault: str) -> float:
-        """Refine submodules using DSPy and return the resulting accuracy."""
-        path = Path(__file__).resolve().parents[3] / "research" / vault / "eval.jsonl"
+    def tune(self, vault: str, *, base_dir: Optional[str | Path] = None) -> float:
+        """Refine submodules using DSPy and return the resulting accuracy.
+
+        Parameters
+        ----------
+        vault:
+            Name of the research vault containing ``eval.jsonl``.
+        base_dir:
+            Base directory where vaults are stored. If omitted, the value of
+            ``STORM_RESEARCH_DIR`` is used. Defaults to ``./research`` when the
+            environment variable is not set.
+        """
+
+        if base_dir is None:
+            base_dir = os.getenv("STORM_RESEARCH_DIR", "research")
+
+        path = Path(base_dir) / vault / "eval.jsonl"
         if not path.exists():
             raise FileNotFoundError(f"Eval set not found: {path}")
 
