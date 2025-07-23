@@ -9,10 +9,9 @@ qdrant-client
 langchain-qdrant
 numpy==1.26.4
 litellm==1.59.3
-snscrape
-praw
-pytesseract
-pillow
 diskcache
+cryptography
+chromadb
+pyyaml
 pytz
 
