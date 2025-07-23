@@ -1,4 +1,5 @@
-# ruff: noqa
+# ruff: noqa: E402
+
 import os
 import sys
 import types
