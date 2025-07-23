@@ -29,14 +29,14 @@ args.output_dir/
 import os
 from argparse import ArgumentParser
 
-from knowledge_storm import (
+from tino_storm import (
     STORMWikiRunnerArguments,
     STORMWikiRunner,
     STORMWikiLMConfigs,
 )
-from knowledge_storm.rm import VectorRM
-from knowledge_storm.lm import OpenAIModel, AzureOpenAIModel
-from knowledge_storm.utils import load_api_key, QdrantVectorStoreManager
+from tino_storm.rm import VectorRM
+from tino_storm.lm import OpenAIModel, AzureOpenAIModel
+from tino_storm.utils import load_api_key, QdrantVectorStoreManager
 
 
 def main(args):
@@ -118,7 +118,7 @@ def main(args):
             QdrantVectorStoreManager.create_or_update_vector_store(
                 url=args.online_vector_db_url,
                 api_key=os.getenv("QDRANT_API_KEY"),
-                **kwargs
+                **kwargs,
             )
 
     # Setup VectorRM to retrieve information from your own data
