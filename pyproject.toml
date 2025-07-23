@@ -20,6 +20,9 @@ dependencies = [
 
 ]
 
+[project.scripts]
+tino-storm = "tino_storm.cli:main"
+
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
