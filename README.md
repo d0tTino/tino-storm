@@ -87,6 +87,21 @@ You could also install the source code which allows you to modify the behavior o
    conda activate storm
    pip install -r requirements.txt
    ```
+
+## Vault ingestion
+
+STORM can automatically ingest documents dropped under a vault directory. Set `STORM_VAULT_ROOT`
+to the folder containing your research vaults (defaults to `research`). Each subfolder is treated
+as a vault and mapped to a Chroma collection with the same name. Collections are stored under
+`STORM_CHROMA_PATH` which defaults to `~/.tino_storm/chroma/`.
+
+Start the watcher from Python:
+
+```python
+from tino_storm.ingest import start_watcher
+
+start_watcher()  # watches STORM_VAULT_ROOT for new files or URL lists
+```
    
 
 ## API
