@@ -1,10 +1,15 @@
-from .storm_wiki import *
-from .collaborative_storm import *
-from .encoder import *
-from .interface import *
-from .lm import *
-from .rm import *
-from .utils import *
-from .dataclass import *
+"""Top-level package for ``knowledge_storm``.
+
+Only the version information is exported automatically to avoid
+eagerly importing heavy dependencies when the package is imported.
+Submodules should be imported explicitly by consumers as needed.
+"""
+
+__all__ = ["__version__"]
+
+# importing these modules here previously pulled in numerous optional
+# dependencies during test discovery. To keep startup lightweight we no
+# longer import them automatically. Import the desired submodules
+# directly instead.
 
 __version__ = "1.1.0"

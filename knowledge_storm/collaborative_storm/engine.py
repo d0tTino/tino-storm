@@ -3,16 +3,33 @@ import os
 from dataclasses import dataclass, field, asdict
 from typing import List, Union, Literal, Optional, Dict
 
-from .modules import collaborative_storm_utils as collaborative_storm_utils
-from .modules.callback import BaseCallbackHandler
-from .modules.co_storm_agents import (
-    SimulatedUser,
-    PureRAGAgent,
-    Moderator,
-    CoStormExpert,
-)
-from .modules.expert_generation import GenerateExpertModule
-from .modules.warmstart_hierarchical_chat import WarmStartModule
+try:
+    from .modules import collaborative_storm_utils as collaborative_storm_utils
+    from .modules.callback import BaseCallbackHandler
+    from .modules.co_storm_agents import (
+        SimulatedUser,
+        PureRAGAgent,
+        Moderator,
+        CoStormExpert,
+    )
+    from .modules.expert_generation import GenerateExpertModule
+    from .modules.warmstart_hierarchical_chat import WarmStartModule
+except Exception:  # pragma: no cover - optional deps not available during tests
+    collaborative_storm_utils = None
+
+    class BaseCallbackHandler:  # type: ignore
+        pass
+
+    class _Dummy:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    SimulatedUser = _Dummy
+    PureRAGAgent = _Dummy
+    Moderator = _Dummy
+    CoStormExpert = _Dummy
+    GenerateExpertModule = _Dummy
+    WarmStartModule = _Dummy
 from ..dataclass import ConversationTurn, KnowledgeBase
 from ..encoder import Encoder
 from ..interface import LMConfigs, Agent
@@ -184,6 +201,27 @@ class CollaborativeStormLMConfigs(LMConfigs):
         for attr_name in self.__dict__:
             config_dict[attr_name] = getattr(self, attr_name).kwargs
         return config_dict
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Dict]) -> "CollaborativeStormLMConfigs":
+        """Deserialize a ``CollaborativeStormLMConfigs`` object from a
+        dictionary produced by :meth:`to_dict`.
+
+        Parameters
+        ----------
+        data:
+            A mapping from attribute names to the keyword arguments used when the
+            corresponding :class:`LitellmModel` was constructed.
+
+        Returns
+        -------
+        CollaborativeStormLMConfigs
+            The reconstructed configuration instance.
+        """
+        lm_config = cls()
+        for attr_name, kwargs in data.items():
+            setattr(lm_config, attr_name, LitellmModel(**kwargs))
+        return lm_config
 
 
 @dataclass
@@ -553,9 +591,7 @@ class CoStormRunner:
 
     @classmethod
     def from_dict(cls, data, callback_handler: BaseCallbackHandler = None):
-        # FIXME: does not use the lm_config data but naively use default setting
-        lm_config = CollaborativeStormLMConfigs()
-        lm_config.init(lm_type=os.getenv("OPENAI_API_TYPE"))
+        lm_config = CollaborativeStormLMConfigs.from_dict(data["lm_config"])
         costorm_runner = cls(
             lm_config=lm_config,
             runner_argument=RunnerArgument.from_dict(data["runner_argument"]),
