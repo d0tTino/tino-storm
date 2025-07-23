@@ -16,17 +16,17 @@ args.output_dir/
 import os
 import json
 from argparse import ArgumentParser
-from knowledge_storm.collaborative_storm.engine import (
+from tino_storm.collaborative_storm.engine import (
     CollaborativeStormLMConfigs,
     RunnerArgument,
     CoStormRunner,
 )
-from knowledge_storm.collaborative_storm.modules.callback import (
+from tino_storm.collaborative_storm.modules.callback import (
     LocalConsolePrintCallBackHandler,
 )
-from knowledge_storm.lm import OpenAIModel, AzureOpenAIModel
-from knowledge_storm.logging_wrapper import LoggingWrapper
-from knowledge_storm.rm import (
+from tino_storm.lm import OpenAIModel, AzureOpenAIModel
+from tino_storm.logging_wrapper import LoggingWrapper
+from tino_storm.rm import (
     YouRM,
     BingSearch,
     BraveRM,
@@ -35,7 +35,7 @@ from knowledge_storm.rm import (
     TavilySearchRM,
     SearXNG,
 )
-from knowledge_storm.utils import load_api_key
+from tino_storm.utils import load_api_key
 
 
 def main(args):
