@@ -76,6 +76,20 @@ By default STORM performs all work locally and writes artefacts to the
 services are disabled unless the environment variable `cloud_allowed=true` is
 set, enabling cloud resources when desired.
 
+## Local data encryption
+
+When a passphrase is configured, dropped documents are encrypted before being
+stored in the local Chroma database.  Add the following to
+`~/.tino_storm/config.yaml`:
+
+```yaml
+passphrase: "my secret passphrase"
+```
+
+Existing users who set a passphrase for the first time should remove the old
+`~/.tino_storm/chroma` directory and re-ingest any vault data so the documents
+are encrypted.
+
 ## Citation
 
 If you use STORM or Co‑STORM in academic work, please cite the following:
