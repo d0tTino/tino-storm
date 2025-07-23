@@ -16,8 +16,12 @@ dependencies = [
     "langchain-qdrant",
     "numpy==1.26.4",
     "litellm==1.59.3",
-    "watchdog",
-    "chromadb",
+    "snscrape",
+    "praw",
+    "pytesseract",
+    "pillow",
+    "pytz",
+
 ]
 
 [build-system]
