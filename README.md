@@ -80,6 +80,17 @@ from tino_storm.api import run_research
 run_research(topic="Quantum computing", output_dir="./results")
 ```
 
+The lightweight `ResearchSkill` can also be used directly. When cloud access is
+allowed you may tune its prompts using `optimize()`:
+
+```python
+from tino_storm.skills import ResearchSkill
+
+skill = ResearchSkill(cloud_allowed=True)
+skill.optimize()
+result = skill("The Eiffel Tower")
+```
+
 ## Ingesting your own data
 
 STORM can be grounded on a custom corpus by creating a Qdrant vector store and

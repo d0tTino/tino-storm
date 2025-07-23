@@ -9,6 +9,9 @@ def main():
     result = skill(topic, vault=None)
     print({"outline": result.outline, "draft": result.draft})
 
+    if skill.cloud_allowed:
+        skill.optimize()
+
 
 if __name__ == "__main__":
     main()
