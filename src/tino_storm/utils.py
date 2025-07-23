@@ -597,8 +597,19 @@ class ArticleTextProcessing:
 class FileIOHelper:
     @staticmethod
     def dump_json(obj, file_name, encoding="utf-8"):
-        with open(file_name, "w", encoding=encoding) as fw:
-            json.dump(obj, fw, default=FileIOHelper.handle_non_serializable)
+        from .security import get_passphrase, encrypt_bytes
+
+        data = json.dumps(obj, default=FileIOHelper.handle_non_serializable).encode(
+            encoding
+        )
+        passphrase = get_passphrase()
+        if passphrase:
+            data = encrypt_bytes(data, passphrase)
+            with open(file_name, "wb") as fw:
+                fw.write(data)
+        else:
+            with open(file_name, "w", encoding=encoding) as fw:
+                fw.write(data.decode(encoding))
 
     @staticmethod
     def handle_non_serializable(obj):
@@ -606,28 +617,64 @@ class FileIOHelper:
 
     @staticmethod
     def load_json(file_name, encoding="utf-8"):
-        with open(file_name, "r", encoding=encoding) as fr:
-            return json.load(fr)
+        from .security import get_passphrase, decrypt_bytes
+
+        passphrase = get_passphrase()
+        if passphrase:
+            with open(file_name, "rb") as fr:
+                data = fr.read()
+            data = decrypt_bytes(data, passphrase).decode(encoding)
+            return json.loads(data)
+        else:
+            with open(file_name, "r", encoding=encoding) as fr:
+                return json.load(fr)
 
     @staticmethod
     def write_str(s, path):
-        with open(path, "w") as f:
-            f.write(s)
+        from .security import get_passphrase, encrypt_bytes
+
+        passphrase = get_passphrase()
+        if passphrase:
+            with open(path, "wb") as f:
+                f.write(encrypt_bytes(s.encode(), passphrase))
+        else:
+            with open(path, "w") as f:
+                f.write(s)
 
     @staticmethod
     def load_str(path):
-        with open(path, "r") as f:
-            return "\n".join(f.readlines())
+        from .security import get_passphrase, decrypt_bytes
+
+        passphrase = get_passphrase()
+        if passphrase:
+            with open(path, "rb") as f:
+                data = decrypt_bytes(f.read(), passphrase)
+            return data.decode()
+        else:
+            with open(path, "r") as f:
+                return "\n".join(f.readlines())
 
     @staticmethod
     def dump_pickle(obj, path):
+        from .security import get_passphrase, encrypt_bytes
+
+        data = pickle.dumps(obj)
+        passphrase = get_passphrase()
+        if passphrase:
+            data = encrypt_bytes(data, passphrase)
         with open(path, "wb") as f:
-            pickle.dump(obj, f)
+            f.write(data)
 
     @staticmethod
     def load_pickle(path):
+        from .security import get_passphrase, decrypt_bytes
+
+        passphrase = get_passphrase()
         with open(path, "rb") as f:
-            return pickle.load(f)
+            data = f.read()
+        if passphrase:
+            data = decrypt_bytes(data, passphrase)
+        return pickle.loads(data)
 
 
 class WebPageHelper:

@@ -299,15 +299,13 @@ class STORMWikiRunner(Engine):
         )
 
         llm_call_history = self.lm_configs.collect_and_reset_lm_history()
-        with open(
-            os.path.join(self.article_output_dir, "llm_call_history.jsonl"), "w"
-        ) as f:
-            for call in llm_call_history:
-                if "kwargs" in call:
-                    call.pop(
-                        "kwargs"
-                    )  # All kwargs are dumped together to run_config.json.
-                f.write(json.dumps(call) + "\n")
+        log_path = os.path.join(self.article_output_dir, "llm_call_history.jsonl")
+        data = []
+        for call in llm_call_history:
+            if "kwargs" in call:
+                call.pop("kwargs")
+            data.append(json.dumps(call))
+        FileIOHelper.write_str("\n".join(data), log_path)
 
     def _load_information_table_from_local_fs(self, information_table_local_path):
         assert os.path.exists(information_table_local_path), makeStringRed(
