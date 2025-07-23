@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tino-storm"
+version = "0.1.0"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+tino-storm = "tino_storm.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src", ""]
+include = ["tino_storm*", "knowledge_storm*"]
