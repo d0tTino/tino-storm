@@ -6,6 +6,9 @@ import pytest
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
+SRC_DIR = os.path.join(ROOT_DIR, "src")
+if os.path.isdir(SRC_DIR) and SRC_DIR not in sys.path:
+    sys.path.insert(0, SRC_DIR)
 
 # Provide light-weight stubs for optional dependencies so importing the
 # engine module does not require installing the entire dependency stack.
@@ -64,17 +67,17 @@ for _missing in ["litellm", "openai", "dspy"]:
 # Minimal stubs for internal modules so that ``engine`` can be imported
 # without pulling heavy dependencies. The serialization logic exercised by
 # this test only relies on trivial behavior from these classes.
-if "knowledge_storm.encoder" not in sys.modules:
-    enc = types.ModuleType("knowledge_storm.encoder")
+if "tino_storm.encoder" not in sys.modules:
+    enc = types.ModuleType("tino_storm.encoder")
 
     class Encoder:
         pass
 
     enc.Encoder = Encoder
-    sys.modules["knowledge_storm.encoder"] = enc
+    sys.modules["tino_storm.encoder"] = enc
 
-if "knowledge_storm.dataclass" not in sys.modules:
-    dc = types.ModuleType("knowledge_storm.dataclass")
+if "tino_storm.dataclass" not in sys.modules:
+    dc = types.ModuleType("tino_storm.dataclass")
 
     class ConversationTurn:
         def __init__(self, **data):
@@ -100,10 +103,10 @@ if "knowledge_storm.dataclass" not in sys.modules:
 
     dc.ConversationTurn = ConversationTurn
     dc.KnowledgeBase = KnowledgeBase
-    sys.modules["knowledge_storm.dataclass"] = dc
+    sys.modules["tino_storm.dataclass"] = dc
 
-if "knowledge_storm.interface" not in sys.modules:
-    interface = types.ModuleType("knowledge_storm.interface")
+if "tino_storm.interface" not in sys.modules:
+    interface = types.ModuleType("tino_storm.interface")
 
     class LMConfigs:
         pass
@@ -113,34 +116,34 @@ if "knowledge_storm.interface" not in sys.modules:
 
     interface.LMConfigs = LMConfigs
     interface.Agent = Agent
-    sys.modules["knowledge_storm.interface"] = interface
+    sys.modules["tino_storm.interface"] = interface
 
-if "knowledge_storm.lm" not in sys.modules:
-    lm_mod = types.ModuleType("knowledge_storm.lm")
+if "tino_storm.lm" not in sys.modules:
+    lm_mod = types.ModuleType("tino_storm.lm")
 
     class LitellmModel:
         def __init__(self, **kwargs):
             self.kwargs = kwargs
 
     lm_mod.LitellmModel = LitellmModel
-    sys.modules["knowledge_storm.lm"] = lm_mod
+    sys.modules["tino_storm.lm"] = lm_mod
 
-if "knowledge_storm.rm" not in sys.modules:
-    rm_mod = types.ModuleType("knowledge_storm.rm")
+if "tino_storm.rm" not in sys.modules:
+    rm_mod = types.ModuleType("tino_storm.rm")
 
     class BingSearch:
         def __init__(self, k=0):
             self.k = k
 
     rm_mod.BingSearch = BingSearch
-    sys.modules["knowledge_storm.rm"] = rm_mod
+    sys.modules["tino_storm.rm"] = rm_mod
 
-from knowledge_storm.collaborative_storm.engine import (
+from tino_storm.collaborative_storm.engine import (
     CollaborativeStormLMConfigs,
     RunnerArgument,
     CoStormRunner,
 )
-from knowledge_storm.logging_wrapper import LoggingWrapper
+from tino_storm.logging_wrapper import LoggingWrapper
 
 
 def test_lm_config_round_trip():
