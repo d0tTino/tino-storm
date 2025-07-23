@@ -11,7 +11,9 @@ from watchdog.observers import Observer
 import chromadb
 import trafilatura
 
-from ..ingestion import TwitterScraper, RedditScraper, FourChanScraper
+from ..security import get_passphrase
+from ..security.encrypted_chroma import EncryptedChroma
+
 
 from ..events import ResearchAdded, event_emitter
 
@@ -37,22 +39,12 @@ class VaultIngestHandler(FileSystemEventHandler):
             )
         ).expanduser()
         chroma_root.mkdir(parents=True, exist_ok=True)
-        self.client = chromadb.PersistentClient(path=str(chroma_root))
-        self.twitter_limit = twitter_limit or int(
-            os.environ.get("STORM_TWITTER_LIMIT", 20)
-        )
-        self.reddit_limit = reddit_limit or int(
-            os.environ.get("STORM_REDDIT_LIMIT", 20)
-        )
-        self.fourchan_limit = fourchan_limit or int(
-            os.environ.get("STORM_FOURCHAN_LIMIT", 20)
-        )
-        self.reddit_client_id = reddit_client_id or os.environ.get(
-            "STORM_REDDIT_CLIENT_ID"
-        )
-        self.reddit_client_secret = reddit_client_secret or os.environ.get(
-            "STORM_REDDIT_CLIENT_SECRET"
-        )
+        passphrase = get_passphrase()
+        if passphrase:
+            self.client = EncryptedChroma(str(chroma_root), passphrase=passphrase)
+        else:
+            self.client = chromadb.PersistentClient(path=str(chroma_root))
+
         super().__init__()
 
     def _ingest_text(self, text: str, source: str, vault: str) -> None:
