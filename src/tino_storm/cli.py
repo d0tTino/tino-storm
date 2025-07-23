@@ -1,8 +1,8 @@
 import argparse
-import os
 import uvicorn
 
 from .api import app, run_research
+from .ingest import start_watcher
 
 
 def main(argv=None):
@@ -31,6 +31,11 @@ def main(argv=None):
     serve_p.add_argument("--host", default="0.0.0.0")
     serve_p.add_argument("--port", type=int, default=8000)
 
+    ingest_p = subparsers.add_parser(
+        "ingest", help="Watch a directory for dropped files"
+    )
+    ingest_p.add_argument("--root", help="Directory to watch")
+
     args = parser.parse_args(argv)
 
     if args.command == "research":
@@ -44,6 +49,8 @@ def main(argv=None):
         )
     elif args.command == "serve":
         uvicorn.run(app, host=args.host, port=args.port)
+    elif args.command == "ingest":
+        start_watcher(root=args.root)
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point

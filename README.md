@@ -28,6 +28,9 @@ $ tino-storm research "Quantum computing" --output-dir ./results
 
 # Start the API server
 $ tino-storm serve --host 0.0.0.0 --port 8000
+
+# Watch a directory for dropped files/URLs
+$ tino-storm ingest --root ./vault
 ```
 
 ## Programmatic API
