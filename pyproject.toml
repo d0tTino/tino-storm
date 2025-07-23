@@ -21,6 +21,7 @@ dependencies = [
     "pytesseract",
     "pillow",
     "pytz",
+
 ]
 
 [build-system]
