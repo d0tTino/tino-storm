@@ -13,6 +13,7 @@ Install both with:
 
 ```bash
 pip install tino-storm  # installs knowledge-storm as a dependency
+
 ```
 
 ## Command line usage
