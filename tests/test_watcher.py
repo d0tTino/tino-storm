@@ -35,12 +35,14 @@ else:
 if "watchdog.events" not in sys.modules:
     watchdog = types.ModuleType("watchdog")
     observers_mod = types.ModuleType("watchdog.observers")
+
     events_mod = types.ModuleType("watchdog.events")
 
     class FileSystemEventHandler:
         pass
 
     class DummyObserver:
+
         def schedule(self, *a, **k):
             pass
 
@@ -93,3 +95,4 @@ def test_ingest_text_file(monkeypatch, tmp_path):
     assert isinstance(events[0], ResearchAdded)
     assert events[0].topic == "topic"
     assert events[0].information_table["source"] == str(file_path)
+

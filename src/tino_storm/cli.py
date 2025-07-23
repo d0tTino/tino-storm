@@ -35,6 +35,15 @@ def main(argv=None):
         "ingest", help="Watch a directory for dropped files"
     )
     ingest_p.add_argument("--root", help="Directory to watch")
+    ingest_p.add_argument("--twitter-limit", type=int, help="Max tweets per manifest")
+    ingest_p.add_argument(
+        "--reddit-limit", type=int, help="Max reddit posts per manifest"
+    )
+    ingest_p.add_argument(
+        "--fourchan-limit", type=int, help="Max 4chan posts per manifest"
+    )
+    ingest_p.add_argument("--reddit-client-id")
+    ingest_p.add_argument("--reddit-client-secret")
 
     args = parser.parse_args(argv)
 
@@ -50,7 +59,14 @@ def main(argv=None):
     elif args.command == "serve":
         uvicorn.run(app, host=args.host, port=args.port)
     elif args.command == "ingest":
-        start_watcher(root=args.root)
+        start_watcher(
+            root=args.root,
+            twitter_limit=args.twitter_limit,
+            reddit_limit=args.reddit_limit,
+            fourchan_limit=args.fourchan_limit,
+            reddit_client_id=args.reddit_client_id,
+            reddit_client_secret=args.reddit_client_secret,
+        )
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point

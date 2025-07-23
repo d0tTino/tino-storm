@@ -11,13 +11,26 @@ from watchdog.observers import Observer
 import chromadb
 import trafilatura
 
+from ..security import get_passphrase
+from ..security.encrypted_chroma import EncryptedChroma
+
+
 from ..events import ResearchAdded, event_emitter
 
 
 class VaultIngestHandler(FileSystemEventHandler):
-    """Watch a vault directory and ingest dropped files or URLs."""
+    """Watch a vault directory and ingest dropped files, URLs or manifests."""
 
-    def __init__(self, root: str, chroma_path: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        root: str,
+        chroma_path: Optional[str] = None,
+        twitter_limit: Optional[int] = None,
+        reddit_limit: Optional[int] = None,
+        fourchan_limit: Optional[int] = None,
+        reddit_client_id: Optional[str] = None,
+        reddit_client_secret: Optional[str] = None,
+    ) -> None:
         self.root = Path(root).expanduser().resolve()
         chroma_root = Path(
             chroma_path
@@ -26,7 +39,12 @@ class VaultIngestHandler(FileSystemEventHandler):
             )
         ).expanduser()
         chroma_root.mkdir(parents=True, exist_ok=True)
-        self.client = chromadb.PersistentClient(path=str(chroma_root))
+        passphrase = get_passphrase()
+        if passphrase:
+            self.client = EncryptedChroma(str(chroma_root), passphrase=passphrase)
+        else:
+            self.client = chromadb.PersistentClient(path=str(chroma_root))
+
         super().__init__()
 
     def _ingest_text(self, text: str, source: str, vault: str) -> None:
@@ -41,7 +59,8 @@ class VaultIngestHandler(FileSystemEventHandler):
         )
 
     def _handle_file(self, path: Path, vault: str) -> None:
-        if path.suffix.lower() in {".url", ".urls"}:
+        suffix = path.suffix.lower()
+        if suffix in {".url", ".urls"}:
             lines = [
                 line.strip() for line in path.read_text().splitlines() if line.strip()
             ]
@@ -50,6 +69,49 @@ class VaultIngestHandler(FileSystemEventHandler):
                 text = trafilatura.extract(html) or ""
                 if text:
                     self._ingest_text(text, url, vault)
+        elif suffix == ".twitter":
+            query = path.read_text().strip()
+            scraper = TwitterScraper()
+            for post in scraper.search(query, limit=self.twitter_limit):
+                text = post.get("text", "")
+                if post.get("images_text"):
+                    text += "\n" + "\n".join(post["images_text"])
+                self._ingest_text(text, post.get("url", query), vault)
+        elif suffix == ".reddit":
+            lines = [ln.strip() for ln in path.read_text().splitlines() if ln.strip()]
+            if not lines:
+                return
+            subreddit = lines[0]
+            query = lines[1] if len(lines) > 1 else ""
+            scraper = RedditScraper(
+                client_id=self.reddit_client_id,
+                client_secret=self.reddit_client_secret,
+            )
+            for post in scraper.search(subreddit, query, limit=self.reddit_limit):
+                text = (post.get("title", "") + "\n" + post.get("text", "")).strip()
+                if post.get("images_text"):
+                    text += "\n" + "\n".join(post["images_text"])
+                self._ingest_text(text, post.get("url", query), vault)
+        elif suffix == ".4chan":
+            lines = [ln.strip() for ln in path.read_text().splitlines() if ln.strip()]
+            if len(lines) < 2:
+                return
+            board = lines[0]
+            try:
+                thread_no = int(lines[1])
+            except ValueError:
+                return
+            scraper = FourChanScraper()
+            posts = scraper.fetch_thread(board, thread_no)[: self.fourchan_limit]
+            for post in posts:
+                text = post.get("text", "")
+                if post.get("images_text"):
+                    text += "\n" + "\n".join(post["images_text"])
+                self._ingest_text(
+                    text,
+                    f"https://boards.4channel.org/{board}/thread/{thread_no}",
+                    vault,
+                )
         else:
             try:
                 text = path.read_text(encoding="utf-8")
@@ -70,14 +132,29 @@ class VaultIngestHandler(FileSystemEventHandler):
 
 
 def start_watcher(
-    root: Optional[str] = None, chroma_path: Optional[str] = None
+    root: Optional[str] = None,
+    chroma_path: Optional[str] = None,
+    *,
+    twitter_limit: Optional[int] = None,
+    reddit_limit: Optional[int] = None,
+    fourchan_limit: Optional[int] = None,
+    reddit_client_id: Optional[str] = None,
+    reddit_client_secret: Optional[str] = None,
 ) -> None:
-    """Start watching ``root`` for dropped files/URLs."""
+    """Start watching ``root`` for dropped files, URLs and manifests."""
 
     watch_root = Path(
         root or os.environ.get("STORM_VAULT_ROOT", "research")
     ).expanduser()
-    handler = VaultIngestHandler(str(watch_root), chroma_path=chroma_path)
+    handler = VaultIngestHandler(
+        str(watch_root),
+        chroma_path=chroma_path,
+        twitter_limit=twitter_limit,
+        reddit_limit=reddit_limit,
+        fourchan_limit=fourchan_limit,
+        reddit_client_id=reddit_client_id,
+        reddit_client_secret=reddit_client_secret,
+    )
     observer = Observer()
     observer.schedule(handler, str(watch_root), recursive=True)
     observer.start()
