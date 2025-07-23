@@ -248,17 +248,17 @@ class QdrantVectorStoreManager:
         if url_column not in df.columns:
             raise ValueError(f"URL column {url_column} not found in the csv file.")
 
-        documents = [
-            Document(
-                page_content=row[content_column],
-                metadata={
-                    "title": row.get(title_column, ""),
-                    "url": row[url_column],
-                    "description": row.get(desc_column, ""),
-                },
+        documents = []
+        for row in df.to_dict(orient="records"):
+            metadata = {
+                "title": row.get(title_column, ""),
+                "url": row[url_column],
+                "description": row.get(desc_column, ""),
+                "status": "active",
+            }
+            documents.append(
+                Document(page_content=row[content_column], metadata=metadata)
             )
-            for row in df.to_dict(orient="records")
-        ]
 
         # split the documents
         from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -278,11 +278,38 @@ class QdrantVectorStoreManager:
                 "\uff0c",  # Fullwidth comma
                 "\u3001",  # Ideographic comma
                 " ",
-                "\u200B",  # Zero-width space
+                "\u200b",  # Zero-width space
                 "",
             ],
         )
         split_documents = text_splitter.split_documents(documents)
+
+        from qdrant_client.http import models as qdrant_models
+
+        # Mark superseded chunks as archived if they already exist
+        for doc in split_documents:
+            url = doc.metadata.get("url")
+            if not url:
+                continue
+            existing, _ = qdrant.client.scroll(
+                collection_name=collection_name,
+                scroll_filter=qdrant_models.Filter(
+                    must=[
+                        qdrant_models.FieldCondition(
+                            key="url",
+                            match=qdrant_models.MatchValue(value=url),
+                        )
+                    ]
+                ),
+                with_payload=True,
+            )
+            point_ids = [rec.id for rec in existing]
+            if point_ids:
+                qdrant.client.set_payload(
+                    collection_name=collection_name,
+                    payload={"status": "archived"},
+                    points=point_ids,
+                )
 
         # update and save the vector store
         num_batches = (len(split_documents) + batch_size - 1) // batch_size
@@ -713,7 +740,7 @@ class WebPageHelper:
                 "\uff0c",  # Fullwidth comma
                 "\u3001",  # Ideographic comma
                 " ",
-                "\u200B",  # Zero-width space
+                "\u200b",  # Zero-width space
                 "",
             ],
         )
