@@ -13,6 +13,9 @@ __all__ = [
     "CollaborativeStormLMConfigs",
     "RunnerArgument",
     "CoStormRunner",
+    "ResearchAdded",
+    "DocGenerated",
+    "event_emitter",
 ]
 
 __version__ = "1.1.0"
@@ -30,6 +33,9 @@ _ATTR_MAP = {
     ),
     "RunnerArgument": ("tino_storm.collaborative_storm.engine", "RunnerArgument"),
     "CoStormRunner": ("tino_storm.collaborative_storm.engine", "CoStormRunner"),
+    "ResearchAdded": ("tino_storm.events", "ResearchAdded"),
+    "DocGenerated": ("tino_storm.events", "DocGenerated"),
+    "event_emitter": ("tino_storm.events", "event_emitter"),
 }
 
 
