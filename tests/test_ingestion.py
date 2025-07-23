@@ -8,7 +8,7 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from knowledge_storm.utils import QdrantVectorStoreManager
+from knowledge_storm.utils import QdrantVectorStoreManager  # noqa: E402
 
 
 class DummyQdrant:
@@ -73,3 +73,43 @@ def test_create_or_update_vector_store(tmp_path, monkeypatch):
     )
     assert len(dummy.added) == 2
 
+
+def test_ingest_emits_event(monkeypatch):
+    from tino_storm.ingest import watcher
+
+    events = []
+
+    monkeypatch.setattr(watcher.event_emitter, "emit", lambda e: events.append(e))
+
+    class DummyCollection:
+        def __init__(self):
+            self.added = []
+
+        def add(self, documents, metadatas, ids):
+            self.added.append((documents, metadatas, ids))
+
+    class DummyClient:
+        def __init__(self):
+            self.collection = DummyCollection()
+
+        def get_or_create_collection(self, name):
+            return self.collection
+
+    monkeypatch.setattr(
+        watcher.chromadb, "PersistentClient", lambda *a, **k: DummyClient()
+    )
+    monkeypatch.setattr(watcher.time, "time", lambda: 1.23)
+
+    handler = watcher.VaultIngestHandler("root")
+
+    handler._ingest_text("text", "src.txt", "v1")
+
+    assert handler.client.collection.added
+    assert len(events) == 1
+    event = events[0]
+    from tino_storm.events import ResearchAdded
+
+    assert isinstance(event, ResearchAdded)
+    assert event.topic == "v1"
+    assert event.information_table["source"] == "src.txt"
+    assert event.information_table["doc_id"] == "src.txt-1230"
