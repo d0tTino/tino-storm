@@ -3,6 +3,7 @@ import sys
 import csv
 import types
 
+
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
@@ -71,3 +72,4 @@ def test_create_or_update_vector_store(tmp_path, monkeypatch):
         vector_store_path="/tmp",
     )
     assert len(dummy.added) == 2
+
