@@ -13,6 +13,7 @@ __all__ = [
     "CollaborativeStormLMConfigs",
     "RunnerArgument",
     "CoStormRunner",
+    "ResearchSkill",
 ]
 
 __version__ = "1.1.0"
@@ -30,6 +31,7 @@ _ATTR_MAP = {
     ),
     "RunnerArgument": ("tino_storm.collaborative_storm.engine", "RunnerArgument"),
     "CoStormRunner": ("tino_storm.collaborative_storm.engine", "CoStormRunner"),
+    "ResearchSkill": ("tino_storm.skills", "ResearchSkill"),
 }
 
 
@@ -41,4 +43,3 @@ def __getattr__(name: str):
         globals()[name] = value
         return value
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
