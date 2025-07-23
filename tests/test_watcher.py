@@ -1,52 +1,48 @@
+import os
 import sys
 import types
 
-# Provide a lightweight stub for chromadb so the module can be imported
 if "chromadb" not in sys.modules:
-    chroma = types.ModuleType("chromadb")
+    chromadb = types.ModuleType("chromadb")
 
-    class PersistentClient:
+    class DummyCollection:
+        def __init__(self):
+            self.docs = []
+            self.metadatas = []
+            self.ids = []
+
+        def add(self, documents, metadatas=None, ids=None):
+            self.docs.extend(documents)
+            if metadatas:
+                self.metadatas.extend(metadatas)
+            if ids:
+                self.ids.extend(ids)
+
+    class DummyClient:
         def __init__(self, *a, **k):
-            pass
+            self.collections = {}
 
-        def get_or_create_collection(self, *a, **k):
-            return types.SimpleNamespace()
+        def get_or_create_collection(self, name):
+            if name not in self.collections:
+                self.collections[name] = DummyCollection()
+            return self.collections[name]
 
-    chroma.PersistentClient = PersistentClient
-    sys.modules["chromadb"] = chroma
-
-    api_mod = types.ModuleType("chromadb.api")
-
-    class Collection:
-        pass
-
-    api_mod.Collection = Collection
-    sys.modules["chromadb.api"] = api_mod
-
-    config_mod = types.ModuleType("chromadb.config")
-
-    class Settings:
-        def __init__(self, **kwargs):
-            pass
-
-    config_mod.Settings = Settings
-    sys.modules["chromadb.config"] = config_mod
+    chromadb.PersistentClient = DummyClient
+    sys.modules["chromadb"] = chromadb
+else:
+    DummyClient = sys.modules["chromadb"].PersistentClient
 
 if "watchdog.events" not in sys.modules:
+    watchdog = types.ModuleType("watchdog")
+    observers_mod = types.ModuleType("watchdog.observers")
+
     events_mod = types.ModuleType("watchdog.events")
 
     class FileSystemEventHandler:
         pass
 
-    events_mod.FileSystemEventHandler = FileSystemEventHandler
-    watchdog_mod = sys.modules.setdefault("watchdog", types.ModuleType("watchdog"))
-    watchdog_mod.events = events_mod
-    sys.modules["watchdog.events"] = events_mod
+    class DummyObserver:
 
-if "watchdog.observers" not in sys.modules:
-    observers_mod = types.ModuleType("watchdog.observers")
-
-    class Observer:
         def schedule(self, *a, **k):
             pass
 
@@ -59,16 +55,44 @@ if "watchdog.observers" not in sys.modules:
         def join(self, *a, **k):
             pass
 
-    observers_mod.Observer = Observer
-    watchdog_mod = sys.modules.setdefault("watchdog", types.ModuleType("watchdog"))
-    watchdog_mod.observers = observers_mod
+    observers_mod.Observer = DummyObserver
+    events_mod.FileSystemEventHandler = FileSystemEventHandler
+    watchdog.observers = observers_mod
+    watchdog.events = events_mod
+    sys.modules["watchdog"] = watchdog
     sys.modules["watchdog.observers"] = observers_mod
+    sys.modules["watchdog.events"] = events_mod
 
-from tino_storm.ingest.watcher import VaultIngestHandler
-from tino_storm.security.encrypted_chroma import EncryptedChroma
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
+from tino_storm.ingest import VaultIngestHandler  # noqa: E402
+from tino_storm.events import event_emitter, ResearchAdded  # noqa: E402
 
 
-def test_handler_uses_encrypted_chroma(tmp_path, monkeypatch):
-    monkeypatch.setattr("tino_storm.ingest.watcher.get_passphrase", lambda: "pw")
-    handler = VaultIngestHandler(str(tmp_path))
-    assert isinstance(handler.client, EncryptedChroma)
+def test_ingest_text_file(monkeypatch, tmp_path):
+    # Reset subscribers and capture events
+    monkeypatch.setattr(event_emitter, "_subscribers", {})
+    events = []
+    event_emitter.subscribe(ResearchAdded, lambda e: events.append(e))
+
+    monkeypatch.setattr("chromadb.PersistentClient", DummyClient)
+
+    vault_dir = tmp_path / "topic"
+    vault_dir.mkdir()
+
+    handler = VaultIngestHandler(root=str(tmp_path))
+
+    file_path = vault_dir / "note.txt"
+    file_path.write_text("hello", encoding="utf-8")
+
+    handler._handle_file(file_path, "topic")
+
+    collection = handler.client.get_or_create_collection("topic")
+    assert collection.docs == ["hello"]
+    assert len(events) == 1
+    assert isinstance(events[0], ResearchAdded)
+    assert events[0].topic == "topic"
+    assert events[0].information_table["source"] == str(file_path)
+
