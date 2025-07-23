@@ -11,9 +11,9 @@ from knowledge_storm.storm_wiki.modules.knowledge_curation import (  # noqa: E40
     DialogueTurn,
     StormInformationTable,
 )
-from knowledge_storm.storm_wiki.modules.callback import (
+from knowledge_storm.storm_wiki.modules.callback import (  # noqa: E402
     BaseCallbackHandler,
-)  # noqa: E402
+)
 from tino_storm.core.interface import Information  # noqa: E402
 
 
