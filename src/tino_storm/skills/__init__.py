@@ -2,10 +2,11 @@
 
 from importlib import import_module
 
-__all__ = ["ResearchSkill"]
+__all__ = ["ResearchSkill", "ResearchModule"]
 
 _ATTR_MAP = {
     "ResearchSkill": ("tino_storm.skills.research", "ResearchSkill"),
+    "ResearchModule": ("tino_storm.skills.research_module", "ResearchModule"),
 }
 
 
