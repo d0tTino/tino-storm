@@ -153,6 +153,33 @@ for _missing in [
         elif _missing == "qdrant_client":
             qdrant_mod = types.ModuleType("qdrant_client")
 
+            http_mod = types.ModuleType("qdrant_client.http")
+            models_mod = types.ModuleType("qdrant_client.http.models")
+
+            class _Dummy:
+                pass
+
+            class Filter:
+                def __init__(self, *a, **k):
+                    pass
+
+            class FieldCondition:
+                def __init__(self, *a, **k):
+                    pass
+
+            class MatchValue:
+                def __init__(self, *a, **k):
+                    pass
+
+            models_mod.Filter = Filter
+            models_mod.FieldCondition = FieldCondition
+            models_mod.MatchValue = MatchValue
+
+            http_mod.models = models_mod
+            qdrant_mod.http = http_mod
+            sys.modules["qdrant_client.http"] = http_mod
+            sys.modules["qdrant_client.http.models"] = models_mod
+
             class Document:
                 def __init__(self, page_content="", metadata=None):
                     self.page_content = page_content
@@ -164,6 +191,9 @@ for _missing in [
 
                 def close(self):
                     pass
+
+                def scroll(self, *a, **k):
+                    return [], None
 
             qdrant_mod.Document = Document
             qdrant_mod.QdrantClient = QdrantClient
@@ -394,9 +424,13 @@ def mock_requests(monkeypatch):
 @pytest.fixture(autouse=True)
 def mock_file_watcher(monkeypatch):
     try:
-        import watchdog.observers
+        import watchdog.observers  # noqa: F401
     except Exception:
-        return
+        module = types.ModuleType("watchdog.observers")
+        parent = types.ModuleType("watchdog")
+        parent.observers = module
+        sys.modules["watchdog"] = parent
+        sys.modules["watchdog.observers"] = module
 
     class DummyObserver:
         def schedule(self, *a, **k):
@@ -411,7 +445,9 @@ def mock_file_watcher(monkeypatch):
         def join(self, *a, **k):
             pass
 
-    monkeypatch.setattr("watchdog.observers.Observer", lambda *a, **k: DummyObserver())
+    monkeypatch.setattr(
+        "watchdog.observers.Observer", lambda *a, **k: DummyObserver(), raising=False
+    )
 
 
 @pytest.fixture(autouse=True)

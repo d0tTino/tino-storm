@@ -7,9 +7,9 @@ from typing import List, Tuple, Dict, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..engine import RunnerArgument
-from ...interface import Information, Retriever, LMConfigs
-from ...logging_wrapper import LoggingWrapper
-from ...rm import BingSearch
+from ...core.interface import Information, Retriever, LMConfigs
+from ...core.logging_wrapper import LoggingWrapper
+from ...core.rm import BingSearch
 
 
 def extract_storm_info_snippet(info: Information, snippet_index: int) -> Information:

@@ -1,6 +1,6 @@
 import dspy
 from typing import Union
-from ...dataclass import KnowledgeBase
+from ...core.dataclass import KnowledgeBase
 
 
 class KnowledgeBaseSummmary(dspy.Signature):

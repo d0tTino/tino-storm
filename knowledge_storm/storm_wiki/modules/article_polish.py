@@ -4,8 +4,8 @@ from typing import Union
 import dspy
 
 from .storm_dataclass import StormArticle
-from ...interface import ArticlePolishingModule
-from ...utils import ArticleTextProcessing
+from tino_storm.core.interface import ArticlePolishingModule
+from tino_storm.core.utils import ArticleTextProcessing
 
 
 class StormArticlePolishingModule(ArticlePolishingModule):

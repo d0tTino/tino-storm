@@ -8,8 +8,8 @@ import dspy
 
 from .callback import BaseCallbackHandler
 from .storm_dataclass import StormInformationTable, StormArticle
-from ...interface import ArticleGenerationModule, Information
-from ...utils import ArticleTextProcessing
+from ...core.interface import ArticleGenerationModule, Information
+from ...core.utils import ArticleTextProcessing
 
 
 class StormArticleGenerationModule(ArticleGenerationModule):

@@ -35,7 +35,9 @@ class VaultIngestHandler(FileSystemEventHandler):
 
     def _handle_file(self, path: Path, vault: str) -> None:
         if path.suffix.lower() in {".url", ".urls"}:
-            lines = [l.strip() for l in path.read_text().splitlines() if l.strip()]
+            lines = [
+                line.strip() for line in path.read_text().splitlines() if line.strip()
+            ]
             for url in lines:
                 html = trafilatura.fetch_url(url)
                 text = trafilatura.extract(html) or ""

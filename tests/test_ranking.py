@@ -7,7 +7,7 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from tino_storm.collaborative_storm.modules.information_insertion_module import (
+from tino_storm.collaborative_storm.modules.information_insertion_module import (  # noqa: E402
     InsertInformationModule,
 )
 

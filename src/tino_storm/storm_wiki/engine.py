@@ -13,9 +13,9 @@ from .modules.knowledge_curation import StormKnowledgeCurationModule
 from .modules.outline_generation import StormOutlineGenerationModule
 from .modules.persona_generator import StormPersonaGenerator
 from .modules.storm_dataclass import StormInformationTable, StormArticle
-from ..interface import Engine, LMConfigs, Retriever
+from ..core.interface import Engine, LMConfigs, Retriever
 from ..lm import LitellmModel
-from ..utils import FileIOHelper, makeStringRed, truncate_filename
+from ..core.utils import FileIOHelper, makeStringRed, truncate_filename
 from ..events import ResearchAdded, DocGenerated, event_emitter
 
 

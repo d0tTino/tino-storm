@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import concurrent.futures
-import dspy
 import httpx
 import json
 import logging
@@ -9,13 +10,17 @@ import re
 import regex
 import sys
 import toml
-from typing import List, Dict
+from typing import TYPE_CHECKING, Dict, List
 from tqdm import tqdm
+
+if TYPE_CHECKING:  # pragma: no cover - used for type hints only
+    from qdrant_client import QdrantClient
+    from langchain_huggingface import HuggingFaceEmbeddings
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from trafilatura import extract
 
-from .lm import LitellmModel
+from ..lm import LitellmModel
 
 logging.getLogger("httpx").setLevel(logging.WARNING)  # Disable INFO logging for httpx.
 
@@ -208,7 +213,7 @@ class QdrantVectorStoreManager:
             raise ValueError("Please provide a file path.")
         # check if the file is a csv file
         if not file_path.endswith(".csv"):
-            raise ValueError(f"Not valid file format. Please provide a csv file.")
+            raise ValueError("Not valid file format. Please provide a csv file.")
         if content_column is None:
             raise ValueError("Please provide the name of the content column.")
         if url_column is None:
@@ -248,17 +253,17 @@ class QdrantVectorStoreManager:
         if url_column not in df.columns:
             raise ValueError(f"URL column {url_column} not found in the csv file.")
 
-        documents = [
-            Document(
-                page_content=row[content_column],
-                metadata={
-                    "title": row.get(title_column, ""),
-                    "url": row[url_column],
-                    "description": row.get(desc_column, ""),
-                },
+        documents = []
+        for row in df.to_dict(orient="records"):
+            metadata = {
+                "title": row.get(title_column, ""),
+                "url": row[url_column],
+                "description": row.get(desc_column, ""),
+                "status": "active",
+            }
+            documents.append(
+                Document(page_content=row[content_column], metadata=metadata)
             )
-            for row in df.to_dict(orient="records")
-        ]
 
         # split the documents
         from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -278,11 +283,38 @@ class QdrantVectorStoreManager:
                 "\uff0c",  # Fullwidth comma
                 "\u3001",  # Ideographic comma
                 " ",
-                "\u200B",  # Zero-width space
+                "\u200b",  # Zero-width space
                 "",
             ],
         )
         split_documents = text_splitter.split_documents(documents)
+
+        from qdrant_client.http import models as qdrant_models
+
+        # Mark superseded chunks as archived if they already exist
+        for doc in split_documents:
+            url = doc.metadata.get("url")
+            if not url:
+                continue
+            existing, _ = qdrant.client.scroll(
+                collection_name=collection_name,
+                scroll_filter=qdrant_models.Filter(
+                    must=[
+                        qdrant_models.FieldCondition(
+                            key="url",
+                            match=qdrant_models.MatchValue(value=url),
+                        )
+                    ]
+                ),
+                with_payload=True,
+            )
+            point_ids = [rec.id for rec in existing]
+            if point_ids:
+                qdrant.client.set_payload(
+                    collection_name=collection_name,
+                    payload={"status": "archived"},
+                    points=point_ids,
+                )
 
         # update and save the vector store
         num_batches = (len(split_documents) + batch_size - 1) // batch_size
@@ -440,7 +472,7 @@ class ArticleTextProcessing:
                 max_ref_num = max(
                     [int(x) for x in re.findall(r"\[(\d+)\]", turn.agent_utterance)]
                 )
-            except Exception as e:
+            except Exception:
                 max_ref_num = 0
             if max_ref_num > len(turn.search_results):
                 for i in range(len(turn.search_results), max_ref_num + 1):
@@ -597,8 +629,19 @@ class ArticleTextProcessing:
 class FileIOHelper:
     @staticmethod
     def dump_json(obj, file_name, encoding="utf-8"):
-        with open(file_name, "w", encoding=encoding) as fw:
-            json.dump(obj, fw, default=FileIOHelper.handle_non_serializable)
+        from .security import get_passphrase, encrypt_bytes
+
+        data = json.dumps(obj, default=FileIOHelper.handle_non_serializable).encode(
+            encoding
+        )
+        passphrase = get_passphrase()
+        if passphrase:
+            data = encrypt_bytes(data, passphrase)
+            with open(file_name, "wb") as fw:
+                fw.write(data)
+        else:
+            with open(file_name, "w", encoding=encoding) as fw:
+                fw.write(data.decode(encoding))
 
     @staticmethod
     def handle_non_serializable(obj):
@@ -606,28 +649,64 @@ class FileIOHelper:
 
     @staticmethod
     def load_json(file_name, encoding="utf-8"):
-        with open(file_name, "r", encoding=encoding) as fr:
-            return json.load(fr)
+        from .security import get_passphrase, decrypt_bytes
+
+        passphrase = get_passphrase()
+        if passphrase:
+            with open(file_name, "rb") as fr:
+                data = fr.read()
+            data = decrypt_bytes(data, passphrase).decode(encoding)
+            return json.loads(data)
+        else:
+            with open(file_name, "r", encoding=encoding) as fr:
+                return json.load(fr)
 
     @staticmethod
     def write_str(s, path):
-        with open(path, "w") as f:
-            f.write(s)
+        from .security import get_passphrase, encrypt_bytes
+
+        passphrase = get_passphrase()
+        if passphrase:
+            with open(path, "wb") as f:
+                f.write(encrypt_bytes(s.encode(), passphrase))
+        else:
+            with open(path, "w") as f:
+                f.write(s)
 
     @staticmethod
     def load_str(path):
-        with open(path, "r") as f:
-            return "\n".join(f.readlines())
+        from .security import get_passphrase, decrypt_bytes
+
+        passphrase = get_passphrase()
+        if passphrase:
+            with open(path, "rb") as f:
+                data = decrypt_bytes(f.read(), passphrase)
+            return data.decode()
+        else:
+            with open(path, "r") as f:
+                return "\n".join(f.readlines())
 
     @staticmethod
     def dump_pickle(obj, path):
+        from .security import get_passphrase, encrypt_bytes
+
+        data = pickle.dumps(obj)
+        passphrase = get_passphrase()
+        if passphrase:
+            data = encrypt_bytes(data, passphrase)
         with open(path, "wb") as f:
-            pickle.dump(obj, f)
+            f.write(data)
 
     @staticmethod
     def load_pickle(path):
+        from .security import get_passphrase, decrypt_bytes
+
+        passphrase = get_passphrase()
         with open(path, "rb") as f:
-            return pickle.load(f)
+            data = f.read()
+        if passphrase:
+            data = decrypt_bytes(data, passphrase)
+        return pickle.loads(data)
 
 
 class WebPageHelper:
@@ -666,7 +745,7 @@ class WebPageHelper:
                 "\uff0c",  # Fullwidth comma
                 "\u3001",  # Ideographic comma
                 " ",
-                "\u200B",  # Zero-width space
+                "\u200b",  # Zero-width space
                 "",
             ],
         )
@@ -761,7 +840,7 @@ User input: {user_input}"""
                     )
             return "Sorry, the input is inappropriate. Please try another topic!"
 
-    except Exception as e:
+    except Exception:
         return "Sorry, the input is inappropriate. Please try another topic!"
     return "Approved"
 
@@ -788,6 +867,6 @@ def purpose_appropriateness_check(user_input):
         if response.startswith("No"):
             return "Please provide a more detailed explanation on your purpose of requesting this article."
 
-    except Exception as e:
+    except Exception:
         return "Please provide a more detailed explanation on your purpose of requesting this article."
     return "Approved"

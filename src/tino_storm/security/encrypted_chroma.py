@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import base64
-from typing import Any, Iterable, List, Optional
+from typing import Any, List, Optional
 
 from chromadb import PersistentClient
 from chromadb.api import Collection

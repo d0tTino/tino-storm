@@ -475,7 +475,7 @@ class SerperRM(dspy.Retrieve):
             "POST", self.search_url, headers=headers, json=query_params
         )
 
-        if response == None:
+        if response is None:
             raise RuntimeError(
                 f"Error had occurred while running the search process.\n Error is {response.reason}, had failed with status code {response.status_code}"
             )
@@ -561,7 +561,7 @@ class SerperRM(dspy.Retrieve):
                             ),
                         }
                     )
-            except:
+            except Exception:
                 continue
 
         return collected_results
@@ -937,10 +937,6 @@ class TavilySearchRM(dspy.Retrieve):
         collected_results = []
 
         for query in queries:
-            args = {
-                "max_results": self.k,
-                "include_raw_contents": self.include_raw_content,
-            }
             #  list of dicts that will be parsed to return
             responseData = self.tavily_client.search(query)
             results = responseData.get("results")
@@ -1135,8 +1131,8 @@ class AzureAISearch(dspy.Retrieve):
         super().__init__(k=k)
 
         try:
-            from azure.core.credentials import AzureKeyCredential
-            from azure.search.documents import SearchClient
+            import azure.core.credentials  # noqa: F401
+            import azure.search.documents  # noqa: F401
         except ImportError as err:
             raise ImportError(
                 "AzureAISearch requires `pip install azure-search-documents`."

@@ -8,9 +8,9 @@ from sklearn.metrics.pairwise import cosine_similarity
 from typing import List, Union, Dict, Optional
 
 from .collaborative_storm_utils import trim_output_after_hint
-from ...dataclass import KnowledgeNode, KnowledgeBase
-from ...encoder import Encoder
-from ...interface import Information
+from ...core.dataclass import KnowledgeNode, KnowledgeBase
+from ...core.encoder import Encoder
+from ...core.interface import Information
 
 
 class InsertInformation(dspy.Signature):
@@ -168,7 +168,7 @@ class InsertInformationModule(dspy.Module):
             return int(match.group(1))
         try:
             return int(string.strip())
-        except:
+        except Exception:
             pass
         return None
 
@@ -254,7 +254,7 @@ class InsertInformationModule(dspy.Module):
                         root=insert_root,
                     )
                 return (question, query), candidate_placement
-            except Exception as e:
+            except Exception:
                 print(traceback.format_exc())
                 return (question, query), None
 

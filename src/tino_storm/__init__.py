@@ -14,7 +14,6 @@ __all__ = [
     "RunnerArgument",
     "CoStormRunner",
     "ResearchSkill",
-
 ]
 
 __version__ = "1.1.0"
@@ -33,7 +32,6 @@ _ATTR_MAP = {
     "RunnerArgument": ("tino_storm.collaborative_storm.engine", "RunnerArgument"),
     "CoStormRunner": ("tino_storm.collaborative_storm.engine", "CoStormRunner"),
     "ResearchSkill": ("tino_storm.skills", "ResearchSkill"),
-
 }
 
 

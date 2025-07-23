@@ -17,8 +17,8 @@ from .callback import BaseCallbackHandler
 from .collaborative_storm_utils import _get_answer_question_module_instance
 from .expert_generation import GenerateExpertModule
 from .grounded_question_answering import AnswerQuestionModule
-from ...dataclass import ConversationTurn, KnowledgeBase
-from ...interface import LMConfigs
+from ...core.dataclass import ConversationTurn, KnowledgeBase
+from ...core.interface import LMConfigs
 from ...logging_wrapper import LoggingWrapper
 from ...storm_wiki.modules.outline_generation import WritePageOutline
 from ...utils import ArticleTextProcessing as AP
@@ -94,7 +94,6 @@ class ReportToConversation(dspy.Module):
                 executor.submit(process_node, node, topic): node for node in nodes
             }
             for future in concurrent.futures.as_completed(future_to_node):
-                node = future_to_node[future]
                 question, answer = future.result()
                 conversations.append(
                     ConversationTurn(

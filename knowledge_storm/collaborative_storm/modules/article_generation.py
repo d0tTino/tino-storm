@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Set, Union
 
 from .collaborative_storm_utils import clean_up_section
-from ...dataclass import KnowledgeBase, KnowledgeNode
+from ...core.dataclass import KnowledgeBase, KnowledgeNode
 
 
 class ArticleGenerationModule(dspy.Module):

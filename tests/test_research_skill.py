@@ -6,14 +6,15 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from knowledge_storm.storm_wiki.modules.knowledge_curation import (
+from knowledge_storm.storm_wiki.modules.knowledge_curation import (  # noqa: E402
     StormKnowledgeCurationModule,
-    StormPersonaGenerator,
     DialogueTurn,
     StormInformationTable,
 )
-from knowledge_storm.storm_wiki.modules.callback import BaseCallbackHandler
-from knowledge_storm.interface import Information
+from knowledge_storm.storm_wiki.modules.callback import (
+    BaseCallbackHandler,
+)  # noqa: E402
+from tino_storm.core.interface import Information  # noqa: E402
 
 
 class DummyRetriever:
