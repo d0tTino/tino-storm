@@ -16,6 +16,14 @@ pip install tino-storm  # installs knowledge-storm as a dependency
 
 ```
 
+For development, install in editable mode to register the `tino-storm` command:
+
+```bash
+pip install -e .
+# verify the script is on your $PATH
+which tino-storm
+```
+
 ## Command line usage
 
 `tino-storm` provides a simple CLI.  The `research` sub-command runs a single
