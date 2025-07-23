@@ -11,6 +11,8 @@ from watchdog.observers import Observer
 import chromadb
 import trafilatura
 
+from ..events import ResearchAdded, event_emitter
+
 
 class VaultIngestHandler(FileSystemEventHandler):
     """Watch a vault directory and ingest dropped files or URLs."""
@@ -32,10 +34,17 @@ class VaultIngestHandler(FileSystemEventHandler):
         # Use timestamp to provide unique ids
         doc_id = f"{source}-{int(time.time()*1000)}"
         collection.add(documents=[text], metadatas=[{"source": source}], ids=[doc_id])
+        event_emitter.emit(
+            ResearchAdded(
+                topic=vault, information_table={"source": source, "doc_id": doc_id}
+            )
+        )
 
     def _handle_file(self, path: Path, vault: str) -> None:
         if path.suffix.lower() in {".url", ".urls"}:
-            lines = [l.strip() for l in path.read_text().splitlines() if l.strip()]
+            lines = [
+                line.strip() for line in path.read_text().splitlines() if line.strip()
+            ]
             for url in lines:
                 html = trafilatura.fetch_url(url)
                 text = trafilatura.extract(html) or ""
