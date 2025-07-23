@@ -322,14 +322,14 @@ class KnowledgeBase:
             article_generation_module (dspy.Module): The module that generate report from knowledge base.
                 The module should return string. E.g. report = article_generation_module(self)
         """
-        from .collaborative_storm.modules.article_generation import (
+        from ..collaborative_storm.modules.article_generation import (
             ArticleGenerationModule,
         )
-        from .collaborative_storm.modules.information_insertion_module import (
+        from ..collaborative_storm.modules.information_insertion_module import (
             InsertInformationModule,
             ExpandNodeModule,
         )
-        from .collaborative_storm.modules.knowledge_base_summary import (
+        from ..collaborative_storm.modules.knowledge_base_summary import (
             KnowledgeBaseSummaryModule,
         )
 

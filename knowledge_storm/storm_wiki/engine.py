@@ -13,9 +13,9 @@ from .modules.knowledge_curation import StormKnowledgeCurationModule
 from .modules.outline_generation import StormOutlineGenerationModule
 from .modules.persona_generator import StormPersonaGenerator
 from .modules.storm_dataclass import StormInformationTable, StormArticle
-from ..interface import Engine, LMConfigs, Retriever
-from ..lm import LitellmModel
-from ..utils import FileIOHelper, makeStringRed, truncate_filename
+from tino_storm.core.interface import Engine, LMConfigs, Retriever
+from tino_storm.lm import LitellmModel
+from tino_storm.core.utils import FileIOHelper, makeStringRed, truncate_filename
 
 
 class STORMWikiLMConfigs(LMConfigs):

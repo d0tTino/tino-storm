@@ -7,8 +7,13 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
-from ...interface import Information, InformationTable, Article, ArticleSectionNode
-from ...utils import ArticleTextProcessing, FileIOHelper
+from tino_storm.core.interface import (
+    Information,
+    InformationTable,
+    Article,
+    ArticleSectionNode,
+)
+from tino_storm.core.utils import ArticleTextProcessing, FileIOHelper
 
 
 class DialogueTurn:
@@ -26,7 +31,7 @@ class DialogueTurn:
 
         if self.search_results:
             for idx in range(len(self.search_results)):
-                if type(self.search_results[idx]) == dict:
+                if isinstance(self.search_results[idx], dict):
                     self.search_results[idx] = Information.from_dict(
                         self.search_results[idx]
                     )
@@ -121,7 +126,7 @@ class StormInformationTable(InformationTable):
     ) -> List[Information]:
         selected_urls = []
         selected_snippets = []
-        if type(queries) is str:
+        if isinstance(queries, str):
             queries = [queries]
         for query in queries:
             encoded_query = self.encoder.encode(query)
@@ -443,13 +448,11 @@ class StormArticle(Article):
         try:
             lines = outline_str.split("\n")
             lines = [line.strip() for line in lines if line.strip()]
-        except:
+        except Exception:
             pass
 
         instance = cls(topic)
         if lines:
-            a = lines[0].startswith("#") and lines[0].replace("#", "").strip().lower()
-            b = topic.lower().replace("_", " ")
             adjust_level = lines[0].startswith("#") and lines[0].replace(
                 "#", ""
             ).strip().lower() == topic.lower().replace("_", " ")

@@ -1,7 +1,6 @@
 import os
 import sys
 import types
-import pytest
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT_DIR not in sys.path:
@@ -138,12 +137,12 @@ if "tino_storm.rm" not in sys.modules:
     rm_mod.BingSearch = BingSearch
     sys.modules["tino_storm.rm"] = rm_mod
 
-from tino_storm.collaborative_storm.engine import (
+from tino_storm.collaborative_storm.engine import (  # noqa: E402
     CollaborativeStormLMConfigs,
     RunnerArgument,
     CoStormRunner,
 )
-from tino_storm.logging_wrapper import LoggingWrapper
+from tino_storm.logging_wrapper import LoggingWrapper  # noqa: E402
 
 
 def test_lm_config_round_trip():
@@ -151,6 +150,7 @@ def test_lm_config_round_trip():
     # initialize with a dummy provider to avoid network calls
     lm_config.init(lm_type="openai")
     args = RunnerArgument(topic="demo")
+    os.environ.setdefault("ENCODER_API_TYPE", "openai")
     runner = CoStormRunner(
         lm_config=lm_config,
         runner_argument=args,

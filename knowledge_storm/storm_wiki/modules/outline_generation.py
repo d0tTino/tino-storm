@@ -4,8 +4,8 @@ import dspy
 
 from .callback import BaseCallbackHandler
 from .storm_dataclass import StormInformationTable, StormArticle
-from ...interface import OutlineGenerationModule
-from ...utils import ArticleTextProcessing
+from tino_storm.core.interface import OutlineGenerationModule
+from tino_storm.core.utils import ArticleTextProcessing
 
 
 class StormOutlineGenerationModule(OutlineGenerationModule):

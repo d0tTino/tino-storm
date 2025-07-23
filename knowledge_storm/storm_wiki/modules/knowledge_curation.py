@@ -9,14 +9,14 @@ import dspy
 from .callback import BaseCallbackHandler
 from .persona_generator import StormPersonaGenerator
 from .storm_dataclass import DialogueTurn, StormInformationTable
-from ...interface import KnowledgeCurationModule, Retriever, Information
-from ...utils import ArticleTextProcessing
+from tino_storm.core.interface import KnowledgeCurationModule, Retriever, Information
+from tino_storm.core.utils import ArticleTextProcessing
 
 try:
     from streamlit.runtime.scriptrunner import add_script_run_ctx
 
     streamlit_connection = True
-except ImportError as err:
+except ImportError:
     streamlit_connection = False
 
 script_dir = os.path.dirname(os.path.abspath(__file__))

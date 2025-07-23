@@ -1,5 +1,5 @@
 from typing import List
-from ...interface import Information
+from ...core.interface import Information
 
 
 class BaseCallbackHandler:

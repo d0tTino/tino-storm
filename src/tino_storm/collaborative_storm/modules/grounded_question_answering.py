@@ -8,9 +8,9 @@ from .collaborative_storm_utils import (
     extract_cited_storm_info,
     separate_citations,
 )
-from ...logging_wrapper import LoggingWrapper
-from ...utils import ArticleTextProcessing
-from ...interface import Information
+from ...core.logging_wrapper import LoggingWrapper
+from ...core.utils import ArticleTextProcessing
+from ...core.interface import Information
 
 
 class QuestionToQuery(dspy.Signature):

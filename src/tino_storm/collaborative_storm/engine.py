@@ -30,12 +30,12 @@ except Exception:  # pragma: no cover - optional deps not available during tests
     CoStormExpert = _Dummy
     GenerateExpertModule = _Dummy
     WarmStartModule = _Dummy
-from ..dataclass import ConversationTurn, KnowledgeBase
-from ..encoder import Encoder
-from ..interface import LMConfigs, Agent
-from ..logging_wrapper import LoggingWrapper
+from ..core.dataclass import ConversationTurn, KnowledgeBase
+from ..core.encoder import Encoder
+from ..core.interface import LMConfigs, Agent
+from ..core.logging_wrapper import LoggingWrapper
 from ..lm import LitellmModel
-from ..rm import BingSearch
+from ..core.rm import BingSearch
 
 
 class CollaborativeStormLMConfigs(LMConfigs):
@@ -461,7 +461,7 @@ class DiscourseManager:
         )
 
     def _parse_expert_names_to_agent(self, expert_descriptions: Union[str, List[str]]):
-        if type(expert_descriptions) == str:
+        if isinstance(expert_descriptions, str):
             expert_descriptions = [expert_descriptions]
         agents: CoStormExpert = []
         for expert_name in expert_descriptions:
@@ -624,9 +624,7 @@ class CoStormRunner:
         It will also generate a first draft of report and use it to produce an engaging and concise conversation presented to the
         user to catch up with system's knowledge about the topic.
         """
-        with self.logging_wrapper.log_pipeline_stage(
-            pipeline_stage=f"warm start stage"
-        ):
+        with self.logging_wrapper.log_pipeline_stage(pipeline_stage="warm start stage"):
             if not self.runner_argument.rag_only_baseline_mode:
                 warm_start_module = WarmStartModule(
                     lm_config=self.lm_config,
