@@ -269,6 +269,22 @@ python examples/costorm_examples/run_costorm_gpt.py \
     --retriever bing
 ```
 
+### CLI
+
+Install the package and use the ``tino-storm`` command to run a basic research
+task or launch the API server.
+
+```bash
+# Run a research task and store results under ./results
+tino-storm research "Quantum computing" --output-dir ./results
+
+# Launch the FastAPI service
+tino-storm serve --host 0.0.0.0 --port 8000
+```
+
+Once the server is running you can send a ``POST`` request to ``/research`` with
+``{"topic": "Your topic"}`` to trigger a run.
+
 
 ## Customization of the Pipeline
 
