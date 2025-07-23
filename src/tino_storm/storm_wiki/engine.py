@@ -16,6 +16,7 @@ from .modules.storm_dataclass import StormInformationTable, StormArticle
 from ..interface import Engine, LMConfigs, Retriever
 from ..lm import LitellmModel
 from ..utils import FileIOHelper, makeStringRed, truncate_filename
+from ..events import ResearchAdded, DocGenerated, event_emitter
 
 
 class STORMWikiLMConfigs(LMConfigs):
@@ -172,11 +173,17 @@ class STORMWikiRunner(Engine):
     """STORM Wiki pipeline runner."""
 
     def __init__(
-        self, args: STORMWikiRunnerArguments, lm_configs: STORMWikiLMConfigs, rm
+        self,
+        args: STORMWikiRunnerArguments,
+        lm_configs: STORMWikiLMConfigs,
+        rm,
+        *,
+        emitter=event_emitter,
     ):
         super().__init__(lm_configs=lm_configs)
         self.args = args
         self.lm_configs = lm_configs
+        self.event_emitter = emitter
 
         self.retriever = Retriever(rm=rm, max_thread=self.args.max_thread_num)
         storm_persona_generator = StormPersonaGenerator(
@@ -232,6 +239,9 @@ class STORMWikiRunner(Engine):
         information_table.dump_url_to_info(
             os.path.join(self.article_output_dir, "raw_search_results.json")
         )
+        self.event_emitter.emit(
+            ResearchAdded(topic=self.topic, information_table=information_table)
+        )
         return information_table
 
     def run_outline_generation_module(
@@ -271,6 +281,7 @@ class STORMWikiRunner(Engine):
         draft_article.dump_reference_to_file(
             os.path.join(self.article_output_dir, "url_to_info.json")
         )
+        self.event_emitter.emit(DocGenerated(topic=self.topic, article=draft_article))
         return draft_article
 
     def run_article_polishing_module(
@@ -299,15 +310,13 @@ class STORMWikiRunner(Engine):
         )
 
         llm_call_history = self.lm_configs.collect_and_reset_lm_history()
-        with open(
-            os.path.join(self.article_output_dir, "llm_call_history.jsonl"), "w"
-        ) as f:
-            for call in llm_call_history:
-                if "kwargs" in call:
-                    call.pop(
-                        "kwargs"
-                    )  # All kwargs are dumped together to run_config.json.
-                f.write(json.dumps(call) + "\n")
+        log_path = os.path.join(self.article_output_dir, "llm_call_history.jsonl")
+        data = []
+        for call in llm_call_history:
+            if "kwargs" in call:
+                call.pop("kwargs")
+            data.append(json.dumps(call))
+        FileIOHelper.write_str("\n".join(data), log_path)
 
     def _load_information_table_from_local_fs(self, information_table_local_path):
         assert os.path.exists(information_table_local_path), makeStringRed(
