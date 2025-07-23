@@ -16,7 +16,7 @@ class ResearchRequest(BaseModel):
     output_dir: Optional[str] = "./results"
 
 
-app = FastAPI(title="Tino STORM API")
+app = FastAPI(title="tino-storm API")
 
 
 def _make_default_runner(output_dir: str) -> STORMWikiRunner:
