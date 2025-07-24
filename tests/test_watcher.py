@@ -78,6 +78,8 @@ def test_ingest_text_file(monkeypatch, tmp_path):
     event_emitter.subscribe(ResearchAdded, lambda e: events.append(e))
 
     monkeypatch.setattr("chromadb.PersistentClient", DummyClient)
+    # Ensure the watcher does not enable its test instrumentation
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
 
     vault_dir = tmp_path / "topic"
     vault_dir.mkdir()

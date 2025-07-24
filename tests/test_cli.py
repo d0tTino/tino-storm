@@ -1,6 +1,7 @@
 import os
 import sys
 import types
+import pytest
 
 import knowledge_storm.storm_wiki.engine as ks_engine
 
@@ -66,3 +67,23 @@ def test_cli_research_creates_files(tmp_path, monkeypatch):
     assert (tmp_path / "storm_gen_article.txt").exists()
     assert (tmp_path / "run_config.json").exists()
     assert (tmp_path / "llm_call_history.jsonl").exists()
+
+
+def test_cli_run_unknown_subcommand(capsys):
+    """Invoking the missing 'run' command should exit with an error."""
+
+    with pytest.raises(SystemExit) as exc:
+        main(["run"])
+    out, err = capsys.readouterr()
+    assert "invalid choice" in err
+    assert exc.value.code == 2
+
+
+def test_cli_unknown_vault_option(capsys):
+    """Using the deprecated '--vault' option should raise a parse error."""
+
+    with pytest.raises(SystemExit) as exc:
+        main(["ingest", "--vault", "some"])
+    out, err = capsys.readouterr()
+    assert "unrecognized arguments" in err
+    assert exc.value.code == 2
