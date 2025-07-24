@@ -5,7 +5,7 @@ from __future__ import annotations
 import base64
 from typing import Any, List, Optional
 
-from chromadb import PersistentClient
+import chromadb
 from chromadb.api import Collection
 from chromadb.config import Settings
 
@@ -62,7 +62,9 @@ class EncryptedChroma:
 
     def __init__(self, path: str, passphrase: Optional[str] = None, **settings: Any):
         self._passphrase = passphrase or get_passphrase()
-        self._client = PersistentClient(path=path, settings=Settings(**settings))
+        self._client = chromadb.PersistentClient(
+            path=path, settings=Settings(**settings)
+        )
 
     def get_or_create_collection(self, name: str, **kwargs: Any) -> EncryptedCollection:
         col = self._client.get_or_create_collection(name, **kwargs)

@@ -1,7 +1,15 @@
 import httpx
 from io import BytesIO
-from PIL import Image
-import pytesseract
+
+try:  # optional dependencies for OCR
+    from PIL import Image
+except Exception:  # pragma: no cover - optional dependency
+    Image = None
+
+try:
+    import pytesseract
+except Exception:  # pragma: no cover - optional dependency
+    pytesseract = None
 
 
 def ocr_image(url: str) -> str:

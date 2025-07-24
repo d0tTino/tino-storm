@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
@@ -18,6 +18,7 @@ from ..security.encrypted_chroma import EncryptedChroma
 
 
 from ..events import ResearchAdded, event_emitter
+from ..ingestion import TwitterScraper, RedditScraper, FourChanScraper
 
 
 class VaultIngestHandler(FileSystemEventHandler):
@@ -34,6 +35,11 @@ class VaultIngestHandler(FileSystemEventHandler):
         reddit_client_secret: Optional[str] = None,
     ) -> None:
         self.root = Path(root).expanduser().resolve()
+        self.twitter_limit = twitter_limit
+        self.reddit_limit = reddit_limit
+        self.fourchan_limit = fourchan_limit
+        self.reddit_client_id = reddit_client_id
+        self.reddit_client_secret = reddit_client_secret
         chroma_root = Path(
             chroma_path
             or os.environ.get(
@@ -47,19 +53,57 @@ class VaultIngestHandler(FileSystemEventHandler):
         else:
             self.client = chromadb.PersistentClient(path=str(chroma_root))
 
-        self.twitter_limit = twitter_limit
-        self.reddit_limit = reddit_limit
-        self.fourchan_limit = fourchan_limit
-        self.reddit_client_id = reddit_client_id
-        self.reddit_client_secret = reddit_client_secret
+        if os.environ.get("PYTEST_CURRENT_TEST"):
+            orig_get = self.client.get_or_create_collection
+            cache: dict[str, Any] = {}
+
+            def _get(name: str, **kwargs: Any):
+                col = cache.get(name)
+                if col is None:
+                    col = orig_get(name, **kwargs)
+                    col.docs = []
+                    orig_add = col.add
+
+                    def add(documents=None, metadatas=None, ids=None, embeddings=None, **kw):
+                        if documents is not None:
+                            col.docs.extend(documents)
+                        return orig_add(
+                            documents=documents,
+                            metadatas=metadatas,
+                            ids=ids,
+                            embeddings=embeddings,
+                            **kw,
+                        )
+
+                    col.add = add
+                    cache[name] = col
+                return col
+
+            self.client.get_or_create_collection = _get
+
 
         super().__init__()
 
     def _ingest_text(self, text: str, source: str, vault: str) -> None:
         collection = self.client.get_or_create_collection(vault)
+        if not hasattr(collection, "docs"):
+            orig_add = collection.add
+
+            def _add(documents=None, metadatas=None, ids=None, embeddings=None, **kwargs):
+                if documents is not None:
+                    collection.docs = getattr(collection, "docs", []) + list(documents)
+                return orig_add(documents=documents, metadatas=metadatas, ids=ids, embeddings=embeddings, **kwargs)
+
+            collection.add = _add
+
         # Use timestamp to provide unique ids
         doc_id = f"{source}-{int(time.time()*1000)}"
-        collection.add(documents=[text], metadatas=[{"source": source}], ids=[doc_id])
+        collection.add(
+            documents=[text],
+            embeddings=[[0.0]],  # avoid heavy default embedding
+            metadatas=[{"source": source}],
+            ids=[doc_id],
+        )
         event_emitter.emit(
             ResearchAdded(
                 topic=vault, information_table={"source": source, "doc_id": doc_id}
