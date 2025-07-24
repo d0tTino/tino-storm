@@ -11,6 +11,8 @@ from watchdog.observers import Observer
 import chromadb
 import trafilatura
 
+from ..ingestion import TwitterScraper, RedditScraper, FourChanScraper
+
 from ..security import get_passphrase
 from ..security.encrypted_chroma import EncryptedChroma
 
@@ -44,6 +46,12 @@ class VaultIngestHandler(FileSystemEventHandler):
             self.client = EncryptedChroma(str(chroma_root), passphrase=passphrase)
         else:
             self.client = chromadb.PersistentClient(path=str(chroma_root))
+
+        self.twitter_limit = twitter_limit
+        self.reddit_limit = reddit_limit
+        self.fourchan_limit = fourchan_limit
+        self.reddit_client_id = reddit_client_id
+        self.reddit_client_secret = reddit_client_secret
 
         super().__init__()
 
