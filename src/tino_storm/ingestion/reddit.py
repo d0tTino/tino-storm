@@ -2,7 +2,11 @@ import json
 from datetime import datetime
 from typing import List, Optional
 
-import praw
+try:  # optional praw dependency
+    import praw
+except Exception:  # pragma: no cover - optional dependency
+    praw = None
+
 import requests
 
 from .utils import ocr_image
@@ -17,11 +21,26 @@ class RedditScraper:
         client_secret: Optional[str] = None,
         user_agent: str = "storm",
     ) -> None:
-        try:
-            self.reddit = praw.Reddit(
-                client_id=client_id, client_secret=client_secret, user_agent=user_agent
-            )
-        except Exception:
+        global praw
+        if praw is None:
+            try:  # retry import in case praw becomes available
+                import praw as praw_mod
+                praw = praw_mod
+            except Exception:
+                praw_mod = None
+        else:
+            praw_mod = praw
+
+        if praw_mod is not None:
+            try:
+                self.reddit = praw_mod.Reddit(
+                    client_id=client_id,
+                    client_secret=client_secret,
+                    user_agent=user_agent,
+                )
+            except Exception:
+                self.reddit = None
+        else:
             self.reddit = None
 
     def _post_to_dict(self, post) -> dict:
