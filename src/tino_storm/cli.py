@@ -27,6 +27,25 @@ def main(argv=None):
         "--skip-polish", action="store_true", help="Skip article polishing"
     )
 
+    run_p = subparsers.add_parser("run", help="Run a single research task")
+    run_p.add_argument("--topic", required=True, help="Topic to research")
+    run_p.add_argument("--vault", help="Vault to ingest results")
+    run_p.add_argument(
+        "--output-dir", default="./results", help="Directory for generated files"
+    )
+    run_p.add_argument(
+        "--skip-research", action="store_true", help="Skip information retrieval"
+    )
+    run_p.add_argument(
+        "--skip-outline", action="store_true", help="Skip outline generation"
+    )
+    run_p.add_argument(
+        "--skip-article", action="store_true", help="Skip article generation"
+    )
+    run_p.add_argument(
+        "--skip-polish", action="store_true", help="Skip article polishing"
+    )
+
     serve_p = subparsers.add_parser("serve", help="Launch API server")
     serve_p.add_argument("--host", default="0.0.0.0")
     serve_p.add_argument("--port", type=int, default=8000)
@@ -51,6 +70,16 @@ def main(argv=None):
         run_research(
             topic=args.topic,
             output_dir=args.output_dir,
+            do_research=not args.skip_research,
+            do_generate_outline=not args.skip_outline,
+            do_generate_article=not args.skip_article,
+            do_polish_article=not args.skip_polish,
+        )
+    elif args.command == "run":
+        run_research(
+            topic=args.topic,
+            output_dir=args.output_dir,
+            vault=args.vault,
             do_research=not args.skip_research,
             do_generate_outline=not args.skip_outline,
             do_generate_article=not args.skip_article,

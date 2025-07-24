@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional
+import os
 
 from knowledge_storm import (
     STORMWikiRunnerArguments,
@@ -14,6 +15,7 @@ from knowledge_storm.rm import BingSearch
 class ResearchRequest(BaseModel):
     topic: str
     output_dir: Optional[str] = "./results"
+    vault: Optional[str] = None
 
 
 app = FastAPI(title="tino-storm API")
@@ -42,6 +44,7 @@ def _make_default_runner(output_dir: str) -> STORMWikiRunner:
 def run_research(
     topic: str,
     output_dir: str = "./results",
+    vault: Optional[str] = None,
     do_research: bool = True,
     do_generate_outline: bool = True,
     do_generate_article: bool = True,
@@ -57,8 +60,29 @@ def run_research(
     )
     runner.post_run()
 
+    if vault:
+        try:
+            from .ingest.watcher import VaultIngestHandler
+
+            root = os.environ.get("STORM_VAULT_ROOT", "research")
+            handler = VaultIngestHandler(root)
+
+            article_path = os.path.join(
+                runner.args.output_dir, "storm_gen_article_polished.txt"
+            )
+            if not os.path.exists(article_path):
+                article_path = os.path.join(
+                    runner.args.output_dir, "storm_gen_article.txt"
+                )
+
+            if os.path.exists(article_path):
+                text = open(article_path, "r", encoding="utf-8").read()
+                handler._ingest_text(text, article_path, vault)
+        except Exception:
+            pass
+
 
 @app.post("/research")
 def research(req: ResearchRequest):
-    run_research(topic=req.topic, output_dir=req.output_dir)
+    run_research(topic=req.topic, output_dir=req.output_dir, vault=req.vault)
     return {"status": "ok"}

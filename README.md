@@ -28,12 +28,16 @@ which tino-storm
 
 ## Command line usage
 
-`tino-storm` provides a simple CLI.  The `research` sub-command runs a single
-pipeline and stores all outputs under the given directory.  The `serve`
-sub-command starts the API service.
+`tino-storm` provides a simple CLI.  The `run` sub-command executes a single
+pipeline and optionally ingests the generated article into a named vault.  The
+legacy `research` sub-command behaves the same without vault support.  The
+`serve` sub-command starts the API service.
 
 ```bash
 # Run a research task locally and save results under ./results
+$ tino-storm run --topic "Quantum computing" --output-dir ./results --vault demo
+
+# Legacy syntax
 $ tino-storm research "Quantum computing" --output-dir ./results
 
 # Start the API server
