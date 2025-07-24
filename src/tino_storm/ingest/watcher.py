@@ -11,6 +11,8 @@ from watchdog.observers import Observer
 import chromadb
 import trafilatura
 
+from ..ingestion import TwitterScraper, RedditScraper, FourChanScraper
+
 from ..security import get_passphrase
 from ..security.encrypted_chroma import EncryptedChroma
 
@@ -78,6 +80,7 @@ class VaultIngestHandler(FileSystemEventHandler):
                 return col
 
             self.client.get_or_create_collection = _get
+
 
         super().__init__()
 
