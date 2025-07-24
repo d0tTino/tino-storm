@@ -66,3 +66,49 @@ def test_cli_research_creates_files(tmp_path, monkeypatch):
     assert (tmp_path / "storm_gen_article.txt").exists()
     assert (tmp_path / "run_config.json").exists()
     assert (tmp_path / "llm_call_history.jsonl").exists()
+
+
+def test_cli_run_with_vault(tmp_path, monkeypatch):
+    """Ensure new run sub-command accepts vault option."""
+
+    def dummy_runner_factory(output_dir):
+        class DummyRunner:
+            def __init__(self, dir_):
+                self.args = types.SimpleNamespace(output_dir=dir_)
+
+            def run(self, **kwargs):
+                os.makedirs(self.args.output_dir, exist_ok=True)
+                with open(
+                    os.path.join(self.args.output_dir, "storm_gen_article.txt"), "w"
+                ) as f:
+                    f.write("dummy")
+
+            def post_run(self):
+                with open(
+                    os.path.join(self.args.output_dir, "run_config.json"), "w"
+                ) as f:
+                    f.write("{}")
+                with open(
+                    os.path.join(self.args.output_dir, "llm_call_history.jsonl"), "w"
+                ) as f:
+                    f.write("{}\n")
+
+        return DummyRunner(output_dir)
+
+    monkeypatch.setattr("tino_storm.api._make_default_runner", dummy_runner_factory)
+
+    main(
+        [
+            "run",
+            "--topic",
+            "demo",
+            "--vault",
+            "test",
+            "--output-dir",
+            str(tmp_path),
+        ]
+    )
+
+    assert (tmp_path / "storm_gen_article.txt").exists()
+    assert (tmp_path / "run_config.json").exists()
+    assert (tmp_path / "llm_call_history.jsonl").exists()

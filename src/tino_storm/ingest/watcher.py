@@ -18,7 +18,6 @@ from ..security.encrypted_chroma import EncryptedChroma
 
 
 from ..events import ResearchAdded, event_emitter
-from ..ingestion import TwitterScraper, RedditScraper, FourChanScraper
 
 
 class VaultIngestHandler(FileSystemEventHandler):
@@ -35,11 +34,6 @@ class VaultIngestHandler(FileSystemEventHandler):
         reddit_client_secret: Optional[str] = None,
     ) -> None:
         self.root = Path(root).expanduser().resolve()
-        self.twitter_limit = twitter_limit
-        self.reddit_limit = reddit_limit
-        self.fourchan_limit = fourchan_limit
-        self.reddit_client_id = reddit_client_id
-        self.reddit_client_secret = reddit_client_secret
         chroma_root = Path(
             chroma_path
             or os.environ.get(
@@ -61,6 +55,8 @@ class VaultIngestHandler(FileSystemEventHandler):
                 col = cache.get(name)
                 if col is None:
                     col = orig_get(name, **kwargs)
+                    cache[name] = col
+                if not hasattr(col, "docs"):
                     col.docs = []
                     orig_add = col.add
 
@@ -76,11 +72,15 @@ class VaultIngestHandler(FileSystemEventHandler):
                         )
 
                     col.add = add
-                    cache[name] = col
                 return col
 
             self.client.get_or_create_collection = _get
 
+        self.twitter_limit = twitter_limit
+        self.reddit_limit = reddit_limit
+        self.fourchan_limit = fourchan_limit
+        self.reddit_client_id = reddit_client_id
+        self.reddit_client_secret = reddit_client_secret
 
         super().__init__()
 
