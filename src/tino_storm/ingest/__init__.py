@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 from .watcher import start_watcher, VaultIngestHandler
+from .search import search_vaults
 
 
 def ingest_path(
@@ -36,4 +37,4 @@ def ingest_path(
     handler._handle_file(Path(path).expanduser(), vault)
 
 
-__all__ = ["start_watcher", "VaultIngestHandler", "ingest_path"]
+__all__ = ["start_watcher", "VaultIngestHandler", "ingest_path", "search_vaults"]
