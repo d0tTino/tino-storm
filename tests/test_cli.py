@@ -115,15 +115,20 @@ def test_cli_run_with_vault(tmp_path, monkeypatch):
 
 
 def test_cli_search(monkeypatch, capsys):
-    """Search sub-command should print URL and snippet."""
+    """Search command queries vaults and prints results."""
 
-    def dummy_search(query, vaults):
-        assert query == "q"
-        assert vaults == ["v1", "v2"]
-        return [{"url": "u", "snippets": ["result text"]}]
+    calls = []
 
-    monkeypatch.setattr("tino_storm.cli.search_vaults", dummy_search)
+    def fake_search(query, vaults, *, k_per_vault=5, rrf_k=60, chroma_path=None):
+        calls.append((query, list(vaults), k_per_vault, rrf_k))
+        return [{"url": "example.com", "snippets": ["result"]}]
 
-    main(["search", "q", "v1,v2"])
-    output = capsys.readouterr().out
-    assert "u: result text" in output
+    monkeypatch.setattr("tino_storm.ingest.search_vaults", fake_search)
+    monkeypatch.setattr("tino_storm.cli.search_vaults", fake_search)
+
+    main(["search", "--query", "ai", "--vaults", "science,notes"])
+
+    out = capsys.readouterr().out
+    assert calls == [("ai", ["science", "notes"], 5, 60)]
+    assert "example.com" in out
+
