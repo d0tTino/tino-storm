@@ -72,6 +72,18 @@ that produce JSON manifests.  Each item in a manifest should contain at least
 Drop such a `manifest.json` file inside your vault to have all entries ingested
 as individual documents.
 
+#### Cross-vault search
+
+Documents are stored in separate Chroma namespaces per vault.  Use
+`search_vaults()` to query multiple vaults at once and aggregate the results
+with Reciprocal Rank Fusion:
+
+```python
+from tino_storm.ingest import search_vaults
+
+results = search_vaults("machine learning", ["science", "notes"])
+```
+
 ### HTTP API
 
 When running `tino-storm serve` the following POST endpoints become available:
