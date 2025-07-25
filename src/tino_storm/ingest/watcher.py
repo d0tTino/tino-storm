@@ -12,7 +12,12 @@ from watchdog.observers import Observer
 import chromadb
 import trafilatura
 
-from ..ingestion import TwitterScraper, RedditScraper, FourChanScraper
+from ..ingestion import (
+    TwitterScraper,
+    RedditScraper,
+    FourChanScraper,
+    ArxivScraper,
+)
 
 from ..security import (
     get_passphrase,
@@ -164,6 +169,18 @@ class VaultIngestHandler(FileSystemEventHandler):
                 if post.get("images_text"):
                     text += "\n" + "\n".join(post["images_text"])
                 self._ingest_text(text, post.get("url", query), vault)
+        elif suffix == ".arxiv":
+            ids = [ln.strip() for ln in path.read_text().splitlines() if ln.strip()]
+            scraper = ArxivScraper()
+            for paper in scraper.fetch_many(ids):
+                text = (
+                    paper.get("title", "")
+                    + "\n"
+                    + paper.get("summary", "")
+                    + "\n"
+                    + paper.get("pdf_text", "")
+                ).strip()
+                self._ingest_text(text, paper.get("url", paper.get("id")), vault)
         elif suffix == ".4chan":
             lines = [ln.strip() for ln in path.read_text().splitlines() if ln.strip()]
             if len(lines) < 2:

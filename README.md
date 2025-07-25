@@ -72,6 +72,9 @@ that produce JSON manifests.  Each item in a manifest should contain at least
 Drop such a `manifest.json` file inside your vault to have all entries ingested
 as individual documents.
 
+An `.arxiv` file with one identifier per line downloads each paper's metadata
+and PDF text for ingestion.
+
 #### Cross-vault search
 
 Documents are stored in separate Chroma namespaces per vault.  Use
