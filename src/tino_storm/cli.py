@@ -5,7 +5,6 @@ from .api import app, run_research
 from .ingest import start_watcher, search_vaults
 
 
-
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Run STORM research pipelines")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -72,10 +71,6 @@ def main(argv=None):
     )
     ingest_p.add_argument("--reddit-client-id")
     ingest_p.add_argument("--reddit-client-secret")
-
-    search_p = subparsers.add_parser("search", help="Search across vaults")
-    search_p.add_argument("query", help="Query string")
-    search_p.add_argument("vaults", help="Comma-separated list of vaults to search")
 
     args = parser.parse_args(argv)
 
