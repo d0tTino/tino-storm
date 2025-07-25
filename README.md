@@ -72,6 +72,19 @@ that produce JSON manifests.  Each item in a manifest should contain at least
 Drop such a `manifest.json` file inside your vault to have all entries ingested
 as individual documents.
 
+### HTTP API
+
+When running `tino-storm serve` the following POST endpoints become available:
+
+- `/research` – execute the full pipeline and optionally ingest the result.
+- `/outline` – run just the research and outline steps.
+- `/draft` – generate a draft article without the polishing stage.
+- `/ingest` – store arbitrary text in a named vault.
+
+The first three endpoints accept a JSON body with `topic`, optional
+`output_dir` and `vault` fields.  The `/ingest` endpoint expects `text`,
+`vault` and an optional `source` identifying the origin of the text.
+
 ## Programmatic API
 
 The CLI itself is a thin layer over the API defined in `tino_storm.api`.
