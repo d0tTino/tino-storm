@@ -112,3 +112,18 @@ def test_cli_run_with_vault(tmp_path, monkeypatch):
     assert (tmp_path / "storm_gen_article.txt").exists()
     assert (tmp_path / "run_config.json").exists()
     assert (tmp_path / "llm_call_history.jsonl").exists()
+
+
+def test_cli_search(monkeypatch, capsys):
+    """Search sub-command should print URL and snippet."""
+
+    def dummy_search(query, vaults):
+        assert query == "q"
+        assert vaults == ["v1", "v2"]
+        return [{"url": "u", "snippets": ["result text"]}]
+
+    monkeypatch.setattr("tino_storm.cli.search_vaults", dummy_search)
+
+    main(["search", "q", "v1,v2"])
+    output = capsys.readouterr().out
+    assert "u: result text" in output

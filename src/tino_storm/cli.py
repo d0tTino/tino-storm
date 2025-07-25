@@ -2,7 +2,7 @@ import argparse
 import uvicorn
 
 from .api import app, run_research
-from .ingest import start_watcher
+from .ingest import search_vaults, start_watcher
 
 
 def main(argv=None):
@@ -64,6 +64,10 @@ def main(argv=None):
     ingest_p.add_argument("--reddit-client-id")
     ingest_p.add_argument("--reddit-client-secret")
 
+    search_p = subparsers.add_parser("search", help="Search across vaults")
+    search_p.add_argument("query", help="Query string")
+    search_p.add_argument("vaults", help="Comma-separated list of vaults to search")
+
     args = parser.parse_args(argv)
 
     if args.command == "research":
@@ -96,6 +100,12 @@ def main(argv=None):
             reddit_client_id=args.reddit_client_id,
             reddit_client_secret=args.reddit_client_secret,
         )
+    elif args.command == "search":
+        vaults = [v.strip() for v in args.vaults.split(",") if v.strip()]
+        results = search_vaults(args.query, vaults)
+        for item in results:
+            snippet = item.get("snippets", [""])[0]
+            print(f"{item['url']}: {snippet[:80]}")
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point
