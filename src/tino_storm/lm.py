@@ -10,6 +10,8 @@ from typing import Optional, Literal, Any
 import ujson
 from pathlib import Path
 
+from .security import log_request
+
 
 from dsp import ERRORS, backoff_hdlr, giveup_hdlr
 from dsp.modules.hf import openai_to_hf
@@ -423,9 +425,9 @@ class DeepSeekModel(dspy.OpenAI):
             "messages": [{"role": "user", "content": prompt}],
             **kwargs,
         }
-        response = requests.post(
-            f"{self.api_base}/v1/chat/completions", headers=headers, json=data
-        )
+        url = f"{self.api_base}/v1/chat/completions"
+        log_request("POST", url)
+        response = requests.post(url, headers=headers, json=data)
         response.raise_for_status()
         return response.json()
 
@@ -671,9 +673,9 @@ class GroqModel(dspy.OpenAI):
         for message in data["messages"]:
             message.pop("name", None)
 
-        response = requests.post(
-            f"{self.api_base}/chat/completions", headers=headers, json=data
-        )
+        url = f"{self.api_base}/chat/completions"
+        log_request("POST", url)
+        response = requests.post(url, headers=headers, json=data)
         response.raise_for_status()
         return response.json()
 

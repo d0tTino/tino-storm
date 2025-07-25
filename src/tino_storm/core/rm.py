@@ -5,6 +5,8 @@ from typing import Callable, Union, List
 import backoff
 import dspy
 import requests
+
+from ..security import log_request
 from dsp import backoff_hdlr, giveup_hdlr
 
 from .utils import WebPageHelper
@@ -57,8 +59,10 @@ class YouRM(dspy.Retrieve):
         for query in queries:
             try:
                 headers = {"X-API-Key": self.ydc_api_key}
+                url = f"https://api.ydc-index.io/search?query={query}"
+                log_request("GET", url)
                 results = requests.get(
-                    f"https://api.ydc-index.io/search?query={query}",
+                    url,
                     headers=headers,
                 ).json()
 
@@ -150,6 +154,7 @@ class BingSearch(dspy.Retrieve):
 
         for query in queries:
             try:
+                log_request("GET", self.endpoint)
                 results = requests.get(
                     self.endpoint, headers=headers, params={**self.params, "q": query}
                 ).json()
@@ -355,6 +360,7 @@ class StanfordOvalArxivRM(dspy.Retrieve):
     def _retrieve(self, query: str):
         payload = {"query": query, "num_blocks": self.k, "rerank": self.rerank}
 
+        log_request("POST", self.endpoint)
         response = requests.post(
             self.endpoint, json=payload, headers={"Content-Type": "application/json"}
         )
@@ -471,6 +477,7 @@ class SerperRM(dspy.Retrieve):
             "Content-Type": "application/json",
         }
 
+        log_request("POST", self.search_url)
         response = requests.request(
             "POST", self.search_url, headers=headers, json=query_params
         )
@@ -620,8 +627,10 @@ class BraveRM(dspy.Retrieve):
                     "Accept-Encoding": "gzip",
                     "X-Subscription-Token": self.brave_search_api_key,
                 }
+                url = f"https://api.search.brave.com/res/v1/web/search?result_filter=web&q={query}"
+                log_request("GET", url)
                 response = requests.get(
-                    f"https://api.search.brave.com/res/v1/web/search?result_filter=web&q={query}",
+                    url,
                     headers=headers,
                 ).json()
                 results = response.get("web", {}).get("results", [])
@@ -704,6 +713,7 @@ class SearXNG(dspy.Retrieve):
         for query in queries:
             try:
                 params = {"q": query, "format": "json"}
+                log_request("GET", self.searxng_api_url)
                 response = requests.get(
                     self.searxng_api_url, headers=headers, params=params
                 )

@@ -170,6 +170,22 @@ Existing users who set a passphrase for the first time should remove the old
 `~/.tino_storm/chroma` directory and re-ingest any vault data so the documents
 are encrypted.
 
+To also encrypt any Parquet files created by Chroma, enable the
+``encrypt_parquet`` flag:
+
+```yaml
+passphrase: "my secret passphrase"
+encrypt_parquet: true
+```
+
+The watcher and ``search_vaults`` utility will transparently decrypt and re-
+encrypt these files when running.
+
+### Audit log
+
+All external HTTP requests made by STORM are recorded in
+``~/.tino_storm/audit.log``.  Each entry includes a timestamp, method and URL.
+
 ## Citation
 
 If you use STORM or Co‑STORM in academic work, please cite the following:

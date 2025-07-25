@@ -4,6 +4,8 @@ from typing import List
 
 import requests
 
+from ..security import log_request
+
 from .utils import ocr_image
 
 
@@ -14,6 +16,7 @@ class FourChanScraper:
 
     def fetch_thread(self, board: str, thread_no: int) -> List[dict]:
         url = self.API_URL.format(board=board, thread=thread_no)
+        log_request("GET", url)
         resp = requests.get(url, timeout=10)
         resp.raise_for_status()
         data = resp.json()

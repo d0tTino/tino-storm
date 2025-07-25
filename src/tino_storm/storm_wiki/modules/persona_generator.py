@@ -4,12 +4,15 @@ from typing import Union, List
 
 import dspy
 import requests
+
+from ...security import log_request
 from bs4 import BeautifulSoup
 
 
 def get_wiki_page_title_and_toc(url):
     """Get the main title and table of contents from an url of a Wikipedia page."""
 
+    log_request("GET", url)
     response = requests.get(url)
     soup = BeautifulSoup(response.content, "html.parser")
 

@@ -1,6 +1,8 @@
 import httpx
 from io import BytesIO
 
+from ..security import log_request
+
 try:  # optional dependencies for OCR
     from PIL import Image
 except Exception:  # pragma: no cover - optional dependency
@@ -15,6 +17,7 @@ except Exception:  # pragma: no cover - optional dependency
 def ocr_image(url: str) -> str:
     """Download an image from ``url`` and return extracted text using pytesseract."""
     try:
+        log_request("GET", url)
         resp = httpx.get(url, timeout=10)
         resp.raise_for_status()
         image = Image.open(BytesIO(resp.content))
