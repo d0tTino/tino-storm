@@ -5,7 +5,7 @@ eagerly importing heavy dependencies when the package is imported.
 Submodules should be imported explicitly by consumers as needed.
 """
 
-__all__ = ["__version__"]
+__all__ = ["__version__", "rm"]
 
 # importing these modules here previously pulled in numerous optional
 # dependencies during test discovery. To keep startup lightweight we no
