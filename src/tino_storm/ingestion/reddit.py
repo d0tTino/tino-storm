@@ -9,6 +9,8 @@ except Exception:  # pragma: no cover - optional dependency
 
 import requests
 
+from ..security import log_request
+
 from .utils import ocr_image
 
 
@@ -25,6 +27,7 @@ class RedditScraper:
         if praw is None:
             try:  # retry import in case praw becomes available
                 import praw as praw_mod
+
                 praw = praw_mod
             except Exception:
                 praw_mod = None
@@ -62,6 +65,7 @@ class RedditScraper:
     def _pushshift_search(self, subreddit: str, query: str, limit: int) -> List[dict]:
         url = "https://api.pushshift.io/reddit/search/submission"
         params = {"subreddit": subreddit, "q": query, "size": limit}
+        log_request("GET", url)
         resp = requests.get(url, params=params, timeout=10)
         resp.raise_for_status()
         data = resp.json().get("data", [])

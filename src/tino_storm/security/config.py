@@ -26,3 +26,9 @@ def get_passphrase() -> str | None:
     if isinstance(val, str) and val:
         return val
     return None
+
+
+def encrypt_parquet_enabled() -> bool:
+    """Return ``True`` if parquet encryption is enabled in the config."""
+    cfg = load_config()
+    return bool(cfg.get("encrypt_parquet"))

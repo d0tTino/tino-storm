@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import os
+import atexit
 from pathlib import Path
 from typing import Any, Iterable, List, Dict, Optional
 
 import chromadb
 
-from ..security import get_passphrase
+from ..security import (
+    get_passphrase,
+    encrypt_parquet_enabled,
+    decrypt_parquet_files,
+    encrypt_parquet_files,
+)
 from ..security.encrypted_chroma import EncryptedChroma
 from ..retrieval.rrf import reciprocal_rank_fusion
 from ..retrieval.scoring import score_results
@@ -29,6 +35,9 @@ def search_vaults(
 
     passphrase = get_passphrase()
     if passphrase:
+        if encrypt_parquet_enabled():
+            decrypt_parquet_files(str(chroma_root), passphrase)
+            atexit.register(encrypt_parquet_files, str(chroma_root), passphrase)
         client = EncryptedChroma(str(chroma_root), passphrase=passphrase)
     else:
         client = chromadb.PersistentClient(path=str(chroma_root))

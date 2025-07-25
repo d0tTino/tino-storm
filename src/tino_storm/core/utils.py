@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import concurrent.futures
 import httpx
+
+from ..security import log_request
 import json
 import logging
 import os
@@ -752,6 +754,7 @@ class WebPageHelper:
 
     def download_webpage(self, url: str):
         try:
+            log_request("GET", url)
             res = self.httpx_client.get(url, timeout=4)
             if res.status_code >= 400:
                 res.raise_for_status()

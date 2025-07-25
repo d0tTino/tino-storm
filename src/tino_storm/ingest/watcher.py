@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import time
+import atexit
 from pathlib import Path
 from typing import Any, Optional
 
@@ -13,7 +14,12 @@ import trafilatura
 
 from ..ingestion import TwitterScraper, RedditScraper, FourChanScraper
 
-from ..security import get_passphrase
+from ..security import (
+    get_passphrase,
+    encrypt_parquet_enabled,
+    decrypt_parquet_files,
+    encrypt_parquet_files,
+)
 from ..security.encrypted_chroma import EncryptedChroma
 
 
@@ -41,11 +47,15 @@ class VaultIngestHandler(FileSystemEventHandler):
             )
         ).expanduser()
         chroma_root.mkdir(parents=True, exist_ok=True)
+        self._chroma_root = str(chroma_root)
         passphrase = get_passphrase()
         if passphrase:
-            self.client = EncryptedChroma(str(chroma_root), passphrase=passphrase)
+            if encrypt_parquet_enabled():
+                decrypt_parquet_files(self._chroma_root, passphrase)
+                atexit.register(encrypt_parquet_files, self._chroma_root, passphrase)
+            self.client = EncryptedChroma(self._chroma_root, passphrase=passphrase)
         else:
-            self.client = chromadb.PersistentClient(path=str(chroma_root))
+            self.client = chromadb.PersistentClient(path=self._chroma_root)
 
         if os.environ.get("PYTEST_CURRENT_TEST"):
             orig_get = self.client.get_or_create_collection
@@ -60,7 +70,9 @@ class VaultIngestHandler(FileSystemEventHandler):
                     col.docs = []
                     orig_add = col.add
 
-                    def add(documents=None, metadatas=None, ids=None, embeddings=None, **kw):
+                    def add(
+                        documents=None, metadatas=None, ids=None, embeddings=None, **kw
+                    ):
                         if documents is not None:
                             col.docs.extend(documents)
                         return orig_add(
@@ -89,10 +101,18 @@ class VaultIngestHandler(FileSystemEventHandler):
         if not hasattr(collection, "docs"):
             orig_add = collection.add
 
-            def _add(documents=None, metadatas=None, ids=None, embeddings=None, **kwargs):
+            def _add(
+                documents=None, metadatas=None, ids=None, embeddings=None, **kwargs
+            ):
                 if documents is not None:
                     collection.docs = getattr(collection, "docs", []) + list(documents)
-                return orig_add(documents=documents, metadatas=metadatas, ids=ids, embeddings=embeddings, **kwargs)
+                return orig_add(
+                    documents=documents,
+                    metadatas=metadatas,
+                    ids=ids,
+                    embeddings=embeddings,
+                    **kwargs,
+                )
 
             collection.add = _add
 
