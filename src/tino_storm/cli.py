@@ -2,7 +2,7 @@ import argparse
 import uvicorn
 
 from .api import app, run_research
-from .ingest import start_watcher
+from .ingest import start_watcher, search_vaults
 
 
 def main(argv=None):
@@ -45,6 +45,14 @@ def main(argv=None):
     run_p.add_argument(
         "--skip-polish", action="store_true", help="Skip article polishing"
     )
+
+    search_p = subparsers.add_parser("search", help="Query ingested vaults")
+    search_p.add_argument("--query", required=True, help="Search text")
+    search_p.add_argument(
+        "--vaults", required=True, help="Comma-separated list of vaults"
+    )
+    search_p.add_argument("--k-per-vault", type=int, default=5)
+    search_p.add_argument("--rrf-k", type=int, default=60)
 
     serve_p = subparsers.add_parser("serve", help="Launch API server")
     serve_p.add_argument("--host", default="0.0.0.0")
@@ -96,6 +104,16 @@ def main(argv=None):
             reddit_client_id=args.reddit_client_id,
             reddit_client_secret=args.reddit_client_secret,
         )
+    elif args.command == "search":
+        results = search_vaults(
+            args.query,
+            args.vaults.split(","),
+            k_per_vault=args.k_per_vault,
+            rrf_k=args.rrf_k,
+        )
+        for item in results:
+            snippet = item.get("snippets", [""])[0]
+            print(f"{item['url']}: {snippet[:80]}")
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point

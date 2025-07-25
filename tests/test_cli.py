@@ -112,3 +112,22 @@ def test_cli_run_with_vault(tmp_path, monkeypatch):
     assert (tmp_path / "storm_gen_article.txt").exists()
     assert (tmp_path / "run_config.json").exists()
     assert (tmp_path / "llm_call_history.jsonl").exists()
+
+
+def test_cli_search(monkeypatch, capsys):
+    """Search command queries vaults and prints results."""
+
+    calls = []
+
+    def fake_search(query, vaults, *, k_per_vault=5, rrf_k=60, chroma_path=None):
+        calls.append((query, list(vaults), k_per_vault, rrf_k))
+        return [{"url": "example.com", "snippets": ["result"]}]
+
+    monkeypatch.setattr("tino_storm.ingest.search_vaults", fake_search)
+    monkeypatch.setattr("tino_storm.cli.search_vaults", fake_search)
+
+    main(["search", "--query", "ai", "--vaults", "science,notes"])
+
+    out = capsys.readouterr().out
+    assert calls == [("ai", ["science", "notes"], 5, 60)]
+    assert "example.com" in out
