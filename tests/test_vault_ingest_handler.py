@@ -88,3 +88,29 @@ def test_handle_fourchan(monkeypatch, tmp_path):
         res,
     )
     assert captured[0][0] == "p"
+
+
+def test_handle_urls(monkeypatch, tmp_path):
+    urls = ["http://a", "http://b"]
+    root = tmp_path / "vault"
+    vault = root / "topic"
+    vault.mkdir(parents=True)
+    file = vault / "links.urls"
+    file.write_text("\n".join(urls))
+    handler = VaultIngestHandler(str(root))
+    captured = []
+    monkeypatch.setattr(
+        handler, "_ingest_text", lambda text, src, v: captured.append((text, src, v))
+    )
+    monkeypatch.setattr(
+        "tino_storm.ingest.watcher.trafilatura.fetch_url",
+        lambda url: url,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "tino_storm.ingest.watcher.trafilatura.extract", lambda html: html
+    )
+    handler._handle_file(file, "topic")
+    assert [c[1] for c in captured] == urls
+    assert len(captured) == len(urls)
+
