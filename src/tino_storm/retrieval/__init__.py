@@ -1,6 +1,7 @@
 """Utilities for advanced retrieval ranking."""
 
 from .rrf import reciprocal_rank_fusion
+from .scoring import compute_score, score_results
 from typing import List, Dict, Any
 
 
@@ -16,4 +17,4 @@ def combine_ranks(
     )
 
 
-__all__ = ["reciprocal_rank_fusion", "combine_ranks"]
+__all__ = ["reciprocal_rank_fusion", "combine_ranks", "compute_score", "score_results"]

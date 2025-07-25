@@ -9,6 +9,7 @@ import chromadb
 from ..security import get_passphrase
 from ..security.encrypted_chroma import EncryptedChroma
 from ..retrieval.rrf import reciprocal_rank_fusion
+from ..retrieval.scoring import score_results
 
 
 def search_vaults(
@@ -47,9 +48,9 @@ def search_vaults(
         for idx, doc in enumerate(docs):
             meta = metas[idx] if idx < len(metas) else {}
             url = meta.get("source", str(idx))
-            ranking.append({"url": url, "snippets": [doc]})
+            ranking.append({"url": url, "snippets": [doc], "meta": meta})
         if ranking:
-            rankings.append(ranking)
+            rankings.append(score_results(ranking))
 
     if not rankings:
         return []
