@@ -9,8 +9,11 @@ import dspy
 from .callback import BaseCallbackHandler
 from .persona_generator import StormPersonaGenerator
 from .storm_dataclass import DialogueTurn, StormInformationTable
+from .retriever import is_valid_wikipedia_source
 from ...core.interface import KnowledgeCurationModule, Retriever, Information
 from ...core.utils import ArticleTextProcessing
+from ...retrieval import combine_ranks
+from difflib import SequenceMatcher
 
 try:
     from streamlit.runtime.scriptrunner import add_script_run_ctx
@@ -215,6 +218,21 @@ class TopicExpert(dspy.Module):
                 list(set(queries)), exclude_urls=[ground_truth_url]
             )
             if len(searched_results) > 0:
+                recency_ranking = searched_results
+                authority_ranking = sorted(
+                    searched_results,
+                    key=lambda r: 0 if is_valid_wikipedia_source(r.url) else 1,
+                )
+
+                def _sim(info):
+                    snippet = info.snippets[0] if info.snippets else ""
+                    return SequenceMatcher(None, question, snippet).ratio()
+
+                similarity_ranking = sorted(searched_results, key=_sim, reverse=True)
+
+                searched_results = combine_ranks(
+                    recency_ranking, authority_ranking, similarity_ranking
+                )
                 # Evaluate: Simplify this part by directly using the top 1 snippet.
                 info = ""
                 for n, r in enumerate(searched_results):
