@@ -18,6 +18,12 @@ class ResearchRequest(BaseModel):
     vault: Optional[str] = None
 
 
+class IngestRequest(BaseModel):
+    text: str
+    vault: str
+    source: Optional[str] = None
+
+
 app = FastAPI(title="tino-storm API")
 
 
@@ -85,4 +91,37 @@ def run_research(
 @app.post("/research")
 def research(req: ResearchRequest):
     run_research(topic=req.topic, output_dir=req.output_dir, vault=req.vault)
+    return {"status": "ok"}
+
+
+@app.post("/outline")
+def outline(req: ResearchRequest):
+    run_research(
+        topic=req.topic,
+        output_dir=req.output_dir,
+        vault=req.vault,
+        do_generate_article=False,
+        do_polish_article=False,
+    )
+    return {"status": "ok"}
+
+
+@app.post("/draft")
+def draft(req: ResearchRequest):
+    run_research(
+        topic=req.topic,
+        output_dir=req.output_dir,
+        vault=req.vault,
+        do_polish_article=False,
+    )
+    return {"status": "ok"}
+
+
+@app.post("/ingest")
+def ingest(req: IngestRequest):
+    from .ingest.watcher import VaultIngestHandler
+
+    root = os.environ.get("STORM_VAULT_ROOT", "research")
+    handler = VaultIngestHandler(root)
+    handler._ingest_text(req.text, req.source or "api", req.vault)
     return {"status": "ok"}

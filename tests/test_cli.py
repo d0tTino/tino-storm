@@ -1,7 +1,6 @@
 import os
 import sys
 import types
-import pytest
 
 import knowledge_storm.storm_wiki.engine as ks_engine
 
@@ -113,4 +112,3 @@ def test_cli_run_with_vault(tmp_path, monkeypatch):
     assert (tmp_path / "storm_gen_article.txt").exists()
     assert (tmp_path / "run_config.json").exists()
     assert (tmp_path / "llm_call_history.jsonl").exists()
-
