@@ -131,3 +131,4 @@ def test_cli_search(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert calls == [("ai", ["science", "notes"], 5, 60)]
     assert "example.com" in out
+
