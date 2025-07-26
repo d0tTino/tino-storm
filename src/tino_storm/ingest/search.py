@@ -16,6 +16,7 @@ from ..security import (
 from ..security.encrypted_chroma import EncryptedChroma
 from ..retrieval.rrf import reciprocal_rank_fusion
 from ..retrieval.scoring import score_results
+from ..retrieval.bayes import add_posteriors
 
 
 def search_vaults(
@@ -64,4 +65,5 @@ def search_vaults(
     if not rankings:
         return []
 
-    return reciprocal_rank_fusion(rankings, k=rrf_k)
+    fused = reciprocal_rank_fusion(rankings, k=rrf_k)
+    return add_posteriors(fused)
