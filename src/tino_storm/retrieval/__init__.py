@@ -2,6 +2,7 @@
 
 from .rrf import reciprocal_rank_fusion
 from .scoring import compute_score, score_results
+from .bayes import update_posterior, add_posteriors
 from typing import List, Dict, Any
 
 
@@ -17,4 +18,11 @@ def combine_ranks(
     )
 
 
-__all__ = ["reciprocal_rank_fusion", "combine_ranks", "compute_score", "score_results"]
+__all__ = [
+    "reciprocal_rank_fusion",
+    "combine_ranks",
+    "compute_score",
+    "score_results",
+    "update_posterior",
+    "add_posteriors",
+]
