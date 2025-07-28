@@ -78,6 +78,9 @@ as individual documents.
 An `.arxiv` file with one identifier per line downloads each paper's metadata
 and PDF text for ingestion.
 
+A `.web` file should contain a JSON array of URLs. Each listed page will be
+fetched and the extracted text ingested as a separate document.
+
 #### Cross-vault search
 
 Documents are stored in separate Chroma namespaces per vault.  Use

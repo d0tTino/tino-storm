@@ -1,5 +1,6 @@
 import sys
 import types
+import json
 
 if "snscrape.modules.twitter" not in sys.modules:
     mod = types.ModuleType("snscrape.modules.twitter")
@@ -114,3 +115,32 @@ def test_handle_urls(monkeypatch, tmp_path):
     assert [c[1] for c in captured] == urls
     assert len(captured) == len(urls)
 
+
+def test_handle_web(monkeypatch, tmp_path):
+    pages = [
+        {"url": "http://a", "text": "ta"},
+        {"url": "http://b", "text": "tb"},
+    ]
+
+    class DummyCrawler:
+        def __init__(self):
+            self._res = pages.copy()
+
+        def fetch(self, url):
+            return self._res.pop(0)
+
+    root = tmp_path / "vault"
+    vault = root / "topic"
+    vault.mkdir(parents=True)
+    file = vault / "manifest.web"
+    file.write_text(json.dumps([p["url"] for p in pages]))
+    handler = VaultIngestHandler(str(root))
+    captured = []
+    monkeypatch.setattr(
+        handler, "_ingest_text", lambda t, s, v: captured.append((t, s, v))
+    )
+    monkeypatch.setattr(
+        "tino_storm.ingest.watcher.WebCrawler", lambda *a, **k: DummyCrawler()
+    )
+    handler._handle_file(file, "topic")
+    assert [c[0] for c in captured] == ["ta", "tb"]

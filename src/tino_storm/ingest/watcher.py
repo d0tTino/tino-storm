@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import time
 import atexit
+import json
 from pathlib import Path
 from typing import Any, Optional
 
@@ -17,6 +18,7 @@ from ..ingestion import (
     RedditScraper,
     FourChanScraper,
     ArxivScraper,
+    WebCrawler,
 )
 
 from ..security import (
@@ -146,6 +148,26 @@ class VaultIngestHandler(FileSystemEventHandler):
                 text = trafilatura.extract(html) or ""
                 if text:
                     self._ingest_text(text, url, vault)
+        elif suffix == ".web":
+            try:
+                data = json.loads(path.read_text())
+            except Exception:
+                return
+            urls = []
+            if isinstance(data, list):
+                for item in data:
+                    if isinstance(item, str):
+                        urls.append(item)
+                    elif isinstance(item, dict) and "url" in item:
+                        urls.append(item["url"])
+            if not urls:
+                return
+            crawler = WebCrawler()
+            for url in urls:
+                result = crawler.fetch(url)
+                text = result.get("text", "")
+                if text:
+                    self._ingest_text(text, result.get("url", url), vault)
         elif suffix == ".twitter":
             query = path.read_text().strip()
             scraper = TwitterScraper()
