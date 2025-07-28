@@ -107,7 +107,10 @@ class ResearchSkill:
 
         self.cloud_allowed = cloud_allowed
         if cloud_allowed:
-            lm = _DummyLM()
+            try:
+                lm = dspy.LM("gpt-3.5-turbo")
+            except Exception:
+                lm = _DummyLM()
         else:
             try:
                 lm = dspy.HFModel("google/flan-t5-small")

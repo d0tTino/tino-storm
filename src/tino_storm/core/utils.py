@@ -173,7 +173,14 @@ class QdrantVectorStoreManager:
         embedding_model: str = "BAAI/bge-m3",
         device: str = "mps",
     ):
-        from langchain_core.documents import Document
+        try:
+            from langchain_core.documents import Document
+        except Exception:  # pragma: no cover - fallback for tests without langchain
+
+            class Document:
+                def __init__(self, page_content, metadata):
+                    self.page_content = page_content
+                    self.metadata = metadata
 
         """
         Takes a CSV file and adds each row in the CSV file to the Qdrant collection.
