@@ -26,5 +26,7 @@ The watcher recognises several file extensions and processes them via the ingest
 - `.reddit` – first line subreddit, optional second line query, scraped by [`reddit.py`](../src/tino_storm/ingestion/reddit.py)
 - `.arxiv` – one arXiv identifier per line fetched by [`arxiv.py`](../src/tino_storm/ingestion/arxiv.py)
 - `.4chan` – board name and thread number ingested via [`fourchan.py`](../src/tino_storm/ingestion/fourchan.py)
+- `.txt` files are parsed with `llama_index.SimpleDirectoryReader` and each
+  resulting document is ingested individually.
 
 Any other text file is added to the vault verbatim.

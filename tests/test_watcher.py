@@ -98,3 +98,36 @@ def test_ingest_text_file(monkeypatch, tmp_path):
     assert events[0].topic == "topic"
     assert events[0].information_table["source"] == str(file_path)
 
+
+def test_ingest_txt_documents(monkeypatch, tmp_path):
+    monkeypatch.setattr(event_emitter, "_subscribers", {})
+    events = []
+    event_emitter.subscribe(ResearchAdded, lambda e: events.append(e))
+
+    monkeypatch.setattr("chromadb.PersistentClient", DummyClient)
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+
+    mod = types.ModuleType("llama_index")
+
+    class DummyReader:
+        def __init__(self, *, input_files=None):
+            self.input_files = input_files
+
+        def load_data(self):
+            return [types.SimpleNamespace(text="d1"), types.SimpleNamespace(text="d2")]
+
+    mod.SimpleDirectoryReader = DummyReader
+    monkeypatch.setitem(sys.modules, "llama_index", mod)
+
+    vault_dir = tmp_path / "topic"
+    vault_dir.mkdir()
+
+    handler = VaultIngestHandler(root=str(tmp_path))
+    file_path = vault_dir / "doc.txt"
+    file_path.write_text("unused", encoding="utf-8")
+
+    handler._handle_file(file_path, "topic")
+
+    collection = handler.client.get_or_create_collection("topic")
+    assert collection.docs == ["d1", "d2"]
+    assert len(events) == 2
