@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import os
 
 from knowledge_storm import (
@@ -10,6 +10,12 @@ from knowledge_storm import (
 )
 from knowledge_storm.lm import LitellmModel
 from knowledge_storm.rm import BingSearch
+
+
+def search_vaults(*args, **kwargs):
+    from .ingest.search import search_vaults as _search_vaults
+
+    return _search_vaults(*args, **kwargs)
 
 
 class ResearchRequest(BaseModel):
@@ -22,6 +28,13 @@ class IngestRequest(BaseModel):
     text: str
     vault: str
     source: Optional[str] = None
+
+
+class SearchRequest(BaseModel):
+    query: str
+    vaults: List[str]
+    k_per_vault: int = 5
+    rrf_k: int = 60
 
 
 app = FastAPI(title="tino-storm API")
@@ -149,3 +162,14 @@ def ingest(req: IngestRequest):
     handler = VaultIngestHandler(root, vault=req.vault)
     handler._ingest_text(req.text, req.source or "api", req.vault)
     return {"status": "ok"}
+
+
+@app.post("/search")
+def search(req: SearchRequest):
+    results = search_vaults(
+        req.query,
+        req.vaults,
+        k_per_vault=req.k_per_vault,
+        rrf_k=req.rrf_k,
+    )
+    return {"results": results}

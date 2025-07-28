@@ -106,10 +106,13 @@ When running `tino-storm serve` the following POST endpoints become available:
 - `/outline` – run just the research and outline steps.
 - `/draft` – generate a draft article without the polishing stage.
 - `/ingest` – store arbitrary text in a named vault.
+- `/search` – query multiple vaults and fuse the results.
 
 The first three endpoints accept a JSON body with `topic`, optional
 `output_dir` and `vault` fields.  The `/ingest` endpoint expects `text`,
-`vault` and an optional `source` identifying the origin of the text.
+`vault` and an optional `source` identifying the origin of the text.  The
+`/search` endpoint expects `query`, a list of `vaults` and optional
+`k_per_vault` and `rrf_k` parameters.
 
 ## Programmatic API
 

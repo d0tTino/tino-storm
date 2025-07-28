@@ -47,6 +47,9 @@ except Exception:  # pragma: no cover - fallback stubs
                 data.setdefault("vault", None)
             elif path == "/ingest":
                 data.setdefault("source", None)
+            elif path == "/search":
+                data.setdefault("k_per_vault", 5)
+                data.setdefault("rrf_k", 60)
             arg = types.SimpleNamespace(**data)
             return _Resp(fn(arg))
 
@@ -164,6 +167,21 @@ def test_ingest_endpoint(monkeypatch):
         "source": "src",
         "vault": "topic",
     }
+
+
+def test_search_endpoint(monkeypatch):
+    called = {}
+
+    def fake_search(query, vaults, *, k_per_vault=5, rrf_k=60):
+        called["args"] = (query, list(vaults), k_per_vault, rrf_k)
+        return [{"url": "u", "snippets": ["s"]}]
+
+    monkeypatch.setattr("tino_storm.api.search_vaults", fake_search)
+    client = TestClient(app)
+    resp = client.post("/search", json={"query": "q", "vaults": ["v1", "v2"]})
+    assert resp.status_code == 200
+    assert resp.json() == {"results": [{"url": "u", "snippets": ["s"]}]}
+    assert called["args"] == ("q", ["v1", "v2"], 5, 60)
 
 
 def test_make_default_runner_local_model(monkeypatch):
