@@ -9,17 +9,19 @@ split into two Python packages shipped from this repository:
 - **`tino-storm`** – a lightweight wrapper exposing a command line interface and
   a small FastAPI service.
 
-Install both with:
+Install the CLI and underlying library from PyPI:
 
 ```bash
-pip install tino-storm  # installs knowledge-storm and all dependencies
-# verify the console script was installed
-tino-storm --help
-
+pip install tino-storm
 ```
 
-The package depends on `httpx`, `requests`, `PyYAML`, `cryptography`,
-`fastapi` and `uvicorn`. These are installed automatically.
+This command installs both the `tino-storm` wrapper and the
+`knowledge-storm` package, along with all required dependencies.  Verify
+the console script was installed with:
+
+```bash
+tino-storm --help
+```
 
 For development, install in editable mode to register the `tino-storm` command:
 

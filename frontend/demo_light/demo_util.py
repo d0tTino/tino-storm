@@ -9,7 +9,7 @@ import markdown
 import pytz
 import streamlit as st
 
-# If you install the source code instead of the `knowledge-storm` package,
+# If you are running from source instead of the installed `tino-storm` package,
 # Uncomment the following lines:
 # import sys
 # sys.path.append('../../')
