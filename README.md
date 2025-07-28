@@ -160,6 +160,27 @@ skill.optimize()
 result = skill("The Eiffel Tower")
 ```
 
+## Using Tino Storm as a research plugin
+
+`tino_storm.search()` can be called from other applications to retrieve
+documents from STORM vaults. When executed inside an event loop the function
+delegates to its asynchronous counterpart, allowing seamless integration as a
+plugin.
+
+```python
+import asyncio
+import tino_storm
+
+async def main():
+    results = await tino_storm.search("large language models", ["science"])
+    print(results)
+
+asyncio.run(main())
+```
+
+See [docs/research_plugin.md](docs/research_plugin.md) and the example under
+[`examples/async_search.py`](examples/async_search.py) for more details.
+
 ## Ingesting your own data
 
 STORM can be grounded on a custom corpus by creating a Qdrant vector store and
