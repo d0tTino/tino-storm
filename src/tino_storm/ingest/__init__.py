@@ -33,6 +33,7 @@ def ingest_path(
         fourchan_limit=fourchan_limit,
         reddit_client_id=reddit_client_id,
         reddit_client_secret=reddit_client_secret,
+        vault=vault,
     )
     handler._handle_file(Path(path).expanduser(), vault)
 

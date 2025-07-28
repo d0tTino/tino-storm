@@ -19,9 +19,15 @@ def load_config() -> Dict[str, Any]:
     return {}
 
 
-def get_passphrase() -> str | None:
-    """Return the configured passphrase or ``None`` if not configured."""
+def get_passphrase(vault: str | None = None) -> str | None:
+    """Return the configured passphrase for ``vault`` or ``None`` if not configured."""
     cfg = load_config()
+    if vault:
+        mapping = cfg.get("passphrases")
+        if isinstance(mapping, dict):
+            val = mapping.get(vault)
+            if isinstance(val, str) and val:
+                return val
     val = cfg.get("passphrase")
     if isinstance(val, str) and val:
         return val

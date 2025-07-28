@@ -36,6 +36,59 @@ from ..events import ResearchAdded, event_emitter
 class VaultIngestHandler(FileSystemEventHandler):
     """Watch a vault directory and ingest dropped files, URLs or manifests."""
 
+    def _instrument_client(self, client: Any) -> None:
+        """Add in-memory doc capture instrumentation for tests."""
+        orig_get = client.get_or_create_collection
+        cache: dict[str, Any] = {}
+
+        def _get(name: str, **kwargs: Any):
+            col = cache.get(name)
+            if col is None:
+                col = orig_get(name, **kwargs)
+                cache[name] = col
+            if not hasattr(col, "docs"):
+                col.docs = []
+                orig_add = col.add
+
+                def add(
+                    documents=None, metadatas=None, ids=None, embeddings=None, **kw
+                ):
+                    if documents is not None:
+                        col.docs.extend(documents)
+                    return orig_add(
+                        documents=documents,
+                        metadatas=metadatas,
+                        ids=ids,
+                        embeddings=embeddings,
+                        **kw,
+                    )
+
+                col.add = add
+            return col
+
+        client.get_or_create_collection = _get
+
+    def _create_client(self, passphrase: str | None) -> Any:
+        if passphrase:
+            if encrypt_parquet_enabled():
+                decrypt_parquet_files(self._chroma_root, passphrase)
+                atexit.register(encrypt_parquet_files, self._chroma_root, passphrase)
+            client = EncryptedChroma(self._chroma_root, passphrase=passphrase)
+        else:
+            client = chromadb.PersistentClient(path=self._chroma_root)
+        if os.environ.get("PYTEST_CURRENT_TEST"):
+            self._instrument_client(client)
+        return client
+
+    def _get_client(self, vault: str | None) -> Any:
+        passphrase = get_passphrase(vault or self._vault)
+        key = passphrase or "__none__"
+        client = self._clients.get(key)
+        if client is None:
+            client = self._create_client(passphrase)
+            self._clients[key] = client
+        return client
+
     def __init__(
         self,
         root: str,
@@ -45,6 +98,7 @@ class VaultIngestHandler(FileSystemEventHandler):
         fourchan_limit: Optional[int] = None,
         reddit_client_id: Optional[str] = None,
         reddit_client_secret: Optional[str] = None,
+        vault: Optional[str] = None,
     ) -> None:
         self.root = Path(root).expanduser().resolve()
         chroma_root = Path(
@@ -55,45 +109,10 @@ class VaultIngestHandler(FileSystemEventHandler):
         ).expanduser()
         chroma_root.mkdir(parents=True, exist_ok=True)
         self._chroma_root = str(chroma_root)
-        passphrase = get_passphrase()
-        if passphrase:
-            if encrypt_parquet_enabled():
-                decrypt_parquet_files(self._chroma_root, passphrase)
-                atexit.register(encrypt_parquet_files, self._chroma_root, passphrase)
-            self.client = EncryptedChroma(self._chroma_root, passphrase=passphrase)
-        else:
-            self.client = chromadb.PersistentClient(path=self._chroma_root)
+        self._vault = vault
+        self._clients: dict[str | None, Any] = {}
 
-        if os.environ.get("PYTEST_CURRENT_TEST"):
-            orig_get = self.client.get_or_create_collection
-            cache: dict[str, Any] = {}
-
-            def _get(name: str, **kwargs: Any):
-                col = cache.get(name)
-                if col is None:
-                    col = orig_get(name, **kwargs)
-                    cache[name] = col
-                if not hasattr(col, "docs"):
-                    col.docs = []
-                    orig_add = col.add
-
-                    def add(
-                        documents=None, metadatas=None, ids=None, embeddings=None, **kw
-                    ):
-                        if documents is not None:
-                            col.docs.extend(documents)
-                        return orig_add(
-                            documents=documents,
-                            metadatas=metadatas,
-                            ids=ids,
-                            embeddings=embeddings,
-                            **kw,
-                        )
-
-                    col.add = add
-                return col
-
-            self.client.get_or_create_collection = _get
+        self.client = self._get_client(vault)
 
         self.twitter_limit = twitter_limit
         self.reddit_limit = reddit_limit
@@ -104,7 +123,8 @@ class VaultIngestHandler(FileSystemEventHandler):
         super().__init__()
 
     def _ingest_text(self, text: str, source: str, vault: str) -> None:
-        collection = self.client.get_or_create_collection(vault)
+        client = self._get_client(vault)
+        collection = client.get_or_create_collection(vault)
         if not hasattr(collection, "docs"):
             orig_add = collection.add
 
