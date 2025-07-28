@@ -117,3 +117,27 @@ def test_ingest_endpoint(monkeypatch):
         "source": "src",
         "vault": "topic",
     }
+
+
+def test_make_default_runner_local_model(monkeypatch):
+    monkeypatch.delenv("cloud_allowed", raising=False)
+
+    created = []
+
+    class HFModel:
+        def __init__(self, name, *a, **k):
+            created.append(name)
+
+    monkeypatch.setattr("dspy.HFModel", HFModel)
+
+    from tino_storm import api
+
+    runner = api._make_default_runner("./out")
+
+    assert created == ["google/flan-t5-small"]
+    lm_cfg = runner.lm_configs
+    assert isinstance(lm_cfg.conv_simulator_lm, HFModel)
+    assert lm_cfg.conv_simulator_lm is lm_cfg.question_asker_lm
+    assert lm_cfg.conv_simulator_lm is lm_cfg.outline_gen_lm
+    assert lm_cfg.conv_simulator_lm is lm_cfg.article_gen_lm
+    assert lm_cfg.conv_simulator_lm is lm_cfg.article_polish_lm
