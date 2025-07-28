@@ -105,6 +105,22 @@ import tino_storm
 results = await tino_storm.search("machine learning", ["science"])
 ```
 
+### Custom search providers
+
+`tino_storm.search()` can use a pluggable provider for fetching results.  Pass
+an instance to the `provider` argument or set the `STORM_SEARCH_PROVIDER`
+environment variable to the dotted path of a provider class.
+
+```python
+from tino_storm.providers import Provider
+
+class MyProvider(Provider):
+    def search_sync(self, query, vaults, **kwargs):
+        ...  # return list of results
+
+results = tino_storm.search("cats", ["science"], provider=MyProvider())
+```
+
 ### HTTP API
 
 When running `tino-storm serve` the following POST endpoints become available:
