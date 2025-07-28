@@ -29,8 +29,15 @@ from ..security import (
 )
 from ..security.encrypted_chroma import EncryptedChroma
 
-
 from ..events import ResearchAdded, event_emitter
+
+
+def load_txt_documents(path: str):
+    """Return documents loaded from ``path`` using ``llama_index``."""
+
+    from llama_index import SimpleDirectoryReader
+
+    return SimpleDirectoryReader(input_files=[path]).load_data()
 
 
 class VaultIngestHandler(FileSystemEventHandler):
@@ -243,6 +250,20 @@ class VaultIngestHandler(FileSystemEventHandler):
                     f"https://boards.4channel.org/{board}/thread/{thread_no}",
                     vault,
                 )
+        elif suffix == ".txt":
+            try:
+                docs = load_txt_documents(str(path))
+            except Exception:
+                try:
+                    text = path.read_text(encoding="utf-8")
+                except Exception:
+                    return
+                self._ingest_text(text, str(path), vault)
+            else:
+                for doc in docs:
+                    text = getattr(doc, "text", "")
+                    if text:
+                        self._ingest_text(text, str(path), vault)
         else:
             try:
                 text = path.read_text(encoding="utf-8")
