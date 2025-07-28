@@ -1,11 +1,64 @@
 import sys
 import types
-import pytest
-from fastapi.testclient import TestClient
+
+try:  # pragma: no cover - optional dependency
+    from fastapi.testclient import TestClient
+except Exception:  # pragma: no cover - fallback stubs
+    fastapi = sys.modules.get("fastapi")
+    if fastapi is None:
+        fastapi = types.ModuleType("fastapi")
+        sys.modules["fastapi"] = fastapi
+
+    class FastAPI:
+        def __init__(self, *a, **k):
+            self.routes = {}
+
+        def post(self, path, *a, **k):
+            def decorator(fn):
+                self.routes[path] = fn
+                return fn
+
+            return decorator
+
+        def get(self, path, *a, **k):
+            def decorator(fn):
+                self.routes[path] = fn
+                return fn
+
+            return decorator
+
+    class _Resp:
+        def __init__(self, data):
+            self.status_code = 200
+            self._data = data
+
+        def json(self):
+            return self._data
+
+    class TestClient:
+        def __init__(self, app):
+            self.app = app
+
+        def post(self, path, json=None):
+            fn = self.app.routes[path]
+            data = dict(json or {})
+            if path in {"/research", "/outline", "/draft"}:
+                data.setdefault("output_dir", "./results")
+                data.setdefault("vault", None)
+            elif path == "/ingest":
+                data.setdefault("source", None)
+            arg = types.SimpleNamespace(**data)
+            return _Resp(fn(arg))
+
+    fastapi.FastAPI = FastAPI
+    fastapi.testclient = types.ModuleType("fastapi.testclient")
+    fastapi.testclient.TestClient = TestClient
+    sys.modules["fastapi.testclient"] = fastapi.testclient
+    globals().update({"FastAPI": FastAPI, "TestClient": TestClient})
+
+from fastapi.testclient import TestClient  # type: ignore  # noqa: E402
 import knowledge_storm.storm_wiki.engine as ks_engine
 import knowledge_storm
-
-pytest.skip("skip API endpoint tests in minimal environment", allow_module_level=True)
 
 for attr in [
     "STORMWikiRunnerArguments",
@@ -89,7 +142,7 @@ def test_ingest_endpoint(monkeypatch):
     captured = {}
 
     class DummyHandler:
-        def __init__(self, root):
+        def __init__(self, root, **_kwargs):
             captured["root"] = root
 
         def _ingest_text(self, text, src, vault):
