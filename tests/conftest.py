@@ -2,6 +2,8 @@ import os
 import sys
 import types
 import builtins
+import importlib.util
+import importlib.machinery
 import pytest
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -22,7 +24,8 @@ if "tino_storm.encoder" not in sys.modules:
     enc_mod.Encoder = Encoder
     sys.modules["tino_storm.encoder"] = enc_mod
 
-# Stub optional dependencies so tests do not require heavy installs
+# Stub optional dependencies so tests do not require heavy installs.  Only
+# create a stub if the dependency is genuinely missing from the environment.
 for _missing in [
     "langchain_text_splitters",
     "trafilatura",
@@ -56,8 +59,10 @@ for _missing in [
     "pytesseract",
     "praw",
 ]:
-    if _missing not in sys.modules:
+    if _missing not in sys.modules and importlib.util.find_spec(_missing) is None:
         module = types.ModuleType(_missing)
+        module.__spec__ = importlib.machinery.ModuleSpec(_missing, loader=None)
+        module.__spec__ = importlib.machinery.ModuleSpec(_missing, loader=None)
         if _missing == "langchain_text_splitters":
 
             class _DummySplitter:
@@ -104,12 +109,19 @@ for _missing in [
                 def get(self, *a, **k):
                     return types.SimpleNamespace(status_code=200, content=b"")
 
+            class _DummyUseClientDefault:
+                pass
+
+            class _DummyClientModule:
+                USE_CLIENT_DEFAULT = _DummyUseClientDefault()
+
             def get(*a, **k):
                 return Client().get(*a, **k)
 
             module.Client = Client
             module.HTTPError = HTTPError
             module.get = get
+            module._client = _DummyClientModule
         elif _missing == "toml":
 
             def load(*a, **k):
@@ -591,7 +603,7 @@ for _missing in [
         sys.modules[_missing] = module
 
 for _missing in ["litellm", "openai", "dspy", "dsp"]:
-    if _missing not in sys.modules:
+    if _missing not in sys.modules and importlib.util.find_spec(_missing) is None:
         module = types.ModuleType(_missing)
         if _missing == "dspy" or _missing == "dsp":
 
