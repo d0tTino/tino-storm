@@ -11,9 +11,9 @@ if TYPE_CHECKING:  # pragma: no cover - used for type hints only
 class ResearchSignature(dspy.Signature):
     """Run outline and drafting in a single module."""
 
-    topic = dspy.InputField("topic to research")
-    outline = dspy.OutputField("brief outline")
-    draft = dspy.OutputField("draft article")
+    topic = dspy.InputField(desc="topic to research")
+    outline = dspy.OutputField(desc="brief outline")
+    draft = dspy.OutputField(desc="draft article")
 
 
 @dataclass

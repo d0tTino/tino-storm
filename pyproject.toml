@@ -1,6 +1,6 @@
 [project]
 name = "tino-storm"
-version = "1.1.0"
+version = "1.2.0"
 description = "STORM: A language model-powered knowledge curation engine."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,7 +24,7 @@ dependencies = [
     "cryptography>=41.0.0",
     "fastapi>=0.110.0",
     "uvicorn>=0.29.0",
-
+    "knowledge-storm",
 ]
 
 [project.scripts]
@@ -35,6 +35,6 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = {find = {where = ["src"]}}
+packages = {find = {where = ["src", "."]}}
 
 

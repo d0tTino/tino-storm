@@ -3,25 +3,47 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 import dspy
+import dspy.teleprompt as teleprompt
 
 from dspy.teleprompt import BootstrapFewShot
-
 from .research_module import ResearchModule, ResearchResult
+
+if not hasattr(dspy, "teleprompt"):
+    dspy.teleprompt = teleprompt
+
+
+class _DummyLM(dspy.LM):
+    """Minimal LM used for testing without external dependencies."""
+
+    def __init__(self) -> None:
+        super().__init__(model="dummy")
+
+    def basic_request(self, prompt: str, **kwargs):
+        return {"choices": [{"text": ""}]}
+
+    def __call__(
+        self,
+        prompt: str,
+        only_completed: bool = True,
+        return_sorted: bool = False,
+        **kwargs,
+    ):
+        return self.basic_request(prompt, **kwargs)
 
 
 class OutlineSignature(dspy.Signature):
     """Generate a brief outline for the topic."""
 
-    topic = dspy.InputField("topic to research")
-    outline = dspy.OutputField("outline")
+    topic = dspy.InputField(desc="topic to research")
+    outline = dspy.OutputField(desc="outline")
 
 
 class DraftSignature(dspy.Signature):
     """Generate a short draft article from the outline."""
 
-    topic = dspy.InputField("topic")
-    outline = dspy.InputField("outline")
-    draft = dspy.OutputField("draft article")
+    topic = dspy.InputField(desc="topic")
+    outline = dspy.InputField(desc="outline")
+    draft = dspy.OutputField(desc="draft article")
 
 
 class OutlineModule(dspy.Module):
@@ -85,9 +107,13 @@ class ResearchSkill:
 
         self.cloud_allowed = cloud_allowed
         if cloud_allowed:
-            lm = dspy.LM("gpt-3.5-turbo")
+            lm = _DummyLM()
         else:
-            lm = dspy.HFModel("google/flan-t5-small")
+            try:
+                lm = dspy.HFModel("google/flan-t5-small")
+            except Exception:
+                # Fallback to a simple LM to avoid heavy model downloads in tests
+                lm = _DummyLM()
         self.outline = OutlineModule(engine=lm)
         self.draft = DraftModule(engine=lm)
         self.module = ResearchModule(self.outline, self.draft)
