@@ -12,11 +12,14 @@ split into two Python packages shipped from this repository:
 Install both with:
 
 ```bash
-pip install tino-storm  # installs knowledge-storm as a dependency
+pip install tino-storm  # installs knowledge-storm and all dependencies
 # verify the console script was installed
 tino-storm --help
 
 ```
+
+The package depends on `httpx`, `requests`, `PyYAML`, `cryptography`,
+`fastapi` and `uvicorn`. These are installed automatically.
 
 For development, install in editable mode to register the `tino-storm` command:
 
