@@ -51,7 +51,9 @@ def _make_client():
 def test_search_vaults_rrf(monkeypatch):
     client = _make_client()
     monkeypatch.setattr("chromadb.PersistentClient", lambda *a, **k: client)
-    monkeypatch.setattr("tino_storm.ingest.search.get_passphrase", lambda: None)
+    monkeypatch.setattr(
+        "tino_storm.ingest.search.get_passphrase", lambda vault=None: None
+    )
     # avoid random scoring
     monkeypatch.setattr("tino_storm.ingest.search.score_results", lambda x: x)
 

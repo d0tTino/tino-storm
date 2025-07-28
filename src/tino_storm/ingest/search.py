@@ -26,6 +26,7 @@ def search_vaults(
     k_per_vault: int = 5,
     rrf_k: int = 60,
     chroma_path: Optional[str] = None,
+    vault: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Query multiple Chroma namespaces and combine results using RRF."""
 
@@ -34,18 +35,32 @@ def search_vaults(
         or os.environ.get("STORM_CHROMA_PATH", Path.home() / ".tino_storm" / "chroma")
     ).expanduser()
 
-    passphrase = get_passphrase()
-    if passphrase:
-        if encrypt_parquet_enabled():
-            decrypt_parquet_files(str(chroma_root), passphrase)
-            atexit.register(encrypt_parquet_files, str(chroma_root), passphrase)
-        client = EncryptedChroma(str(chroma_root), passphrase=passphrase)
+    def _create_client(passphrase: str | None):
+        if passphrase:
+            if encrypt_parquet_enabled():
+                decrypt_parquet_files(str(chroma_root), passphrase)
+                atexit.register(encrypt_parquet_files, str(chroma_root), passphrase)
+            return EncryptedChroma(str(chroma_root), passphrase=passphrase)
+        return chromadb.PersistentClient(path=str(chroma_root))
+
+    if vault is not None:
+        client = _create_client(get_passphrase(vault))
+        client_map = {vault: client}
     else:
-        client = chromadb.PersistentClient(path=str(chroma_root))
+        client = None
+        client_map: dict[str | None, Any] = {}
 
     rankings: List[List[Dict[str, Any]]] = []
-    for vault in vaults:
-        collection = client.get_or_create_collection(vault)
+    for vault_name in vaults:
+        if vault is not None:
+            collection = client.get_or_create_collection(vault_name)
+        else:
+            pw = get_passphrase(vault_name)
+            c = client_map.get(pw)
+            if c is None:
+                c = _create_client(pw)
+                client_map[pw] = c
+            collection = c.get_or_create_collection(vault_name)
         try:
             res = collection.query(query_texts=[query], n_results=k_per_vault)
         except Exception:

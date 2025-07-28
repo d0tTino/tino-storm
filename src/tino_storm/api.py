@@ -95,7 +95,7 @@ def run_research(
             from .ingest.watcher import VaultIngestHandler
 
             root = os.environ.get("STORM_VAULT_ROOT", "research")
-            handler = VaultIngestHandler(root)
+            handler = VaultIngestHandler(root, vault=vault)
 
             article_path = os.path.join(
                 runner.args.output_dir, "storm_gen_article_polished.txt"
@@ -146,6 +146,6 @@ def ingest(req: IngestRequest):
     from .ingest.watcher import VaultIngestHandler
 
     root = os.environ.get("STORM_VAULT_ROOT", "research")
-    handler = VaultIngestHandler(root)
+    handler = VaultIngestHandler(root, vault=req.vault)
     handler._ingest_text(req.text, req.source or "api", req.vault)
     return {"status": "ok"}
