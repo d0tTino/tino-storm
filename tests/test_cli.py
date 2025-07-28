@@ -132,3 +132,61 @@ def test_cli_search(monkeypatch, capsys):
     assert calls == [("ai", ["science", "notes"], 5, 60)]
     assert "example.com" in out
 
+
+def test_cli_ingest(monkeypatch, tmp_path):
+    """ingest command initializes VaultIngestHandler with provided args."""
+
+    captured = {}
+
+    class DummyHandler:
+        def __init__(self, root, **kwargs):
+            captured["root"] = root
+            captured.update(kwargs)
+
+    monkeypatch.setattr("tino_storm.ingest.watcher.VaultIngestHandler", DummyHandler)
+
+    def fake_start_watcher(**kwargs):
+        from pathlib import Path
+
+        watch_root = Path(kwargs.get("root") or "research").expanduser()
+        DummyHandler(
+            str(watch_root),
+            chroma_path=kwargs.get("chroma_path"),
+            twitter_limit=kwargs.get("twitter_limit"),
+            reddit_limit=kwargs.get("reddit_limit"),
+            fourchan_limit=kwargs.get("fourchan_limit"),
+            reddit_client_id=kwargs.get("reddit_client_id"),
+            reddit_client_secret=kwargs.get("reddit_client_secret"),
+            vault=None,
+        )
+
+    monkeypatch.setattr("tino_storm.cli.start_watcher", fake_start_watcher)
+
+    main(
+        [
+            "ingest",
+            "--root",
+            str(tmp_path),
+            "--twitter-limit",
+            "2",
+            "--reddit-limit",
+            "3",
+            "--fourchan-limit",
+            "4",
+            "--reddit-client-id",
+            "cid",
+            "--reddit-client-secret",
+            "sec",
+        ]
+    )
+
+    assert captured == {
+        "root": str(tmp_path),
+        "chroma_path": None,
+        "twitter_limit": 2,
+        "reddit_limit": 3,
+        "fourchan_limit": 4,
+        "reddit_client_id": "cid",
+        "reddit_client_secret": "sec",
+        "vault": None,
+    }
