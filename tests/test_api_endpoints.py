@@ -1,5 +1,6 @@
 import sys
 import types
+import asyncio
 
 try:  # pragma: no cover - optional dependency
     from fastapi.testclient import TestClient
@@ -206,3 +207,29 @@ def test_make_default_runner_local_model(monkeypatch):
     assert lm_cfg.conv_simulator_lm is lm_cfg.outline_gen_lm
     assert lm_cfg.conv_simulator_lm is lm_cfg.article_gen_lm
     assert lm_cfg.conv_simulator_lm is lm_cfg.article_polish_lm
+
+
+def test_search_endpoint_asyncio(monkeypatch):
+    """/search endpoint callable from asyncio."""
+
+    called = {}
+
+    def fake_search(query, vaults, *, k_per_vault=5, rrf_k=60):
+        called["args"] = (query, list(vaults), k_per_vault, rrf_k)
+        return [{"url": "u", "snippets": ["s"]}]
+
+    monkeypatch.setattr("tino_storm.api.search", fake_search)
+    client = TestClient(app)
+
+    async def _run():
+        return await asyncio.to_thread(
+            client.post,
+            "/search",
+            json={"query": "q", "vaults": ["v1", "v2"]},
+        )
+
+    resp = asyncio.run(_run())
+
+    assert resp.status_code == 200
+    assert resp.json() == {"results": [{"url": "u", "snippets": ["s"]}]}
+    assert called["args"] == ("q", ["v1", "v2"], 5, 60)

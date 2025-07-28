@@ -1,6 +1,7 @@
 import os
 import sys
 import types
+import asyncio
 
 import knowledge_storm.storm_wiki.engine as ks_engine
 
@@ -189,3 +190,27 @@ def test_cli_ingest(monkeypatch, tmp_path):
         "reddit_client_secret": "sec",
         "vault": None,
     }
+
+
+def test_cli_search_asyncio(monkeypatch, capsys):
+    """CLI search works when run inside an event loop."""
+
+    calls = []
+
+    def fake_search(query, vaults, *, k_per_vault=5, rrf_k=60, chroma_path=None):
+        calls.append((query, list(vaults), k_per_vault, rrf_k))
+        return [{"url": "example.com", "snippets": ["result"]}]
+
+    monkeypatch.setattr("tino_storm.cli.search", fake_search)
+
+    async def _run():
+        await asyncio.to_thread(
+            main,
+            ["search", "--query", "ai", "--vaults", "science,notes"],
+        )
+
+    asyncio.run(_run())
+
+    out = capsys.readouterr().out
+    assert calls == [("ai", ["science", "notes"], 5, 60)]
+    assert "example.com" in out
