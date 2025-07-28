@@ -123,8 +123,7 @@ def test_cli_search(monkeypatch, capsys):
         calls.append((query, list(vaults), k_per_vault, rrf_k))
         return [{"url": "example.com", "snippets": ["result"]}]
 
-    monkeypatch.setattr("tino_storm.ingest.search_vaults", fake_search)
-    monkeypatch.setattr("tino_storm.cli.search_vaults", fake_search)
+    monkeypatch.setattr("tino_storm.cli.search", fake_search)
 
     main(["search", "--query", "ai", "--vaults", "science,notes"])
 

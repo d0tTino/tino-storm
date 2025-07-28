@@ -28,8 +28,16 @@ class ArxivScraper:
     """Fetch paper metadata and PDF text from arXiv."""
 
     def _pdf_text(self, url: str) -> str:
+        global PdfReader
         if PdfReader is None:
-            return ""
+            try:
+                from pypdf import PdfReader as _Reader  # type: ignore
+            except Exception:  # pragma: no cover - optional dependency
+                try:
+                    from PyPDF2 import PdfReader as _Reader  # type: ignore
+                except Exception:
+                    return ""
+            PdfReader = _Reader
         try:
             log_request("GET", url)
             resp = requests.get(url, timeout=10)

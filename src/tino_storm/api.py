@@ -11,11 +11,7 @@ from knowledge_storm import (
 from knowledge_storm.lm import LitellmModel
 from knowledge_storm.rm import BingSearch
 
-
-def search_vaults(*args, **kwargs):
-    from .ingest.search import search_vaults as _search_vaults
-
-    return _search_vaults(*args, **kwargs)
+from . import search
 
 
 class ResearchRequest(BaseModel):
@@ -165,8 +161,8 @@ def ingest(req: IngestRequest):
 
 
 @app.post("/search")
-def search(req: SearchRequest):
-    results = search_vaults(
+def search_endpoint(req: SearchRequest):
+    results = search(
         req.query,
         req.vaults,
         k_per_vault=req.k_per_vault,
