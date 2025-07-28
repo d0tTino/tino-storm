@@ -28,3 +28,11 @@ The watcher recognises several file extensions and processes them via the ingest
 - `.4chan` – board name and thread number ingested via [`fourchan.py`](../src/tino_storm/ingestion/fourchan.py)
 
 Any other text file is added to the vault verbatim.
+
+## Plain text files
+
+Plain `.txt` files can be dropped directly into any vault folder. They are read
+by `llama_index`'s `SimpleDirectoryReader`, which loads each file as a single
+document while capturing file metadata such as the path and timestamps. The
+resulting document is then ingested into the Chroma collection under the vault
+name.
