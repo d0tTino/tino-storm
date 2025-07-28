@@ -28,19 +28,43 @@ app = FastAPI(title="tino-storm API")
 
 
 def _make_default_runner(output_dir: str) -> STORMWikiRunner:
+    """Create a ``STORMWikiRunner`` with default language models.
+
+    When the ``cloud_allowed`` environment variable is unset or evaluates to
+    ``False`` the runner is configured to use the lightweight local model used
+    by ``ResearchSkill``. Otherwise OpenAI models are used.
+    """
+
     lm_configs = STORMWikiLMConfigs()
-    openai_kwargs = {
-        "api_key": None,
-        "temperature": 1.0,
-        "top_p": 0.9,
-    }
-    gpt_35 = LitellmModel(model="gpt-3.5-turbo", max_tokens=500, **openai_kwargs)
-    gpt_4 = LitellmModel(model="gpt-4o", max_tokens=3000, **openai_kwargs)
-    lm_configs.set_conv_simulator_lm(gpt_35)
-    lm_configs.set_question_asker_lm(gpt_35)
-    lm_configs.set_outline_gen_lm(gpt_4)
-    lm_configs.set_article_gen_lm(gpt_4)
-    lm_configs.set_article_polish_lm(gpt_4)
+
+    cloud_allowed = os.environ.get("cloud_allowed", "").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+    if not cloud_allowed:
+        from dspy import HFModel
+
+        local_model = HFModel("google/flan-t5-small")
+        lm_configs.set_conv_simulator_lm(local_model)
+        lm_configs.set_question_asker_lm(local_model)
+        lm_configs.set_outline_gen_lm(local_model)
+        lm_configs.set_article_gen_lm(local_model)
+        lm_configs.set_article_polish_lm(local_model)
+    else:
+        openai_kwargs = {
+            "api_key": None,
+            "temperature": 1.0,
+            "top_p": 0.9,
+        }
+        gpt_35 = LitellmModel(model="gpt-3.5-turbo", max_tokens=500, **openai_kwargs)
+        gpt_4 = LitellmModel(model="gpt-4o", max_tokens=3000, **openai_kwargs)
+        lm_configs.set_conv_simulator_lm(gpt_35)
+        lm_configs.set_question_asker_lm(gpt_35)
+        lm_configs.set_outline_gen_lm(gpt_4)
+        lm_configs.set_article_gen_lm(gpt_4)
+        lm_configs.set_article_polish_lm(gpt_4)
 
     args = STORMWikiRunnerArguments(output_dir=output_dir)
     rm = BingSearch(k=args.search_top_k)
