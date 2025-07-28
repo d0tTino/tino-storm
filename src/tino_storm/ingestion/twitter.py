@@ -17,6 +17,7 @@ class TwitterScraper:
         if not callable(getattr(sntwitter, "TwitterSearchScraper", None)):
             try:  # attempt import again in case dependency loaded later
                 import snscrape.modules.twitter as snt
+
                 sntwitter = snt
             except Exception as exc:  # pragma: no cover - optional dependency
                 raise RuntimeError("snscrape is required for Twitter scraping") from exc
