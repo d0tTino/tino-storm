@@ -12,4 +12,4 @@ __all__ = ["__version__", "rm"]
 # longer import them automatically. Import the desired submodules
 # directly instead.
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
