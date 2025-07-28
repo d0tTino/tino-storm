@@ -2,7 +2,8 @@ import argparse
 import uvicorn
 
 from .api import app, run_research
-from .ingest import start_watcher, search_vaults
+from .ingest import start_watcher
+from . import search
 
 
 def main(argv=None):
@@ -105,7 +106,7 @@ def main(argv=None):
             reddit_client_secret=args.reddit_client_secret,
         )
     elif args.command == "search":
-        results = search_vaults(
+        results = search(
             args.query,
             args.vaults.split(","),
             k_per_vault=args.k_per_vault,

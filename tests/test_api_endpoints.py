@@ -176,7 +176,7 @@ def test_search_endpoint(monkeypatch):
         called["args"] = (query, list(vaults), k_per_vault, rrf_k)
         return [{"url": "u", "snippets": ["s"]}]
 
-    monkeypatch.setattr("tino_storm.api.search_vaults", fake_search)
+    monkeypatch.setattr("tino_storm.api.search", fake_search)
     client = TestClient(app)
     resp = client.post("/search", json={"query": "q", "vaults": ["v1", "v2"]})
     assert resp.status_code == 200
