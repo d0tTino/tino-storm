@@ -69,3 +69,21 @@ def test_research_skill(monkeypatch):
     )
     assert isinstance(table, StormInformationTable)
     assert "u" in table.url_to_info
+
+
+def test_cloud_allowed_uses_remote_lm(monkeypatch):
+    import tino_storm.skills.research as research
+
+    captured = {}
+
+    class DummyLM:
+        def __init__(self, model, *a, **k):
+            captured["model"] = model
+
+    monkeypatch.setattr(research.dspy, "LM", DummyLM)
+
+    skill = research.ResearchSkill(cloud_allowed=True)
+
+    assert isinstance(skill.outline.engine, DummyLM)
+    assert captured["model"] == "gpt-3.5-turbo"
+    assert not isinstance(skill.outline.engine, research._DummyLM)
