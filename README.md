@@ -60,6 +60,8 @@ files ending in `.url`/`.urls` are parsed and the contents stored in a local
 Chroma collection under `~/.tino_storm/chroma` (override with
 `STORM_CHROMA_PATH`). The vault root defaults to `./research` but can be
 customised with `--root` or the `STORM_VAULT_ROOT` environment variable.
+The expected folder layout and list of supported manifest types are documented
+in [docs/ingest.md](docs/ingest.md).
 
 #### Social manifests
 
