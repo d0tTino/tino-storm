@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import importlib
+import logging
 import os
 from abc import ABC, abstractmethod
 from typing import Iterable, List, Dict, Any, Optional
 
 from ..ingest import search_vaults
 from ..core.rm import BingSearch
+from ..events import ResearchAdded, event_emitter
 
 
 class Provider(ABC):
@@ -71,7 +73,14 @@ class DefaultProvider(Provider):
             self._bing = BingSearch(
                 bing_search_api_key=api_key, k=self.bing_k, **self.bing_kwargs
             )
-        return self._bing(query)
+        try:
+            return self._bing(query)
+        except Exception as e:  # pragma: no cover - network issues
+            logging.error(f"Bing search failed for query {query}: {e}")
+            event_emitter.emit(
+                ResearchAdded(topic=query, information_table={"error": str(e)})
+            )
+            return []
 
     def search_sync(
         self,

@@ -8,6 +8,7 @@ import requests
 
 from ..security import log_request
 from dsp import backoff_hdlr, giveup_hdlr
+from ..events import ResearchAdded, event_emitter
 
 from .utils import WebPageHelper
 
@@ -74,6 +75,18 @@ class YouRM(dspy.Retrieve):
                     collected_results.extend(authoritative_results[: self.k])
             except Exception as e:
                 logging.error(f"Error occurs when searching query {query}: {e}")
+                event_emitter.emit(
+                    ResearchAdded(topic=query, information_table={"error": str(e)})
+                )
+                event_emitter.emit(
+                    ResearchAdded(topic=query, information_table={"error": str(e)})
+                )
+                event_emitter.emit(
+                    ResearchAdded(topic=query, information_table={"error": str(e)})
+                )
+                event_emitter.emit(
+                    ResearchAdded(topic=query, information_table={"error": str(e)})
+                )
 
         return collected_results
 
@@ -169,9 +182,16 @@ class BingSearch(dspy.Retrieve):
             except Exception as e:
                 logging.error(f"Error occurs when searching query {query}: {e}")
 
-        valid_url_to_snippets = self.webpage_helper.urls_to_snippets(
-            list(url_to_results.keys())
-        )
+        try:
+            valid_url_to_snippets = self.webpage_helper.urls_to_snippets(
+                list(url_to_results.keys())
+            )
+        except Exception as e:
+            logging.error(f"Error occurs when fetching webpages for {queries}: {e}")
+            event_emitter.emit(
+                ResearchAdded(topic=str(queries), information_table={"error": str(e)})
+            )
+            valid_url_to_snippets = {}
         collected_results = []
         for url in valid_url_to_snippets:
             r = url_to_results[url]
@@ -406,6 +426,9 @@ class StanfordOvalArxivRM(dspy.Retrieve):
                 collected_results.extend(results)
             except Exception as e:
                 logging.error(f"Error occurs when searching query {query}: {e}")
+                event_emitter.emit(
+                    ResearchAdded(topic=query, information_table={"error": str(e)})
+                )
         return collected_results
 
 
