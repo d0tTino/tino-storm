@@ -98,6 +98,13 @@ from tino_storm.ingest import search_vaults
 results = search_vaults("machine learning", ["science", "news", "notes"])
 ```
 
+```python
+import tino_storm
+
+# async usage
+results = await tino_storm.search("machine learning", ["science"])
+```
+
 ### HTTP API
 
 When running `tino-storm serve` the following POST endpoints become available:
