@@ -14,3 +14,16 @@ asyncio.run(main())
 ```
 
 The search API returns a list of result dictionaries containing the URL, title and text snippets from the retrieved documents.
+
+## Custom search providers
+
+You can plug in your own search provider by setting the `STORM_SEARCH_PROVIDER`
+environment variable to the dotted path of a class implementing the
+`Provider` interface.
+
+```bash
+export STORM_SEARCH_PROVIDER=my_package.providers.MyProvider
+```
+
+This provider will be loaded automatically whenever `tino_storm.search()` is
+invoked.
