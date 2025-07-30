@@ -119,4 +119,6 @@ def load_provider(spec: str) -> Provider:
     module_name, obj = spec.rsplit(".", 1)
     mod = importlib.import_module(module_name)
     cls = getattr(mod, obj)
+    if not issubclass(cls, Provider):
+        raise TypeError(f"{cls.__module__}.{cls.__name__} is not a Provider")
     return cls()
