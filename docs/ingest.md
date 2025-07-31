@@ -1,6 +1,9 @@
 # Ingestion folder layout
 
-`tino-storm ingest` monitors a directory for dropped files. The specified `--root` acts as the vault root where each first level subdirectory becomes a vault name.
+`tino-storm ingest` monitors a directory for dropped files. The watcher is powered by
+the [`watchdog`](https://pypi.org/project/watchdog/) package, which is installed
+automatically. The specified `--root` acts as the vault root where each first
+level subdirectory becomes a vault name.
 
 Example structure:
 

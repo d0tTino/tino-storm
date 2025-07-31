@@ -17,11 +17,11 @@ This section contains technical instructions & hints for contributors.
 ### Setting up
 1. Fork this repository and clone your forked repository.
 2. Install the required packages:
-    ```
-    conda create -n storm python=3.11
-    conda activate storm
-    pip install -r requirements.txt
-    ```
+```
+conda create -n storm python=3.11
+conda activate storm
+pip install -r requirements.txt  # installs watchdog for the ingest watcher
+```
 3. If you want to contribute to `frontend/demo_light`, follow its [Setup guide](https://github.com/stanford-oval/storm/tree/main/frontend/demo_light#setup) to install additional packages.
 
 ### PR suggestions
