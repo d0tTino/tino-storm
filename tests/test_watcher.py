@@ -33,7 +33,11 @@ if "chromadb" not in sys.modules:
 else:
     DummyClient = sys.modules["chromadb"].PersistentClient
 
-if importlib.util.find_spec("watchdog.events") is None:
+try:
+    spec = importlib.util.find_spec("watchdog.events")
+except ModuleNotFoundError:
+    spec = None
+if spec is None:
     watchdog = types.ModuleType("watchdog")
     observers_mod = types.ModuleType("watchdog.observers")
 
