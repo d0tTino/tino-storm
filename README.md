@@ -31,6 +31,15 @@ pip install -e .
 which tino-storm
 ```
 
+## Optional scraper dependencies
+
+The ingestion helpers rely on optional libraries for scraping data from
+social platforms and PDF files. Install them with:
+
+```bash
+pip install tino-storm[scrapers]
+```
+
 ## Command line usage
 
 `tino-storm` provides a simple CLI.  The `run` sub-command executes a single

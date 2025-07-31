@@ -31,6 +31,13 @@ dependencies = [
 [project.scripts]
 tino-storm = "tino_storm.cli:main"
 
+[project.optional-dependencies]
+scrapers = [
+    "snscrape",
+    "praw",
+    "pypdf",
+]
+
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
