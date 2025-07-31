@@ -19,17 +19,15 @@ args.output_dir/
 
 import os
 import re
+import logging
 from argparse import ArgumentParser
 
+from lm import GroqModel
 from tino_storm import (
     STORMWikiRunnerArguments,
     STORMWikiRunner,
     STORMWikiLMConfigs,
 )
-
-# Now import lm directly
-import lm
-from lm import GroqModel
 from tino_storm.rm import (
     YouRM,
     BingSearch,
@@ -40,6 +38,8 @@ from tino_storm.rm import (
     SearXNG,
 )
 from tino_storm.utils import load_api_key
+
+logger = logging.getLogger(__name__)
 
 
 def sanitize_topic(topic):

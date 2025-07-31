@@ -64,7 +64,6 @@ def main(args):
     )
     # If you are using Azure service, make sure the model name matches your own deployed model name.
     # The default name here is only used for demonstration and may not match your case.
-    gpt_4o_mini_model_name = "gpt-4o-mini"
     gpt_4o_model_name = "gpt-4o"
     if os.getenv("OPENAI_API_TYPE") == "azure":
         openai_kwargs["api_base"] = os.getenv("AZURE_API_BASE")

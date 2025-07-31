@@ -1,12 +1,13 @@
 import os
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-wiki_root_dir = os.path.dirname(os.path.dirname(script_dir))
+import streamlit as st
+from streamlit_option_menu import option_menu
 
 import demo_util
-from pages_util import MyArticles, CreateNewArticle
-from streamlit_float import *
-from streamlit_option_menu import option_menu
+from pages_util import CreateNewArticle, MyArticles
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+wiki_root_dir = os.path.dirname(os.path.dirname(script_dir))
 
 
 def main():
@@ -19,7 +20,7 @@ def main():
     # set api keys from secrets
     if st.session_state["first_run"]:
         for key, value in st.secrets.items():
-            if type(value) == str:
+            if isinstance(value, str):
                 os.environ[key] = value
 
     # initialize session_state
