@@ -78,15 +78,6 @@ class YouRM(dspy.Retrieve):
                 event_emitter.emit(
                     ResearchAdded(topic=query, information_table={"error": str(e)})
                 )
-                event_emitter.emit(
-                    ResearchAdded(topic=query, information_table={"error": str(e)})
-                )
-                event_emitter.emit(
-                    ResearchAdded(topic=query, information_table={"error": str(e)})
-                )
-                event_emitter.emit(
-                    ResearchAdded(topic=query, information_table={"error": str(e)})
-                )
 
         return collected_results
 
