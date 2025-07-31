@@ -1,6 +1,7 @@
 import os
 import sys
 import types
+import importlib.util
 
 if "chromadb" not in sys.modules:
     chromadb = types.ModuleType("chromadb")
@@ -32,7 +33,7 @@ if "chromadb" not in sys.modules:
 else:
     DummyClient = sys.modules["chromadb"].PersistentClient
 
-if "watchdog.events" not in sys.modules:
+if importlib.util.find_spec("watchdog.events") is None:
     watchdog = types.ModuleType("watchdog")
     observers_mod = types.ModuleType("watchdog.observers")
 
@@ -131,3 +132,10 @@ def test_ingest_txt_documents(monkeypatch, tmp_path):
     collection = handler.client.get_or_create_collection("topic")
     assert collection.docs == ["d1", "d2"]
     assert len(events) == 2
+
+
+def test_handler_uses_watchdog(tmp_path):
+    from watchdog.events import FileSystemEventHandler
+
+    handler = VaultIngestHandler(root=str(tmp_path))
+    assert isinstance(handler, FileSystemEventHandler)

@@ -55,6 +55,8 @@ $ tino-storm ingest --root ./vault
 ### The `ingest` command
 
 `ingest` runs a small watcher that monitors a "vault" directory for new files.
+The watcher relies on the [`watchdog`](https://pypi.org/project/watchdog/) package,
+which is installed automatically with `tino-storm`.
 Each first level subdirectory acts as the vault name. Dropped text files or
 files ending in `.url`/`.urls` are parsed and the contents stored in a local
 Chroma collection under `~/.tino_storm/chroma` (override with
