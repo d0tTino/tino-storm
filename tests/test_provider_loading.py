@@ -3,8 +3,9 @@ import types
 
 import pytest
 
+import asyncio
 import tino_storm
-from tino_storm.providers import Provider, load_provider
+from tino_storm.providers import Provider, load_provider, ParallelProvider
 
 
 def test_load_provider_raises(monkeypatch):
@@ -53,3 +54,33 @@ def test_search_uses_env_provider(monkeypatch):
 
     assert result == ["ok"]
     assert calls["args"] == ("q", ["v"], 5, 60, None, None)
+
+
+def test_parallel_provider_gathers_and_merges(monkeypatch):
+    gathered = {}
+
+    orig_gather = asyncio.gather
+
+    async def gather_wrapper(*tasks, **kwargs):
+        gathered["count"] = len(tasks)
+        return await orig_gather(*tasks, **kwargs)
+
+    async def fake_to_thread(func, *a, **k):
+        return func(*a, **k)
+
+    monkeypatch.setattr(asyncio, "gather", gather_wrapper)
+    monkeypatch.setattr(asyncio, "to_thread", fake_to_thread)
+    monkeypatch.setattr(
+        "tino_storm.providers.parallel.search_vaults",
+        lambda *a, **k: [{"url": "vault"}],
+    )
+    provider = ParallelProvider()
+    monkeypatch.setattr(provider, "_bing_search", lambda q: [{"url": "bing"}])
+
+    async def run():
+        return await provider.search_async("q", ["v"])
+
+    results = asyncio.run(run())
+
+    assert gathered["count"] == 2
+    assert {r["url"] for r in results} == {"vault", "bing"}
