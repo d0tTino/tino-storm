@@ -17,7 +17,6 @@ args.output_dir/
 """
 
 import os
-import sys
 from argparse import ArgumentParser
 
 from dspy import Example
