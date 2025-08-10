@@ -1,5 +1,6 @@
 import asyncio
 from typing import Iterable, List, Dict, Any, Optional
+from pathlib import Path
 
 import os
 
@@ -17,9 +18,20 @@ def _resolve_provider(provider: Provider | str | None) -> Provider:
     return provider
 
 
+def list_vaults() -> List[str]:
+    """Return available vault names from the local Chroma storage."""
+
+    chroma_root = Path(
+        os.environ.get("STORM_CHROMA_PATH", Path.home() / ".tino_storm" / "chroma")
+    ).expanduser()
+    if not chroma_root.exists():
+        return []
+    return [p.name for p in chroma_root.iterdir() if p.is_dir()]
+
+
 async def search_async(
     query: str,
-    vaults: Iterable[str],
+    vaults: Iterable[str] | None = None,
     *,
     k_per_vault: int = 5,
     rrf_k: int = 60,
@@ -28,6 +40,9 @@ async def search_async(
     provider: Provider | str | None = None,
 ) -> List[Dict[str, Any]]:
     """Asynchronously query ``vaults`` using the configured provider."""
+
+    if vaults is None:
+        vaults = list_vaults()
 
     provider = _resolve_provider(provider)
     return await provider.search_async(
@@ -42,7 +57,7 @@ async def search_async(
 
 def search(
     query: str,
-    vaults: Iterable[str],
+    vaults: Iterable[str] | None = None,
     *,
     k_per_vault: int = 5,
     rrf_k: int = 60,
@@ -51,6 +66,9 @@ def search(
     provider: Provider | str | None = None,
 ):
     """Query ``vaults`` synchronously or return an awaitable when in an event loop."""
+
+    if vaults is None:
+        vaults = list_vaults()
 
     try:
         asyncio.get_running_loop()
