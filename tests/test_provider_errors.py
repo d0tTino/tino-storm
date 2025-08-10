@@ -1,8 +1,10 @@
-from tino_storm.providers import DefaultProvider
+import tino_storm
 from tino_storm.events import event_emitter, ResearchAdded
 
 
 def test_bing_error_emits_event(monkeypatch):
+    from tino_storm.providers import DefaultProvider
+
     monkeypatch.setattr(event_emitter, "_subscribers", {})
     events = []
     event_emitter.subscribe(ResearchAdded, lambda e: events.append(e))
@@ -42,6 +44,37 @@ def test_yourm_error_emits_event_once(monkeypatch):
 
     rm = YouRM(ydc_api_key="x")
     result = rm.forward("topic")
+
+    assert result == []
+    assert len(events) == 1
+    assert events[0].topic == "topic"
+    assert events[0].information_table["error"] == "boom"
+
+
+def test_search_provider_exception_emits_event(monkeypatch):
+    monkeypatch.setattr(event_emitter, "_subscribers", {})
+    events = []
+    event_emitter.subscribe(ResearchAdded, lambda e: events.append(e))
+
+    import sys
+    import types
+
+    dummy_providers = types.ModuleType("tino_storm.providers")
+
+    class _Provider:
+        def search_sync(self, *a, **k):
+            return []
+
+    dummy_providers.Provider = _Provider
+    dummy_providers.DefaultProvider = _Provider
+    dummy_providers.load_provider = lambda spec: _Provider()
+    monkeypatch.setitem(sys.modules, "tino_storm.providers", dummy_providers)
+
+    class StubProvider:
+        def search_sync(self, *a, **k):
+            raise RuntimeError("boom")
+
+    result = tino_storm.search("topic", [], provider=StubProvider())
 
     assert result == []
     assert len(events) == 1

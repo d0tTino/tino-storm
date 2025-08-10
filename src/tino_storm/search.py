@@ -9,6 +9,7 @@ from .providers import DefaultProvider, load_provider, Provider
 from .events import ResearchAdded, event_emitter
 
 
+
 def _resolve_provider(provider: Provider | str | None) -> Provider:
     if provider is None:
         spec = os.environ.get("STORM_SEARCH_PROVIDER")
@@ -58,6 +59,7 @@ async def search_async(
         )
     except Exception as e:
         logging.error(f"Search failed for query {query}: {e}")
+
         event_emitter.emit(
             ResearchAdded(topic=query, information_table={"error": str(e)})
         )
@@ -94,6 +96,7 @@ def search(
             )
         except Exception as e:
             logging.error(f"Search failed for query {query}: {e}")
+
             event_emitter.emit(
                 ResearchAdded(topic=query, information_table={"error": str(e)})
             )
