@@ -5,6 +5,7 @@ from pathlib import Path
 import os
 
 from .providers import DefaultProvider, load_provider, Provider
+from .events import event_emitter, ResearchAdded
 
 
 def _resolve_provider(provider: Provider | str | None) -> Provider:
@@ -45,14 +46,20 @@ async def search_async(
         vaults = list_vaults()
 
     provider = _resolve_provider(provider)
-    return await provider.search_async(
-        query,
-        vaults,
-        k_per_vault=k_per_vault,
-        rrf_k=rrf_k,
-        chroma_path=chroma_path,
-        vault=vault,
-    )
+    try:
+        return await provider.search_async(
+            query,
+            vaults,
+            k_per_vault=k_per_vault,
+            rrf_k=rrf_k,
+            chroma_path=chroma_path,
+            vault=vault,
+        )
+    except Exception as e:
+        event_emitter.emit(
+            ResearchAdded(topic=query, information_table={"error": str(e)})
+        )
+        return []
 
 
 def search(
@@ -74,14 +81,20 @@ def search(
         asyncio.get_running_loop()
     except RuntimeError:
         provider = _resolve_provider(provider)
-        return provider.search_sync(
-            query,
-            vaults,
-            k_per_vault=k_per_vault,
-            rrf_k=rrf_k,
-            chroma_path=chroma_path,
-            vault=vault,
-        )
+        try:
+            return provider.search_sync(
+                query,
+                vaults,
+                k_per_vault=k_per_vault,
+                rrf_k=rrf_k,
+                chroma_path=chroma_path,
+                vault=vault,
+            )
+        except Exception as e:
+            event_emitter.emit(
+                ResearchAdded(topic=query, information_table={"error": str(e)})
+            )
+            return []
 
     return search_async(
         query,
