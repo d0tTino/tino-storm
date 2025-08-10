@@ -3,9 +3,11 @@ from typing import Iterable, List, Dict, Any, Optional
 from pathlib import Path
 
 import os
+import logging
 
 from .providers import DefaultProvider, load_provider, Provider
-from .events import event_emitter, ResearchAdded
+from .events import ResearchAdded, event_emitter
+
 
 
 def _resolve_provider(provider: Provider | str | None) -> Provider:
@@ -56,6 +58,8 @@ async def search_async(
             vault=vault,
         )
     except Exception as e:
+        logging.error(f"Search failed for query {query}: {e}")
+
         event_emitter.emit(
             ResearchAdded(topic=query, information_table={"error": str(e)})
         )
@@ -91,6 +95,8 @@ def search(
                 vault=vault,
             )
         except Exception as e:
+            logging.error(f"Search failed for query {query}: {e}")
+
             event_emitter.emit(
                 ResearchAdded(topic=query, information_table={"error": str(e)})
             )
