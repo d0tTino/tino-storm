@@ -4,6 +4,12 @@ Primary classes are exposed here via lazy imports to avoid heavy
 dependencies unless needed."""
 
 from importlib import import_module
+import sys
+from types import ModuleType
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover
+    from .search import search
 
 __all__ = [
     "__version__",
@@ -47,3 +53,15 @@ def __getattr__(name: str):
         globals()[name] = value
         return value
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __call__(query: str, **kwargs):
+    return search(query, **kwargs)
+
+
+class _CallableModule(ModuleType):
+    def __call__(self, query: str, **kwargs):
+        return search(query, **kwargs)
+
+
+sys.modules[__name__].__class__ = _CallableModule
