@@ -7,8 +7,13 @@ import json
 from pathlib import Path
 from typing import Any, Optional
 
-from watchdog.events import FileSystemEventHandler
-from watchdog.observers import Observer
+try:
+    from watchdog.events import FileSystemEventHandler
+    from watchdog.observers import Observer
+except ImportError as e:  # pragma: no cover - optional dependency
+    raise ImportError(
+        "watchdog is required for ingestion features; install with 'tino-storm[research]'"
+    ) from e
 
 import chromadb
 import trafilatura

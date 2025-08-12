@@ -22,10 +22,6 @@ dependencies = [
     "requests>=2.31.0",
     "PyYAML>=6.0",
     "cryptography>=41.0.0",
-    "fastapi>=0.110.0",
-    "uvicorn>=0.29.0",
-    "watchdog",
-    "knowledge-storm",
 ]
 
 [project.scripts]
@@ -36,6 +32,12 @@ scrapers = [
     "snscrape",
     "praw",
     "pypdf",
+]
+research = [
+    "fastapi>=0.110.0",
+    "uvicorn>=0.29.0",
+    "watchdog",
+    "knowledge-storm",
 ]
 
 [build-system]
