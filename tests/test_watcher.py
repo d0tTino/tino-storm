@@ -80,7 +80,11 @@ def test_ingest_text_file(monkeypatch, tmp_path):
     # Reset subscribers and capture events
     monkeypatch.setattr(event_emitter, "_subscribers", {})
     events = []
-    event_emitter.subscribe(ResearchAdded, lambda e: events.append(e))
+
+    async def handler(e):
+        events.append(e)
+
+    event_emitter.subscribe(ResearchAdded, handler)
 
     monkeypatch.setattr("chromadb.PersistentClient", DummyClient)
     # Ensure the watcher does not enable its test instrumentation
@@ -107,7 +111,11 @@ def test_ingest_text_file(monkeypatch, tmp_path):
 def test_ingest_txt_documents(monkeypatch, tmp_path):
     monkeypatch.setattr(event_emitter, "_subscribers", {})
     events = []
-    event_emitter.subscribe(ResearchAdded, lambda e: events.append(e))
+
+    async def handler(e):
+        events.append(e)
+
+    event_emitter.subscribe(ResearchAdded, handler)
 
     monkeypatch.setattr("chromadb.PersistentClient", DummyClient)
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)

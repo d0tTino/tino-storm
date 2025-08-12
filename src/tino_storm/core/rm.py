@@ -2,6 +2,7 @@ import logging
 import os
 from typing import Callable, Union, List
 
+import asyncio
 import backoff
 import dspy
 import requests
@@ -75,8 +76,10 @@ class YouRM(dspy.Retrieve):
                     collected_results.extend(authoritative_results[: self.k])
             except Exception as e:
                 logging.error(f"Error occurs when searching query {query}: {e}")
-                event_emitter.emit(
-                    ResearchAdded(topic=query, information_table={"error": str(e)})
+                asyncio.run(
+                    event_emitter.emit(
+                        ResearchAdded(topic=query, information_table={"error": str(e)})
+                    )
                 )
 
         return collected_results
@@ -179,8 +182,10 @@ class BingSearch(dspy.Retrieve):
             )
         except Exception as e:
             logging.error(f"Error occurs when fetching webpages for {queries}: {e}")
-            event_emitter.emit(
-                ResearchAdded(topic=str(queries), information_table={"error": str(e)})
+            asyncio.run(
+                event_emitter.emit(
+                    ResearchAdded(topic=str(queries), information_table={"error": str(e)})
+                )
             )
             valid_url_to_snippets = {}
         collected_results = []
@@ -417,8 +422,10 @@ class StanfordOvalArxivRM(dspy.Retrieve):
                 collected_results.extend(results)
             except Exception as e:
                 logging.error(f"Error occurs when searching query {query}: {e}")
-                event_emitter.emit(
-                    ResearchAdded(topic=query, information_table={"error": str(e)})
+                asyncio.run(
+                    event_emitter.emit(
+                        ResearchAdded(topic=query, information_table={"error": str(e)})
+                    )
                 )
         return collected_results
 

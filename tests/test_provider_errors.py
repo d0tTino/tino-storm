@@ -8,7 +8,11 @@ def test_bing_error_emits_event(monkeypatch):
 
     monkeypatch.setattr(event_emitter, "_subscribers", {})
     events = []
-    event_emitter.subscribe(ResearchAdded, lambda e: events.append(e))
+
+    async def handler(e):
+        events.append(e)
+
+    event_emitter.subscribe(ResearchAdded, handler)
 
     monkeypatch.setattr("tino_storm.providers.base.search_vaults", lambda *a, **k: [])
 
@@ -32,7 +36,11 @@ def test_bing_error_emits_event(monkeypatch):
 def test_yourm_error_emits_event_once(monkeypatch):
     monkeypatch.setattr(event_emitter, "_subscribers", {})
     events = []
-    event_emitter.subscribe(ResearchAdded, lambda e: events.append(e))
+
+    async def handler(e):
+        events.append(e)
+
+    event_emitter.subscribe(ResearchAdded, handler)
 
     monkeypatch.setattr("tino_storm.security.audit.log_request", lambda *a, **k: None)
 
@@ -55,7 +63,11 @@ def test_yourm_error_emits_event_once(monkeypatch):
 def test_search_provider_exception_emits_event(monkeypatch):
     monkeypatch.setattr(event_emitter, "_subscribers", {})
     events = []
-    event_emitter.subscribe(ResearchAdded, lambda e: events.append(e))
+
+    async def handler(e):
+        events.append(e)
+
+    event_emitter.subscribe(ResearchAdded, handler)
 
     import sys
     import types

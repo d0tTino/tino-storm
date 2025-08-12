@@ -3,6 +3,7 @@ import logging
 import os
 from dataclasses import dataclass, field
 from typing import Union, Literal, Optional
+import asyncio
 
 import dspy
 
@@ -239,8 +240,10 @@ class STORMWikiRunner(Engine):
         information_table.dump_url_to_info(
             os.path.join(self.article_output_dir, "raw_search_results.json")
         )
-        self.event_emitter.emit(
-            ResearchAdded(topic=self.topic, information_table=information_table)
+        asyncio.run(
+            self.event_emitter.emit(
+                ResearchAdded(topic=self.topic, information_table=information_table)
+            )
         )
         return information_table
 
@@ -281,7 +284,11 @@ class STORMWikiRunner(Engine):
         draft_article.dump_reference_to_file(
             os.path.join(self.article_output_dir, "url_to_info.json")
         )
-        self.event_emitter.emit(DocGenerated(topic=self.topic, article=draft_article))
+        asyncio.run(
+            self.event_emitter.emit(
+                DocGenerated(topic=self.topic, article=draft_article)
+            )
+        )
         return draft_article
 
     def run_article_polishing_module(

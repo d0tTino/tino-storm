@@ -4,6 +4,7 @@ import os
 import time
 import atexit
 import json
+import asyncio
 from pathlib import Path
 from typing import Any, Optional
 
@@ -163,9 +164,11 @@ class VaultIngestHandler(FileSystemEventHandler):
             metadatas=[{"source": source}],
             ids=[doc_id],
         )
-        event_emitter.emit(
-            ResearchAdded(
-                topic=vault, information_table={"source": source, "doc_id": doc_id}
+        asyncio.run(
+            event_emitter.emit(
+                ResearchAdded(
+                    topic=vault, information_table={"source": source, "doc_id": doc_id}
+                )
             )
         )
 
