@@ -5,7 +5,12 @@ import pytest
 
 import asyncio
 import tino_storm
-from tino_storm.providers import Provider, load_provider, ParallelProvider
+from tino_storm.providers import (
+    Provider,
+    load_provider,
+    ParallelProvider,
+    DefaultProvider,
+)
 
 
 def test_load_provider_raises(monkeypatch):
@@ -75,7 +80,11 @@ def test_parallel_provider_gathers_and_merges(monkeypatch):
         lambda *a, **k: [{"url": "vault"}],
     )
     provider = ParallelProvider()
-    monkeypatch.setattr(provider, "_bing_search", lambda q: [{"url": "bing"}])
+    monkeypatch.setattr(
+        provider,
+        "_bing_search",
+        lambda q: [{"url": "bing", "description": "desc", "title": "t"}],
+    )
 
     async def run():
         return await provider.search_async("q", ["v"])
@@ -84,3 +93,18 @@ def test_parallel_provider_gathers_and_merges(monkeypatch):
 
     assert gathered["count"] == 2
     assert {r["url"] for r in results} == {"vault", "bing"}
+    bing_result = next(r for r in results if r["url"] == "bing")
+    assert bing_result["snippets"] == ["desc"]
+    assert bing_result["meta"]["title"] == "t"
+
+
+def test_default_provider_formats_bing(monkeypatch):
+    monkeypatch.setattr("tino_storm.providers.base.search_vaults", lambda *a, **k: [])
+    provider = DefaultProvider()
+    monkeypatch.setattr(
+        provider,
+        "_bing_search",
+        lambda q: [{"url": "u", "description": "d", "title": "t"}],
+    )
+    results = provider.search_sync("q", [])
+    assert results == [{"url": "u", "snippets": ["d"], "meta": {"title": "t"}}]
