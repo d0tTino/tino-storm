@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from typing import Dict, Iterable, Union
 
+
 from .base import Provider
 
 
@@ -67,6 +68,7 @@ class ProviderRegistry:
         return dict(self._providers)
 
 
+
 provider_registry = ProviderRegistry()
 
 
@@ -78,3 +80,4 @@ def register_provider(name: str):
         return cls
 
     return decorator
+
