@@ -1,9 +1,8 @@
 import argparse
-import uvicorn
 
-from .api import app, run_research
-from .ingest import start_watcher
 from . import search
+
+start_watcher = None  # populated lazily for ingest command
 
 
 def main(argv=None):
@@ -76,6 +75,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     if args.command == "research":
+        from .api import run_research
+
         run_research(
             topic=args.topic,
             output_dir=args.output_dir,
@@ -85,6 +86,8 @@ def main(argv=None):
             do_polish_article=not args.skip_polish,
         )
     elif args.command == "run":
+        from .api import run_research
+
         run_research(
             topic=args.topic,
             output_dir=args.output_dir,
@@ -95,8 +98,23 @@ def main(argv=None):
             do_polish_article=not args.skip_polish,
         )
     elif args.command == "serve":
+        try:
+            import uvicorn
+        except ImportError as e:  # pragma: no cover - optional dependency
+            raise ImportError(
+                "uvicorn is required to serve the API; install with 'tino-storm[research]'"
+            ) from e
+
+        from .api import app
+
         uvicorn.run(app, host=args.host, port=args.port)
     elif args.command == "ingest":
+        global start_watcher
+        if start_watcher is None:
+            from .ingest import start_watcher as _start_watcher
+
+            start_watcher = _start_watcher
+
         start_watcher(
             root=args.root,
             twitter_limit=args.twitter_limit,

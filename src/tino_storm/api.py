@@ -1,15 +1,26 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
 from typing import Optional, List
 import os
 
-from knowledge_storm import (
-    STORMWikiRunnerArguments,
-    STORMWikiRunner,
-    STORMWikiLMConfigs,
-)
-from knowledge_storm.lm import LitellmModel
-from knowledge_storm.rm import BingSearch
+try:
+    from fastapi import FastAPI
+    from pydantic import BaseModel
+except ImportError as e:  # pragma: no cover - optional dependency
+    raise ImportError(
+        "fastapi is required for the API; install with 'tino-storm[research]'"
+    ) from e
+
+try:
+    from knowledge_storm import (
+        STORMWikiRunnerArguments,
+        STORMWikiRunner,
+        STORMWikiLMConfigs,
+    )
+    from knowledge_storm.lm import LitellmModel
+    from knowledge_storm.rm import BingSearch
+except ImportError as e:  # pragma: no cover - optional dependency
+    raise ImportError(
+        "knowledge-storm is required for research features; install with 'tino-storm[research]'"
+    ) from e
 
 from . import search
 

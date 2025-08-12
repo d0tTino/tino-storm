@@ -3,7 +3,12 @@
 from pathlib import Path
 from typing import Optional
 
-from .watcher import start_watcher, VaultIngestHandler, load_txt_documents
+try:
+    from .watcher import start_watcher, VaultIngestHandler, load_txt_documents
+except ImportError as e:  # pragma: no cover - optional dependency
+    raise ImportError(
+        "watchdog is required for ingestion features; install with 'tino-storm[research]'"
+    ) from e
 from .search import search_vaults
 
 
