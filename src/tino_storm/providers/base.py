@@ -12,6 +12,21 @@ from ..core.rm import BingSearch
 from ..events import ResearchAdded, event_emitter
 
 
+def format_bing_items(items: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Normalize raw Bing results into the internal search format."""
+
+    formatted: List[Dict[str, Any]] = []
+    for item in items:
+        url = item.get("url")
+        if not url:
+            continue
+        snippets = item.get("snippets") or [item.get("description", "")]
+        formatted.append(
+            {"url": url, "snippets": snippets, "meta": {"title": item.get("title")}}
+        )
+    return formatted
+
+
 class Provider(ABC):
     """Base interface for search providers."""
 
@@ -103,16 +118,7 @@ class DefaultProvider(Provider):
         if results:
             return results
         web = self._bing_search(query)
-        formatted = []
-        for item in web:
-            formatted.append(
-                {
-                    "url": item.get("url"),
-                    "snippets": item.get("snippets") or [item.get("description", "")],
-                    "meta": {"title": item.get("title")},
-                }
-            )
-        return formatted
+        return format_bing_items(web)
 
 
 def load_provider(spec: str) -> Provider:

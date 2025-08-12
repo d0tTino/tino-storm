@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from typing import Iterable, List, Dict, Any, Optional
 
-from .base import DefaultProvider
+from .base import DefaultProvider, format_bing_items
 from ..ingest import search_vaults
 from ..retrieval import reciprocal_rank_fusion, score_results, add_posteriors
 
@@ -36,15 +36,7 @@ class ParallelProvider(DefaultProvider):
         rankings: List[List[Dict[str, Any]]] = []
         if vault_res:
             rankings.append(vault_res)
-        formatted: List[Dict[str, Any]] = []
-        for item in bing_res:
-            formatted.append(
-                {
-                    "url": item.get("url"),
-                    "snippets": item.get("snippets") or [item.get("description", "")],
-                    "meta": {"title": item.get("title")},
-                }
-            )
+        formatted = format_bing_items(bing_res)
         if formatted:
             rankings.append(score_results(formatted))
         if not rankings:
