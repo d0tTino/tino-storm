@@ -92,8 +92,10 @@ class DefaultProvider(Provider):
             return self._bing(query)
         except Exception as e:  # pragma: no cover - network issues
             logging.error(f"Bing search failed for query {query}: {e}")
-            event_emitter.emit(
-                ResearchAdded(topic=query, information_table={"error": str(e)})
+            asyncio.run(
+                event_emitter.emit(
+                    ResearchAdded(topic=query, information_table={"error": str(e)})
+                )
             )
             return []
 

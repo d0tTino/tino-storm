@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Type, Any, TYPE_CHECKING
+import inspect
 
 if TYPE_CHECKING:
     from .storm_wiki.modules.storm_dataclass import StormInformationTable, StormArticle
@@ -25,14 +26,16 @@ class DocGenerated:
 
 class EventEmitter:
     def __init__(self) -> None:
-        self._subscribers: Dict[Type[Any], List[Callable[[Any], None]]] = {}
+        self._subscribers: Dict[Type[Any], List[Callable[[Any], Any]]] = {}
 
-    def subscribe(self, event_type: Type[Any], handler: Callable[[Any], None]) -> None:
+    def subscribe(self, event_type: Type[Any], handler: Callable[[Any], Any]) -> None:
         self._subscribers.setdefault(event_type, []).append(handler)
 
-    def emit(self, event: Any) -> None:
+    async def emit(self, event: Any) -> None:
         for handler in self._subscribers.get(type(event), []):
-            handler(event)
+            result = handler(event)
+            if inspect.isawaitable(result):
+                await result
 
 
 event_emitter = EventEmitter()

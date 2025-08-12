@@ -9,7 +9,11 @@ from tino_storm.search import ResearchError, Provider, search, search_async
 def test_search_sync_error_emits_event(monkeypatch):
     monkeypatch.setattr(event_emitter, "_subscribers", {})
     events = []
-    event_emitter.subscribe(ResearchAdded, lambda e: events.append(e))
+
+    async def handler(e):
+        events.append(e)
+
+    event_emitter.subscribe(ResearchAdded, handler)
 
     class FailingProvider(Provider):
         def search_sync(self, *a, **k):
@@ -26,7 +30,11 @@ def test_search_sync_error_emits_event(monkeypatch):
 def test_search_async_error_emits_event(monkeypatch):
     monkeypatch.setattr(event_emitter, "_subscribers", {})
     events = []
-    event_emitter.subscribe(ResearchAdded, lambda e: events.append(e))
+
+    async def handler(e):
+        events.append(e)
+
+    event_emitter.subscribe(ResearchAdded, handler)
 
     class FailingProvider(Provider):
         async def search_async(self, *a, **k):

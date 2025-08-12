@@ -67,6 +67,10 @@ class ProviderRegistry:
 
         return dict(self._providers)
 
+    def clear(self) -> None:
+        """Remove all registered providers."""
+        self._providers.clear()
+
 
 
 provider_registry = ProviderRegistry()
