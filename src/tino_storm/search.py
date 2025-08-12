@@ -5,9 +5,13 @@ from pathlib import Path
 import os
 import logging
 
-from .providers import DefaultProvider, load_provider, Provider
+from .providers import (
+    DefaultProvider,
+    load_provider,
+    Provider,
+    provider_registry,
+)
 from .events import ResearchAdded, event_emitter
-
 
 
 def _resolve_provider(provider: Provider | str | None) -> Provider:
@@ -17,7 +21,10 @@ def _resolve_provider(provider: Provider | str | None) -> Provider:
             return load_provider(spec)
         return DefaultProvider()
     if isinstance(provider, str):
-        return load_provider(provider)
+        try:
+            return provider_registry.get(provider)
+        except KeyError:
+            return load_provider(provider)
     return provider
 
 
