@@ -9,6 +9,9 @@ from .providers import DefaultProvider, load_provider, Provider
 from .events import ResearchAdded, event_emitter
 
 
+class ResearchError(RuntimeError):
+    """Raised when a search provider fails to complete the query."""
+
 
 def _resolve_provider(provider: Provider | str | None) -> Provider:
     if provider is None:
@@ -63,7 +66,7 @@ async def search_async(
         event_emitter.emit(
             ResearchAdded(topic=query, information_table={"error": str(e)})
         )
-        return []
+        raise ResearchError(str(e)) from e
 
 
 def search(
@@ -100,7 +103,7 @@ def search(
             event_emitter.emit(
                 ResearchAdded(topic=query, information_table={"error": str(e)})
             )
-            return []
+            raise ResearchError(str(e)) from e
 
     return search_async(
         query,

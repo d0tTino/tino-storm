@@ -1,6 +1,9 @@
-from tino_storm.search import search, search_async, Provider
-from tino_storm.events import event_emitter, ResearchAdded
 import asyncio
+
+import pytest
+
+from tino_storm.events import event_emitter, ResearchAdded
+from tino_storm.search import ResearchError, Provider, search, search_async
 
 
 def test_search_sync_error_emits_event(monkeypatch):
@@ -12,9 +15,9 @@ def test_search_sync_error_emits_event(monkeypatch):
         def search_sync(self, *a, **k):
             raise RuntimeError("boom")
 
-    result = search("topic", provider=FailingProvider())
+    with pytest.raises(ResearchError):
+        search("topic", provider=FailingProvider())
 
-    assert result == []
     assert len(events) == 1
     assert events[0].topic == "topic"
     assert events[0].information_table["error"] == "boom"
@@ -33,11 +36,11 @@ def test_search_async_error_emits_event(monkeypatch):
             raise AssertionError("should not be called")
 
     async def run():
-        return await search_async("topic", provider=FailingProvider())
+        await search_async("topic", provider=FailingProvider())
 
-    result = asyncio.run(run())
+    with pytest.raises(ResearchError):
+        asyncio.run(run())
 
-    assert result == []
     assert len(events) == 1
     assert events[0].topic == "topic"
     assert events[0].information_table["error"] == "boom"
