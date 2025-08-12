@@ -10,13 +10,13 @@ from .providers import (
     load_provider,
     Provider,
     provider_registry,
+    ProviderAggregator,
 )
 from .events import ResearchAdded, event_emitter
 
 
 class ResearchError(RuntimeError):
     """Raised when a search provider fails to complete the query."""
-
 
 
 def _resolve_provider(provider: Provider | str | None) -> Provider:
@@ -26,6 +26,9 @@ def _resolve_provider(provider: Provider | str | None) -> Provider:
             return load_provider(spec)
         return DefaultProvider()
     if isinstance(provider, str):
+        if "," in provider:
+            specs = [p.strip() for p in provider.split(",") if p.strip()]
+            return ProviderAggregator(specs)
         try:
             return provider_registry.get(provider)
         except KeyError:
