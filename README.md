@@ -31,14 +31,21 @@ pip install -e .
 which tino-storm
 ```
 
-## Optional scraper dependencies
+## Installing extras
 
-The ingestion helpers rely on optional libraries for scraping data from
-social platforms and PDF files. Install them with:
+`tino-storm` exposes a couple of optional dependency groups:
 
-```bash
-pip install tino-storm[scrapers]
-```
+- **scrapers** – enable the ingestion helpers for scraping social platforms and PDF files.
+
+  ```bash
+  pip install tino-storm[scrapers]
+  ```
+
+- **research** – install the FastAPI server and filesystem watcher used by the CLI.
+
+  ```bash
+  pip install tino-storm[research]
+  ```
 
 ## Command line usage
 
@@ -118,19 +125,57 @@ results = await tino_storm.search("machine learning", ["science"])
 
 ### Custom search providers
 
-`tino_storm.search()` can use a pluggable provider for fetching results.  Pass
-an instance to the `provider` argument or set the `STORM_SEARCH_PROVIDER`
-environment variable to the dotted path of a provider class.
+`tino_storm.search()` can use a pluggable provider for fetching results.
+Providers implement the `Provider` interface and return lists of
+`ResearchResult` objects describing each hit.
 
 ```python
-from tino_storm.providers import Provider
+from tino_storm.search_result import ResearchResult
 
+ResearchResult(
+    url="https://example.com", snippets=["excerpt"], meta={"title": "Example"}
+)
+```
+
+Pass an instance to the `provider` argument or set the `STORM_SEARCH_PROVIDER`
+environment variable to the dotted path of a provider class. Providers can be
+registered programmatically using the `register_provider` decorator:
+
+```python
+from tino_storm.providers import Provider, register_provider
+
+@register_provider("my-provider")
 class MyProvider(Provider):
     def search_sync(self, query, vaults, **kwargs):
-        ...  # return list of results
+        return [ResearchResult(url="https://example.com", snippets=[], meta={})]
 
-results = tino_storm.search("cats", ["science"], provider=MyProvider())
+results = tino_storm.search("cats", ["science"], provider="my-provider")
 ```
+
+#### Async providers
+
+Some providers, such as `BingAsyncProvider`, implement only `search_async`.  The
+`search` helper automatically awaits them when an event loop is running.
+
+```python
+from tino_storm.providers.bing_async import BingAsyncProvider
+
+results = await BingAsyncProvider().search_async("cats", ["science"])
+```
+
+#### Entry-point discovery
+
+Third-party packages may expose providers through the
+`tino_storm.providers` entry-point group to have them loaded automatically.
+
+```toml
+# pyproject.toml
+[project.entry-points."tino_storm.providers"]
+"my-provider" = "my_package.providers:MyProvider"
+```
+
+After installation the provider can be used by name with
+`tino_storm.search()` or retrieved from `provider_registry`.
 
 ### HTTP API
 
