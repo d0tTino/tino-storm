@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Iterable, List, Dict, Any, Optional, Sequence
 
 from .base import Provider, load_provider
@@ -42,10 +43,14 @@ class ProviderAggregator(Provider):
                     vault=vault,
                 )
                 for p in self.providers
-            ]
+            ],
+            return_exceptions=True,
         )
         merged: List[Dict[str, Any]] = []
-        for r in results:
+        for provider, r in zip(self.providers, results):
+            if isinstance(r, Exception):
+                logging.exception("Provider %s failed in search_async", provider)
+                continue
             merged.extend(r)
         return merged
 
@@ -61,14 +66,18 @@ class ProviderAggregator(Provider):
     ) -> List[Dict[str, Any]]:
         merged: List[Dict[str, Any]] = []
         for p in self.providers:
-            merged.extend(
-                p.search_sync(
-                    query,
-                    vaults,
-                    k_per_vault=k_per_vault,
-                    rrf_k=rrf_k,
-                    chroma_path=chroma_path,
-                    vault=vault,
+            try:
+                merged.extend(
+                    p.search_sync(
+                        query,
+                        vaults,
+                        k_per_vault=k_per_vault,
+                        rrf_k=rrf_k,
+                        chroma_path=chroma_path,
+                        vault=vault,
+                    )
                 )
-            )
+            except Exception:
+                logging.exception("Provider %s failed in search_sync", p)
+                continue
         return merged
