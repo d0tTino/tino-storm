@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Iterable, List, Dict, Any, Optional
+from typing import Iterable, List, Optional
 
 from .base import Provider
+from ..search_result import ResearchResult
 
 
 class DummyAsyncProvider(Provider):
@@ -17,8 +18,10 @@ class DummyAsyncProvider(Provider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
-        return [{"query": query, "vaults": list(vaults)}]
+    ) -> List[ResearchResult]:
+        return [
+            ResearchResult(url="", snippets=[], meta={"query": query, "vaults": list(vaults)})
+        ]
 
     def search_sync(
         self,
@@ -29,5 +32,5 @@ class DummyAsyncProvider(Provider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[ResearchResult]:
         raise NotImplementedError("DummyAsyncProvider only implements search_async")

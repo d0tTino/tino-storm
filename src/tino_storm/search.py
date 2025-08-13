@@ -1,9 +1,8 @@
 import asyncio
-from typing import Iterable, List, Dict, Any, Optional
-from pathlib import Path
-
-import os
 import logging
+import os
+from pathlib import Path
+from typing import Iterable, List, Optional
 
 from .providers import (
     DefaultProvider,
@@ -13,6 +12,7 @@ from .providers import (
     ProviderAggregator,
 )
 from .events import ResearchAdded, event_emitter
+from .search_result import ResearchResult
 
 
 class ResearchError(RuntimeError):
@@ -56,7 +56,7 @@ async def search_async(
     chroma_path: Optional[str] = None,
     vault: Optional[str] = None,
     provider: Provider | str | None = None,
-) -> List[Dict[str, Any]]:
+) -> List[ResearchResult]:
     """Asynchronously query ``vaults`` using the configured provider."""
 
     if vaults is None:
@@ -89,7 +89,7 @@ def search(
     chroma_path: Optional[str] = None,
     vault: Optional[str] = None,
     provider: Provider | str | None = None,
-):
+) -> List[ResearchResult]:
     """Query ``vaults`` synchronously or return an awaitable when in an event loop."""
 
     if vaults is None:

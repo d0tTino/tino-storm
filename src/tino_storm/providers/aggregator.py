@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Iterable, List, Dict, Any, Optional, Sequence
+from typing import Iterable, List, Optional, Sequence
 
 from .base import Provider, load_provider
 from .registry import provider_registry
+from ..search_result import ResearchResult
 
 
 class ProviderAggregator(Provider):
@@ -30,7 +31,7 @@ class ProviderAggregator(Provider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[ResearchResult]:
         results = await asyncio.gather(
             *[
                 p.search_async(
@@ -44,7 +45,7 @@ class ProviderAggregator(Provider):
                 for p in self.providers
             ]
         )
-        merged: List[Dict[str, Any]] = []
+        merged: List[ResearchResult] = []
         for r in results:
             merged.extend(r)
         return merged
@@ -58,8 +59,8 @@ class ProviderAggregator(Provider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
-        merged: List[Dict[str, Any]] = []
+    ) -> List[ResearchResult]:
+        merged: List[ResearchResult] = []
         for p in self.providers:
             merged.extend(
                 p.search_sync(

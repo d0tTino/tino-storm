@@ -2,6 +2,7 @@ import asyncio
 
 from tino_storm import search as search_fn
 from tino_storm.providers import Provider, provider_registry, ProviderAggregator
+from tino_storm.search_result import ResearchResult
 from tino_storm.search import _resolve_provider
 
 
@@ -10,10 +11,10 @@ class DummyProvider(Provider):
         self.name = name
 
     async def search_async(self, query, vaults, **kwargs):
-        return [{"url": self.name, "snippets": [], "meta": {}}]
+        return [ResearchResult(url=self.name, snippets=[], meta={})]
 
     def search_sync(self, query, vaults, **kwargs):
-        return [{"url": self.name, "snippets": [], "meta": {}}]
+        return [ResearchResult(url=self.name, snippets=[], meta={})]
 
 
 def test_resolve_provider_aggregates_and_runs_concurrently(monkeypatch):
@@ -39,7 +40,7 @@ def test_resolve_provider_aggregates_and_runs_concurrently(monkeypatch):
     results = asyncio.run(run())
 
     assert gathered["count"] == 2
-    assert {r["url"] for r in results} == {"p1", "p2"}
+    assert {r.url for r in results} == {"p1", "p2"}
 
     sync_results = search_fn("q", [], provider="p1,p2")
-    assert {r["url"] for r in sync_results} == {"p1", "p2"}
+    assert {r.url for r in sync_results} == {"p1", "p2"}
