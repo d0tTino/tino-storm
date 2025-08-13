@@ -3,8 +3,8 @@ import asyncio
 from tino_storm.providers.base import Provider
 from tino_storm.providers.registry import provider_registry
 from tino_storm.providers.aggregator import ProviderAggregator
-
 from tino_storm.search import _resolve_provider
+from tino_storm.search_result import ResearchResult
 
 
 class DummyProvider(Provider):
@@ -15,7 +15,7 @@ class DummyProvider(Provider):
         return [ResearchResult(url=self.name, snippets=[], meta={})]
 
     def search_sync(self, query, vaults, **kwargs):
-        return [ResearchResult(url=self.name, snippets=[], meta={})]
+        return [{"url": self.name, "snippets": [], "meta": {}}]
 
 
 class FailingProvider(Provider):
@@ -68,7 +68,7 @@ def test_aggregator_skips_failures(monkeypatch):
         return await provider.search_async("q", [])
 
     async_results = asyncio.run(run_async())
-    assert {r["url"] for r in async_results} == {"good"}
+    assert {r.url for r in async_results} == {"good"}
 
     sync_results = provider.search_sync("q", [])
     assert {r["url"] for r in sync_results} == {"good"}
