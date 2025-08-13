@@ -6,6 +6,7 @@ from typing import Iterable, List, Dict, Any, Optional
 from .base import DefaultProvider, format_bing_items
 from ..ingest import search_vaults
 from ..retrieval import reciprocal_rank_fusion, score_results, add_posteriors
+from ..search_result import ResearchResult, as_research_result
 
 
 class ParallelProvider(DefaultProvider):
@@ -20,7 +21,7 @@ class ParallelProvider(DefaultProvider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[ResearchResult]:
         vault_task = asyncio.to_thread(
             search_vaults,
             query,
@@ -43,7 +44,8 @@ class ParallelProvider(DefaultProvider):
             return []
 
         fused = reciprocal_rank_fusion(rankings, k=rrf_k)
-        return add_posteriors(fused)
+        scored = add_posteriors(fused)
+        return [as_research_result(r) for r in scored]
 
     def search_sync(
         self,
@@ -54,7 +56,7 @@ class ParallelProvider(DefaultProvider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[ResearchResult]:
         return asyncio.run(
             self.search_async(
                 query,

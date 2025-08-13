@@ -2,6 +2,7 @@ import asyncio
 import importlib
 
 import tino_storm
+from tino_storm.search_result import ResearchResult
 
 
 def test_search_sync(monkeypatch):
@@ -30,7 +31,7 @@ def test_search_sync(monkeypatch):
                 chroma_path,
                 vault,
             )
-            return ["ok"]
+            return [ResearchResult(url="ok", snippets=[], meta={})]
 
     fake_provider = FakeProvider()
     monkeypatch.setattr(
@@ -42,7 +43,7 @@ def test_search_sync(monkeypatch):
 
     result = tino_storm.search("q", ["v"])
 
-    assert result == ["ok"]
+    assert result == [ResearchResult(url="ok", snippets=[], meta={})]
     assert called["args"] == ("q", ["v"], 5, 60, None, None)
 
 
@@ -76,7 +77,7 @@ def test_search_async(monkeypatch):
                 chroma_path,
                 vault,
             )
-            return ["async"]
+            return [ResearchResult(url="async", snippets=[], meta={})]
 
     monkeypatch.setattr(asyncio, "to_thread", fake_to_thread)
     fake_provider = FakeProvider()
@@ -91,7 +92,7 @@ def test_search_async(monkeypatch):
 
     result = asyncio.run(_run())
 
-    assert result == ["async"]
+    assert result == [ResearchResult(url="async", snippets=[], meta={})]
     assert called["thread"]
     assert called["args"] == ("q", ["v"], 5, 60, None, None)
 
@@ -121,7 +122,7 @@ def test_search_awaits_provider_coroutine(monkeypatch):
                 chroma_path,
                 vault,
             )
-            return ["awaited"]
+            return [ResearchResult(url="awaited", snippets=[], meta={})]
 
         def search_sync(self, *a, **k):
             called["sync"] = True
@@ -139,7 +140,7 @@ def test_search_awaits_provider_coroutine(monkeypatch):
 
     result = asyncio.run(_run())
 
-    assert result == ["awaited"]
+    assert result == [ResearchResult(url="awaited", snippets=[], meta={})]
     assert called["args"] == ("q", ["v"], 5, 60, None, None)
     assert "sync" not in called
 
@@ -173,7 +174,7 @@ def test_search_without_vaults_uses_default(monkeypatch):
                 chroma_path,
                 vault,
             )
-            return ["ok"]
+            return [ResearchResult(url="ok", snippets=[], meta={})]
 
     monkeypatch.setattr(search_mod, "list_vaults", fake_list_vaults)
     fake_provider = FakeProvider()
@@ -185,6 +186,6 @@ def test_search_without_vaults_uses_default(monkeypatch):
 
     result = tino_storm.search("q")
 
-    assert result == ["ok"]
+    assert result == [ResearchResult(url="ok", snippets=[], meta={})]
     assert called["list"]
     assert called["args"] == ("q", ["a", "b"], 5, 60, None, None)
