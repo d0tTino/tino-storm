@@ -1,6 +1,16 @@
 # Using Tino Storm as a research plugin
 
-`tino_storm.search()` and `tino_storm.search_async()` can be embedded in language-model agents to query one or more STORM vaults. The synchronous helper automatically delegates to `search_async()` when an event loop is active.
+`tino_storm.search()` and `tino_storm.search_async()` can be embedded in
+language-model agents to query one or more STORM vaults. Install optional
+extras to pull in additional features:
+
+```bash
+pip install tino-storm[research]  # FastAPI server and filesystem watcher
+pip install tino-storm[scrapers]  # ingestion helpers for social platforms
+```
+
+The synchronous helper automatically delegates to `search_async()` when an event
+loop is active.
 
 ```python
 import asyncio
@@ -13,7 +23,15 @@ async def main():
 asyncio.run(main())
 ```
 
-The search API returns a list of result dictionaries containing the URL, title and text snippets from the retrieved documents.
+The search API returns a list of `ResearchResult` objects containing the URL,
+text snippets, optional metadata and an optional summary from the retrieved
+documents.
+
+```python
+from tino_storm.search_result import ResearchResult
+
+result = ResearchResult(url="https://example.com", snippets=["excerpt"], meta={})
+```
 
 ## Custom search providers
 
@@ -56,6 +74,32 @@ from tino_storm.providers import register_provider
 class MyProvider(Provider):
     ...
 ```
+
+### Async providers
+
+Providers may implement an asynchronous ``search_async`` method. For example,
+``BingAsyncProvider`` uses ``httpx`` to perform non-blocking web searches.
+
+```python
+from tino_storm.providers.bing_async import BingAsyncProvider
+
+results = await BingAsyncProvider().search_async("large language models", ["science"])
+```
+
+### Entry-point discovery
+
+Third-party packages can expose providers through the
+``tino_storm.providers`` entry-point group so they are discovered at import
+time:
+
+```toml
+# pyproject.toml
+[project.entry-points."tino_storm.providers"]
+"my-provider" = "my_package.providers:MyProvider"
+```
+
+Once installed, such providers are available by name via ``provider_registry``
+or the ``provider`` argument to ``search`` and ``search_async``.
 
 ## Custom provider lists
 
