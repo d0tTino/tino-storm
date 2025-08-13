@@ -56,3 +56,46 @@ from tino_storm.providers import register_provider
 class MyProvider(Provider):
     ...
 ```
+
+## Custom provider lists
+
+Multiple providers can be combined by passing a comma-separated list to the
+``provider`` argument or the ``STORM_SEARCH_PROVIDER`` environment variable. The
+list is resolved into a ``ProviderAggregator`` which queries each provider and
+merges their results.
+
+```python
+results = await tino_storm.search_async(
+    "large language models",
+    provider="default,my-provider",
+)
+```
+
+## Error handling
+
+When a provider fails to complete a query, ``search`` and ``search_async``
+raise ``ResearchError``. Catch this exception to handle failures gracefully.
+
+```python
+from tino_storm.search import ResearchError, search
+
+try:
+    search("large language models", provider="failing-provider")
+except ResearchError as e:
+    print("Search failed:", e)
+```
+
+## Async event hooks
+
+Tino Storm exposes an ``event_emitter`` for reacting to research-related
+events. Subscribe to ``ResearchAdded`` to receive notifications when research
+is ingested or when searches emit error events.
+
+```python
+from tino_storm.events import event_emitter, ResearchAdded
+
+async def on_research(event: ResearchAdded):
+    print("Research event:", event.topic, event.information_table)
+
+event_emitter.subscribe(ResearchAdded, on_research)
+```
