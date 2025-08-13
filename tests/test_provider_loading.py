@@ -11,6 +11,7 @@ from tino_storm.providers import (
     ParallelProvider,
     DefaultProvider,
 )
+from tino_storm.search_result import ResearchResult
 
 
 def test_load_provider_raises(monkeypatch):
@@ -48,7 +49,7 @@ def test_search_uses_env_provider(monkeypatch):
                 chroma_path,
                 vault,
             )
-            return ["ok"]
+            return [ResearchResult(url="ok", snippets=[], meta={})]
 
     mod = types.ModuleType("dummy_provider_mod")
     mod.DummyProvider = DummyProvider
@@ -57,7 +58,7 @@ def test_search_uses_env_provider(monkeypatch):
 
     result = tino_storm.search("q", ["v"])
 
-    assert result == ["ok"]
+    assert result == [ResearchResult(url="ok", snippets=[], meta={})]
     assert calls["args"] == ("q", ["v"], 5, 60, None, None)
 
 
@@ -77,7 +78,7 @@ def test_parallel_provider_gathers_and_merges(monkeypatch):
     monkeypatch.setattr(asyncio, "to_thread", fake_to_thread)
     monkeypatch.setattr(
         "tino_storm.providers.parallel.search_vaults",
-        lambda *a, **k: [{"url": "vault"}],
+        lambda *a, **k: [{"url": "vault", "snippets": [], "meta": {}}],
     )
     provider = ParallelProvider()
     monkeypatch.setattr(
@@ -92,10 +93,10 @@ def test_parallel_provider_gathers_and_merges(monkeypatch):
     results = asyncio.run(run())
 
     assert gathered["count"] == 2
-    assert {r["url"] for r in results} == {"vault", "bing"}
-    bing_result = next(r for r in results if r["url"] == "bing")
-    assert bing_result["snippets"] == ["desc"]
-    assert bing_result["meta"]["title"] == "t"
+    assert {r.url for r in results} == {"vault", "bing"}
+    bing_result = next(r for r in results if r.url == "bing")
+    assert bing_result.snippets == ["desc"]
+    assert bing_result.meta["title"] == "t"
 
 
 def test_default_provider_formats_bing(monkeypatch):
@@ -107,4 +108,6 @@ def test_default_provider_formats_bing(monkeypatch):
         lambda q: [{"url": "u", "description": "d", "title": "t"}],
     )
     results = provider.search_sync("q", [])
-    assert results == [{"url": "u", "snippets": ["d"], "meta": {"title": "t"}}]
+    assert results == [
+        ResearchResult(url="u", snippets=["d"], meta={"title": "t"})
+    ]

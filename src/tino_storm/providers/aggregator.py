@@ -4,8 +4,10 @@ import asyncio
 import logging
 from typing import Iterable, List, Dict, Any, Optional, Sequence
 
+
 from .base import Provider, load_provider
 from .registry import provider_registry
+from ..search_result import ResearchResult
 
 
 class ProviderAggregator(Provider):
@@ -31,7 +33,7 @@ class ProviderAggregator(Provider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[ResearchResult]:
         results = await asyncio.gather(
             *[
                 p.search_async(
@@ -51,6 +53,7 @@ class ProviderAggregator(Provider):
             if isinstance(r, Exception):
                 logging.exception("Provider %s failed in search_async", provider)
                 continue
+
             merged.extend(r)
         return merged
 
@@ -63,8 +66,8 @@ class ProviderAggregator(Provider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
-        merged: List[Dict[str, Any]] = []
+    ) -> List[ResearchResult]:
+        merged: List[ResearchResult] = []
         for p in self.providers:
             try:
                 merged.extend(

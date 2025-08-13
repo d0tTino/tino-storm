@@ -1,5 +1,6 @@
 import tino_storm
 from tino_storm.providers import Provider, provider_registry
+from tino_storm.search_result import ResearchResult
 
 
 class SampleProvider(Provider):
@@ -12,8 +13,8 @@ class SampleProvider(Provider):
         rrf_k=60,
         chroma_path=None,
         vault=None,
-    ):
-        return [{"url": "custom", "snippets": ["ok"], "meta": {}}]
+    ) -> list[ResearchResult]:
+        return [ResearchResult(url="custom", snippets=["ok"], meta={})]
 
 
 def setup_function(_):
@@ -30,4 +31,4 @@ def test_registry_retrieves_and_searches_with_custom_provider():
     assert isinstance(provider, SampleProvider)
 
     results = tino_storm.search("query", [], provider="sample")
-    assert results == [{"url": "custom", "snippets": ["ok"], "meta": {}}]
+    assert results == [ResearchResult(url="custom", snippets=["ok"], meta={})]

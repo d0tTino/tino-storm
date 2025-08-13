@@ -7,6 +7,8 @@ import os
 from abc import ABC, abstractmethod
 from typing import Iterable, List, Dict, Any, Optional
 
+from ..search_result import ResearchResult, as_research_result
+
 from ..ingest import search_vaults
 from ..core.rm import BingSearch
 from ..events import ResearchAdded, event_emitter
@@ -39,7 +41,7 @@ class Provider(ABC):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[ResearchResult]:
         """Asynchronously search and return results."""
         return await asyncio.to_thread(
             self.search_sync,
@@ -61,7 +63,7 @@ class Provider(ABC):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[ResearchResult]:
         """Synchronously search and return results."""
 
     def search(self, *args, **kwargs):
@@ -108,8 +110,8 @@ class DefaultProvider(Provider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
-        results = search_vaults(
+    ) -> List[ResearchResult]:
+        raw_results = search_vaults(
             query,
             vaults,
             k_per_vault=k_per_vault,
@@ -117,10 +119,11 @@ class DefaultProvider(Provider):
             chroma_path=chroma_path,
             vault=vault,
         )
-        if results:
-            return results
+        if raw_results:
+            return [as_research_result(r) for r in raw_results]
         web = self._bing_search(query)
-        return format_bing_items(web)
+        formatted = format_bing_items(web)
+        return [as_research_result(r) for r in formatted]
 
 
 def load_provider(spec: str) -> Provider:
