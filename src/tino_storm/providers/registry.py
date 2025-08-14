@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from importlib.metadata import entry_points
 from typing import Dict, Iterable, Union
 
@@ -59,10 +60,16 @@ class ProviderRegistry:
 
             async def search_async(self, query: str, vaults: Iterable[str], **kwargs):
                 results = await asyncio.gather(
-                    *[p.search_async(query, vaults, **kwargs) for p in self.providers]
+                    *[p.search_async(query, vaults, **kwargs) for p in self.providers],
+                    return_exceptions=True,
                 )
                 merged = []
-                for r in results:
+                for provider, r in zip(self.providers, results):
+                    if isinstance(r, Exception):
+                        logging.exception(
+                            "Provider %s failed in search_async", provider
+                        )
+                        continue
                     merged.extend(r)
                 return merged
 
@@ -84,7 +91,6 @@ class ProviderRegistry:
         self._providers.clear()
 
 
-
 provider_registry = ProviderRegistry()
 
 
@@ -96,4 +102,3 @@ def register_provider(name: str):
         return cls
 
     return decorator
-
