@@ -580,6 +580,9 @@ for _missing in [
                 return ""
 
             pytesseract_mod.image_to_string = image_to_string
+            pytesseract_mod.__spec__ = importlib.machinery.ModuleSpec(
+                "pytesseract", loader=None
+            )
             module = pytesseract_mod
         elif _missing == "praw":
             praw_mod = types.ModuleType("praw")

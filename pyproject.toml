@@ -27,6 +27,9 @@ dependencies = [
 [project.scripts]
 tino-storm = "tino_storm.cli:main"
 
+[project.entry-points."tino_storm.providers"]
+bing_async = "tino_storm.providers.bing_async:BingAsyncProvider"
+
 [project.optional-dependencies]
 scrapers = [
     "snscrape",
