@@ -1,3 +1,11 @@
+"""Utilities for aggregating multiple research providers.
+
+This module combines results from several providers while handling failures
+gracefully. When a provider raises an exception, the error is logged and a
+``ResearchAdded`` event is emitted containing the failing provider name and
+error message. Returned results are deduplicated by URL.
+"""
+
 from __future__ import annotations
 
 import asyncio
@@ -8,6 +16,7 @@ from typing import Iterable, List, Dict, Any, Optional, Sequence
 from .base import Provider, load_provider
 from .registry import provider_registry
 from ..search_result import ResearchResult
+from ..events import ResearchAdded, event_emitter
 
 
 class ProviderAggregator(Provider):
@@ -48,14 +57,30 @@ class ProviderAggregator(Provider):
             ],
             return_exceptions=True,
         )
-        merged: List[Dict[str, Any]] = []
+        merged: List[ResearchResult] = []
         for provider, r in zip(self.providers, results):
             if isinstance(r, Exception):
                 logging.exception("Provider %s failed in search_async", provider)
+                provider_name = getattr(provider, "name", provider.__class__.__name__)
+                await event_emitter.emit(
+                    ResearchAdded(
+                        topic=provider_name, information_table={"error": str(r)}
+                    )
+                )
                 continue
 
             merged.extend(r)
-        return merged
+
+        deduped: Dict[str, Any] = {}
+        for item in merged:
+            url = (
+                getattr(item, "url", None)
+                if not isinstance(item, dict)
+                else item.get("url")
+            )
+            if url and url not in deduped:
+                deduped[url] = item
+        return list(deduped.values())
 
     def search_sync(
         self,
@@ -80,7 +105,25 @@ class ProviderAggregator(Provider):
                         vault=vault,
                     )
                 )
-            except Exception:
+            except Exception as e:
                 logging.exception("Provider %s failed in search_sync", p)
+                provider_name = getattr(p, "name", p.__class__.__name__)
+                asyncio.run(
+                    event_emitter.emit(
+                        ResearchAdded(
+                            topic=provider_name, information_table={"error": str(e)}
+                        )
+                    )
+                )
                 continue
-        return merged
+
+        deduped: Dict[str, Any] = {}
+        for item in merged:
+            url = (
+                getattr(item, "url", None)
+                if not isinstance(item, dict)
+                else item.get("url")
+            )
+            if url and url not in deduped:
+                deduped[url] = item
+        return list(deduped.values())
