@@ -81,6 +81,7 @@ class DefaultProvider(Provider):
         self.bing_k = bing_k
         self.bing_kwargs = bing_kwargs
         self._bing = None
+        self._summarizer = None
 
     def _bing_search(self, query: str) -> List[Dict[str, Any]]:
         if self._bing is None:
@@ -101,6 +102,46 @@ class DefaultProvider(Provider):
             )
             return []
 
+    def _get_summarizer(self):
+        """Lazily construct an LLM summarizer if configured.
+
+        The summarizer is only enabled when the ``STORM_SUMMARY_MODEL``
+        environment variable is set. This keeps heavy LLM dependencies
+        optional for users that do not need summarization.
+        """
+
+        model_name = os.environ.get("STORM_SUMMARY_MODEL")
+        if not model_name:
+            return None
+
+        if self._summarizer is None:
+            try:  # pragma: no cover - exercised when env var is set
+                from ..lm import LitellmModel
+
+                self._summarizer = LitellmModel(model=model_name, max_tokens=60)
+            except Exception as e:  # pragma: no cover - missing optional deps
+                logging.error(f"Failed to initialize summarizer: {e}")
+                self._summarizer = False
+
+        return self._summarizer or None
+
+    def _summarize(self, snippets: List[str]) -> Optional[str]:
+        if not snippets:
+            return None
+
+        summarizer = self._get_summarizer()
+        if summarizer:
+            try:  # pragma: no cover - exercised when env var is set
+                prompt = (
+                    "Summarize the following in one short sentence:\n" + snippets[0]
+                )
+                return summarizer(prompt)[0].strip()
+            except Exception as e:  # pragma: no cover - network/LLM issues
+                logging.error(f"LLM summarization failed: {e}")
+
+        # Fallback: use the first snippet as a brief summary
+        return snippets[0]
+
     def search_sync(
         self,
         query: str,
@@ -120,10 +161,16 @@ class DefaultProvider(Provider):
             vault=vault,
         )
         if raw_results:
-            return [as_research_result(r) for r in raw_results]
-        web = self._bing_search(query)
-        formatted = format_bing_items(web)
-        return [as_research_result(r) for r in formatted]
+            results = [as_research_result(r) for r in raw_results]
+        else:
+            web = self._bing_search(query)
+            formatted = format_bing_items(web)
+            results = [as_research_result(r) for r in formatted]
+
+        for res in results:
+            res.summary = self._summarize(res.snippets)
+
+        return results
 
 
 def load_provider(spec: str) -> Provider:

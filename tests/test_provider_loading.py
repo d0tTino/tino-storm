@@ -109,5 +109,5 @@ def test_default_provider_formats_bing(monkeypatch):
     )
     results = provider.search_sync("q", [])
     assert results == [
-        ResearchResult(url="u", snippets=["d"], meta={"title": "t"})
+        ResearchResult(url="u", snippets=["d"], meta={"title": "t"}, summary="d")
     ]

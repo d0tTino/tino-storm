@@ -24,8 +24,10 @@ asyncio.run(main())
 ```
 
 The search API returns a list of `ResearchResult` objects containing the URL,
-text snippets, optional metadata and an optional summary from the retrieved
-documents.
+text snippets, optional metadata and a short summary from the retrieved
+documents. By default the first snippet is used as the summary. If the
+`STORM_SUMMARY_MODEL` environment variable is set, that model will be invoked
+to generate a one-sentence summary for each result.
 
 ```python
 from tino_storm.search_result import ResearchResult
