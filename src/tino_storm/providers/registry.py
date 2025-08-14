@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from importlib.metadata import entry_points
 from typing import Dict, Iterable, Union
 
 
@@ -12,6 +13,17 @@ class ProviderRegistry:
 
     def __init__(self) -> None:
         self._providers: Dict[str, Provider] = {}
+        self._load_entrypoint_providers()
+
+    def _load_entrypoint_providers(self) -> None:
+        """Load providers exposed via Python entry points."""
+
+        for ep in entry_points(group="tino_storm.providers"):
+            try:
+                provider = ep.load()
+            except Exception:
+                continue
+            self.register(ep.name, provider)
 
     def register(
         self, name: str, provider: Union[Provider, type[Provider]]
