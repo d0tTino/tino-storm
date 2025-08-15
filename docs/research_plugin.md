@@ -7,6 +7,7 @@ extras to pull in additional features:
 ```bash
 pip install tino-storm[research]  # FastAPI server and filesystem watcher
 pip install tino-storm[scrapers]  # ingestion helpers for social platforms
+pip install tino-storm[retrieval] # semantic search and vector DB helpers
 ```
 
 The synchronous helper automatically delegates to `search_async()` when an event
