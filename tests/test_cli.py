@@ -31,6 +31,7 @@ if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 from tino_storm.cli import main  # noqa: E402
+from tino_storm.search_result import ResearchResult  # noqa: E402
 
 
 def test_cli_research_creates_files(tmp_path, monkeypatch):
@@ -122,7 +123,7 @@ def test_cli_search(monkeypatch, capsys):
 
     def fake_search(query, vaults, *, k_per_vault=5, rrf_k=60, chroma_path=None):
         calls.append((query, list(vaults), k_per_vault, rrf_k))
-        return [{"url": "example.com", "snippets": ["result"]}]
+        return [ResearchResult(url="example.com", snippets=["result"], meta={})]
 
     monkeypatch.setattr("tino_storm.cli.search", fake_search)
 
@@ -199,7 +200,7 @@ def test_cli_search_asyncio(monkeypatch, capsys):
 
     def fake_search(query, vaults, *, k_per_vault=5, rrf_k=60, chroma_path=None):
         calls.append((query, list(vaults), k_per_vault, rrf_k))
-        return [{"url": "example.com", "snippets": ["result"]}]
+        return [ResearchResult(url="example.com", snippets=["result"], meta={})]
 
     monkeypatch.setattr("tino_storm.cli.search", fake_search)
 

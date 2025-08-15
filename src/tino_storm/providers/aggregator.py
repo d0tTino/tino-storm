@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Iterable, List, Dict, Any, Optional, Sequence
+from typing import Iterable, List, Dict, Optional, Sequence
 
 
 from .base import Provider, load_provider
@@ -71,13 +71,9 @@ class ProviderAggregator(Provider):
 
             merged.extend(r)
 
-        deduped: Dict[str, Any] = {}
+        deduped: Dict[str, ResearchResult] = {}
         for item in merged:
-            url = (
-                getattr(item, "url", None)
-                if not isinstance(item, dict)
-                else item.get("url")
-            )
+            url = getattr(item, "url", None)
             if url and url not in deduped:
                 deduped[url] = item
         return list(deduped.values())
@@ -117,13 +113,9 @@ class ProviderAggregator(Provider):
                 )
                 continue
 
-        deduped: Dict[str, Any] = {}
+        deduped: Dict[str, ResearchResult] = {}
         for item in merged:
-            url = (
-                getattr(item, "url", None)
-                if not isinstance(item, dict)
-                else item.get("url")
-            )
+            url = getattr(item, "url", None)
             if url and url not in deduped:
                 deduped[url] = item
         return list(deduped.values())

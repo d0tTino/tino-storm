@@ -16,7 +16,7 @@ class DummyProvider(Provider):
         return [ResearchResult(url=self.name, snippets=[], meta={})]
 
     def search_sync(self, query, vaults, **kwargs):
-        return [{"url": self.name, "snippets": [], "meta": {}}]
+        return [ResearchResult(url=self.name, snippets=[], meta={})]
 
 
 class FailingProvider(Provider):
@@ -40,8 +40,8 @@ class DuplicateProvider(Provider):
 
     def search_sync(self, query, vaults, **kwargs):
         return [
-            {"url": "dup", "snippets": [], "meta": {}},
-            {"url": "dup", "snippets": [], "meta": {}},
+            ResearchResult(url="dup", snippets=[], meta={}),
+            ResearchResult(url="dup", snippets=[], meta={}),
         ]
 
 
@@ -71,7 +71,7 @@ def test_resolve_provider_aggregates_and_runs_concurrently(monkeypatch):
     assert {r.url for r in results} == {"p1", "p2"}
 
     sync_results = provider.search_sync("q", [])
-    assert {r["url"] for r in sync_results} == {"p1", "p2"}
+    assert {r.url for r in sync_results} == {"p1", "p2"}
 
 
 def test_aggregator_skips_failures(monkeypatch):
@@ -88,7 +88,7 @@ def test_aggregator_skips_failures(monkeypatch):
     assert {r.url for r in async_results} == {"good"}
 
     sync_results = provider.search_sync("q", [])
-    assert {r["url"] for r in sync_results} == {"good"}
+    assert {r.url for r in sync_results} == {"good"}
 
 
 def test_aggregator_emits_event_and_deduplicates(monkeypatch):
@@ -118,7 +118,15 @@ def test_aggregator_emits_event_and_deduplicates(monkeypatch):
 
     events.clear()
     sync_results = provider.search_sync("q", [])
-    assert {r["url"] for r in sync_results} == {"dup"}
+    assert {r.url for r in sync_results} == {"dup"}
     assert len(events) == 1
     assert events[0].topic == "failing"
     assert events[0].information_table["error"] == "boom"
+
+
+def test_aggregator_returns_research_results():
+    provider = ProviderAggregator([DummyProvider("p")])
+    async_results = asyncio.run(provider.search_async("q", []))
+    assert all(isinstance(r, ResearchResult) for r in async_results)
+    sync_results = provider.search_sync("q", [])
+    assert all(isinstance(r, ResearchResult) for r in sync_results)
