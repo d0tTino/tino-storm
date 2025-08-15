@@ -7,13 +7,8 @@ requires-python = ">=3.10"
 dependencies = [
     "dspy_ai==2.4.9",
     "wikipedia==1.4.0",
-    "sentence-transformers",
     "toml",
-    "langchain-text-splitters",
     "trafilatura",
-    "langchain-huggingface",
-    "qdrant-client",
-    "langchain-qdrant",
     "numpy==1.26.4",
     "litellm==1.59.3",
     "pytz",
@@ -41,6 +36,13 @@ research = [
     "uvicorn>=0.29.0",
     "watchdog",
     "knowledge-storm",
+]
+retrieval = [
+    "sentence-transformers",
+    "langchain-text-splitters",
+    "langchain-huggingface",
+    "qdrant-client",
+    "langchain-qdrant",
 ]
 
 [build-system]
