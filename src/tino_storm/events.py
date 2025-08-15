@@ -6,7 +6,7 @@ import inspect
 import logging
 
 if TYPE_CHECKING:
-    from .storm_wiki.modules.storm_dataclass import StormInformationTable, StormArticle
+    from .storm_wiki.modules.storm_dataclass import StormArticle
 
 
 @dataclass
@@ -14,7 +14,7 @@ class ResearchAdded:
     """Event emitted when new research is ingested."""
 
     topic: str
-    information_table: "StormInformationTable"
+    information_table: Dict[str, Any]
 
 
 @dataclass

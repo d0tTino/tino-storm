@@ -8,9 +8,9 @@ from tino_storm.search import ResearchError, Provider, search, search_async
 
 def test_search_sync_error_emits_event(monkeypatch):
     monkeypatch.setattr(event_emitter, "_subscribers", {})
-    events = []
+    events: list[ResearchAdded] = []
 
-    async def handler(e):
+    async def handler(e: ResearchAdded) -> None:
         events.append(e)
 
     event_emitter.subscribe(ResearchAdded, handler)
@@ -29,9 +29,9 @@ def test_search_sync_error_emits_event(monkeypatch):
 
 def test_search_async_error_emits_event(monkeypatch):
     monkeypatch.setattr(event_emitter, "_subscribers", {})
-    events = []
+    events: list[ResearchAdded] = []
 
-    async def handler(e):
+    async def handler(e: ResearchAdded) -> None:
         events.append(e)
 
     event_emitter.subscribe(ResearchAdded, handler)
