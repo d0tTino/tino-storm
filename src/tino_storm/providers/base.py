@@ -125,14 +125,10 @@ class DefaultProvider(Provider):
 
         return self._summarizer or None
 
-    def _summarize(self, snippets: List[str], *, max_chars: int = 200) -> Optional[str]:
-        """Return a short summary for the provided snippets.
-
-        If an LLM model is configured via ``STORM_SUMMARY_MODEL`` an attempt is
-        made to generate a summary. Any failure falls back to using the first
-        snippet.  The returned text is truncated to ``max_chars`` characters to
-        keep the summary concise.
-        """
+    async def _summarize_async(
+        self, snippets: List[str], *, max_chars: int = 200
+    ) -> Optional[str]:
+        """Return a short summary for the provided snippets asynchronously."""
 
         if not snippets:
             return None
@@ -144,7 +140,8 @@ class DefaultProvider(Provider):
                 prompt = (
                     "Summarize the following in one short sentence:\n" + snippets[0]
                 )
-                summary = summarizer(prompt)[0].strip()
+                result = await asyncio.to_thread(summarizer, prompt)
+                summary = result[0].strip()
             except Exception as e:  # pragma: no cover - network/LLM issues
                 logging.error(f"LLM summarization failed: {e}")
 
@@ -152,6 +149,11 @@ class DefaultProvider(Provider):
             summary = snippets[0]
 
         return summary[:max_chars]
+
+    def _summarize(self, snippets: List[str], *, max_chars: int = 200) -> Optional[str]:
+        """Synchronous wrapper for ``_summarize_async``."""
+
+        return asyncio.run(self._summarize_async(snippets, max_chars=max_chars))
 
     def search_sync(
         self,
@@ -181,6 +183,38 @@ class DefaultProvider(Provider):
         for res in results:
             if not getattr(res, "summary", None):
                 res.summary = self._summarize(res.snippets)
+
+        return results
+
+    async def search_async(
+        self,
+        query: str,
+        vaults: Iterable[str],
+        *,
+        k_per_vault: int = 5,
+        rrf_k: int = 60,
+        chroma_path: Optional[str] = None,
+        vault: Optional[str] = None,
+    ) -> List[ResearchResult]:
+        raw_results = await asyncio.to_thread(
+            search_vaults,
+            query,
+            vaults,
+            k_per_vault=k_per_vault,
+            rrf_k=rrf_k,
+            chroma_path=chroma_path,
+            vault=vault,
+        )
+        if raw_results:
+            results = [as_research_result(r) for r in raw_results]
+        else:
+            web = await asyncio.to_thread(self._bing_search, query)
+            formatted = format_bing_items(web)
+            results = [as_research_result(r) for r in formatted]
+
+        for res in results:
+            if not getattr(res, "summary", None):
+                res.summary = await self._summarize_async(res.snippets)
 
         return results
 
