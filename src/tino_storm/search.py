@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-from pathlib import Path
 from typing import Iterable, List, Optional
 
 from .providers import (
@@ -13,6 +12,7 @@ from .providers import (
 )
 from .events import ResearchAdded, event_emitter
 from .search_result import ResearchResult
+from .ingest.utils import list_vaults
 
 
 class ResearchError(RuntimeError):
@@ -34,17 +34,6 @@ def _resolve_provider(provider: Provider | str | None) -> Provider:
         except KeyError:
             return load_provider(provider)
     return provider
-
-
-def list_vaults() -> List[str]:
-    """Return available vault names from the local Chroma storage."""
-
-    chroma_root = Path(
-        os.environ.get("STORM_CHROMA_PATH", Path.home() / ".tino_storm" / "chroma")
-    ).expanduser()
-    if not chroma_root.exists():
-        return []
-    return [p.name for p in chroma_root.iterdir() if p.is_dir()]
 
 
 async def search_async(

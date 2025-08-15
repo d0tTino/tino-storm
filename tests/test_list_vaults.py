@@ -6,7 +6,7 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from tino_storm.ingest.search import list_vaults  # noqa: E402
+from tino_storm.ingest.utils import list_vaults  # noqa: E402
 
 
 def _make_vaults(root: str, names: list[str]) -> None:
@@ -33,4 +33,3 @@ def test_list_vaults_custom_root(tmp_path, monkeypatch):
     _make_vaults(custom_root, ["a", "b"])
 
     assert set(list_vaults(str(custom_root))) == {"a", "b"}
-
