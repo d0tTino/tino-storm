@@ -5,6 +5,7 @@ from tino_storm.providers.registry import provider_registry
 from tino_storm.providers.aggregator import ProviderAggregator
 from tino_storm.search import _resolve_provider
 from tino_storm.search_result import ResearchResult
+from tino_storm.events import ResearchAdded, event_emitter
 
 
 class DummyProvider(Provider):
@@ -26,6 +27,22 @@ class FailingProvider(Provider):
 
     def search_sync(self, query, vaults, **kwargs):
         raise RuntimeError("boom")
+
+
+class DuplicateProvider(Provider):
+    name = "dup"
+
+    async def search_async(self, query, vaults, **kwargs):
+        return [
+            ResearchResult(url="dup", snippets=[], meta={}),
+            ResearchResult(url="dup", snippets=[], meta={}),
+        ]
+
+    def search_sync(self, query, vaults, **kwargs):
+        return [
+            {"url": "dup", "snippets": [], "meta": {}},
+            {"url": "dup", "snippets": [], "meta": {}},
+        ]
 
 
 def test_resolve_provider_aggregates_and_runs_concurrently(monkeypatch):
@@ -72,3 +89,36 @@ def test_aggregator_skips_failures(monkeypatch):
 
     sync_results = provider.search_sync("q", [])
     assert {r["url"] for r in sync_results} == {"good"}
+
+
+def test_aggregator_emits_event_and_deduplicates(monkeypatch):
+    monkeypatch.setattr(provider_registry, "_providers", {})
+    provider_registry.register("dup", DuplicateProvider())
+    provider_registry.register("bad", FailingProvider())
+
+    # Reset event subscribers and capture emitted events
+    monkeypatch.setattr(event_emitter, "_subscribers", {})
+    events = []
+
+    def handler(event: ResearchAdded) -> None:
+        events.append(event)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+
+    provider = _resolve_provider("dup,bad")
+
+    async def run_async():
+        return await provider.search_async("q", [])
+
+    async_results = asyncio.run(run_async())
+    assert {r.url for r in async_results} == {"dup"}
+    assert len(events) == 1
+    assert events[0].topic == "failing"
+    assert events[0].information_table["error"] == "boom"
+
+    events.clear()
+    sync_results = provider.search_sync("q", [])
+    assert {r["url"] for r in sync_results} == {"dup"}
+    assert len(events) == 1
+    assert events[0].topic == "failing"
+    assert events[0].information_table["error"] == "boom"
