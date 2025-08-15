@@ -189,3 +189,37 @@ def test_search_without_vaults_uses_default(monkeypatch):
     assert result == [ResearchResult(url="ok", snippets=[], meta={})]
     assert called["list"]
     assert called["args"] == ("q", ["a", "b"], 5, 60, None, None)
+
+
+def test_search_falls_back_to_asyncio_run(monkeypatch):
+    """search() should run provider.search_async via asyncio.run when search_sync is missing."""
+
+    search_mod = importlib.import_module("tino_storm.search")
+    called = {}
+
+    from tino_storm.providers.bing_async import BingAsyncProvider
+
+    provider = BingAsyncProvider()
+
+    async def fake_search_async(*args, **kwargs):
+        called["async"] = True
+        return [ResearchResult(url="async", snippets=[], meta={})]
+
+    monkeypatch.setattr(provider, "search_async", fake_search_async)
+    monkeypatch.setattr(search_mod, "_resolve_provider", lambda provider=None: provider)
+
+    original_run = asyncio.run
+
+    def fake_run(coro):
+        called["run"] = True
+        return original_run(coro)
+
+    monkeypatch.setattr(asyncio, "run", fake_run)
+    tino_storm.search = search_mod.search
+    tino_storm.search_async = search_mod.search_async
+
+    result = tino_storm.search("q", ["v"], provider=provider)
+
+    assert result == [ResearchResult(url="async", snippets=[], meta={})]
+    assert called.get("run")
+    assert called.get("async")
