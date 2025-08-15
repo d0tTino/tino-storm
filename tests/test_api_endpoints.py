@@ -1,6 +1,9 @@
 import sys
 import types
 import asyncio
+import dataclasses
+
+from tino_storm.search_result import ResearchResult
 
 try:  # pragma: no cover - optional dependency
     from fastapi.testclient import TestClient
@@ -175,13 +178,17 @@ def test_search_endpoint(monkeypatch):
 
     def fake_search(query, vaults, *, k_per_vault=5, rrf_k=60):
         called["args"] = (query, list(vaults), k_per_vault, rrf_k)
-        return [{"url": "u", "snippets": ["s"]}]
+        return [ResearchResult(url="u", snippets=["s"], meta={})]
 
     monkeypatch.setattr("tino_storm.api.search", fake_search)
     client = TestClient(app)
     resp = client.post("/search", json={"query": "q", "vaults": ["v1", "v2"]})
     assert resp.status_code == 200
-    assert resp.json() == {"results": [{"url": "u", "snippets": ["s"]}]}
+    data = resp.json()
+    first = data["results"][0]
+    if not isinstance(first, dict):
+        first = dataclasses.asdict(first)
+    assert first == {"url": "u", "snippets": ["s"], "meta": {}, "summary": None}
     assert called["args"] == ("q", ["v1", "v2"], 5, 60)
 
 
@@ -216,7 +223,7 @@ def test_search_endpoint_asyncio(monkeypatch):
 
     def fake_search(query, vaults, *, k_per_vault=5, rrf_k=60):
         called["args"] = (query, list(vaults), k_per_vault, rrf_k)
-        return [{"url": "u", "snippets": ["s"]}]
+        return [ResearchResult(url="u", snippets=["s"], meta={})]
 
     monkeypatch.setattr("tino_storm.api.search", fake_search)
     client = TestClient(app)
@@ -231,5 +238,9 @@ def test_search_endpoint_asyncio(monkeypatch):
     resp = asyncio.run(_run())
 
     assert resp.status_code == 200
-    assert resp.json() == {"results": [{"url": "u", "snippets": ["s"]}]}
+    data = resp.json()
+    first = data["results"][0]
+    if not isinstance(first, dict):
+        first = dataclasses.asdict(first)
+    assert first == {"url": "u", "snippets": ["s"], "meta": {}, "summary": None}
     assert called["args"] == ("q", ["v1", "v2"], 5, 60)
