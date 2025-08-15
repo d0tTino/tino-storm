@@ -180,9 +180,17 @@ class DefaultProvider(Provider):
             formatted = format_bing_items(web)
             results = [as_research_result(r) for r in formatted]
 
-        for res in results:
-            if not getattr(res, "summary", None):
-                res.summary = self._summarize(res.snippets)
+        unsummarized = [res for res in results if not getattr(res, "summary", None)]
+        if unsummarized:
+
+            async def _gather():
+                return await asyncio.gather(
+                    *(self._summarize_async(res.snippets) for res in unsummarized)
+                )
+
+            summaries = asyncio.run(_gather())
+            for res, summary in zip(unsummarized, summaries):
+                res.summary = summary
 
         return results
 
@@ -212,9 +220,13 @@ class DefaultProvider(Provider):
             formatted = format_bing_items(web)
             results = [as_research_result(r) for r in formatted]
 
-        for res in results:
-            if not getattr(res, "summary", None):
-                res.summary = await self._summarize_async(res.snippets)
+        unsummarized = [res for res in results if not getattr(res, "summary", None)]
+        if unsummarized:
+            summaries = await asyncio.gather(
+                *(self._summarize_async(res.snippets) for res in unsummarized)
+            )
+            for res, summary in zip(unsummarized, summaries):
+                res.summary = summary
 
         return results
 
