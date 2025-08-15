@@ -100,14 +100,26 @@ def search(
     except RuntimeError:
         provider = _resolve_provider(provider)
         try:
-            return provider.search_sync(
-                query,
-                vaults,
-                k_per_vault=k_per_vault,
-                rrf_k=rrf_k,
-                chroma_path=chroma_path,
-                vault=vault,
-            )
+            try:
+                return provider.search_sync(
+                    query,
+                    vaults,
+                    k_per_vault=k_per_vault,
+                    rrf_k=rrf_k,
+                    chroma_path=chroma_path,
+                    vault=vault,
+                )
+            except NotImplementedError:
+                return asyncio.run(
+                    provider.search_async(
+                        query,
+                        vaults,
+                        k_per_vault=k_per_vault,
+                        rrf_k=rrf_k,
+                        chroma_path=chroma_path,
+                        vault=vault,
+                    )
+                )
         except Exception as e:
             logging.error(f"Search failed for query {query}: {e}")
             asyncio.run(
