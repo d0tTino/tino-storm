@@ -36,3 +36,20 @@ async def test_failing_subscriber_does_not_block_and_logs_error(caplog, anyio_ba
         in record.getMessage()
         for record in caplog.records
     )
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("anyio_backend", ["asyncio"], scope="module")
+async def test_unsubscribed_handler_not_called(anyio_backend):
+    emitter = EventEmitter()
+    calls: list[int] = []
+
+    def handler(event):
+        calls.append(event.value)
+
+    emitter.subscribe(DummyEvent, handler)
+    emitter.unsubscribe(DummyEvent, handler)
+
+    await emitter.emit(DummyEvent(42))
+
+    assert calls == []
