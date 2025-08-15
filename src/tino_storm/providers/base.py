@@ -125,22 +125,33 @@ class DefaultProvider(Provider):
 
         return self._summarizer or None
 
-    def _summarize(self, snippets: List[str]) -> Optional[str]:
+    def _summarize(self, snippets: List[str], *, max_chars: int = 200) -> Optional[str]:
+        """Return a short summary for the provided snippets.
+
+        If an LLM model is configured via ``STORM_SUMMARY_MODEL`` an attempt is
+        made to generate a summary. Any failure falls back to using the first
+        snippet.  The returned text is truncated to ``max_chars`` characters to
+        keep the summary concise.
+        """
+
         if not snippets:
             return None
 
         summarizer = self._get_summarizer()
+        summary: Optional[str] = None
         if summarizer:
             try:  # pragma: no cover - exercised when env var is set
                 prompt = (
                     "Summarize the following in one short sentence:\n" + snippets[0]
                 )
-                return summarizer(prompt)[0].strip()
+                summary = summarizer(prompt)[0].strip()
             except Exception as e:  # pragma: no cover - network/LLM issues
                 logging.error(f"LLM summarization failed: {e}")
 
-        # Fallback: use the first snippet as a brief summary
-        return snippets[0]
+        if summary is None:
+            summary = snippets[0]
+
+        return summary[:max_chars]
 
     def search_sync(
         self,
@@ -168,7 +179,8 @@ class DefaultProvider(Provider):
             results = [as_research_result(r) for r in formatted]
 
         for res in results:
-            res.summary = self._summarize(res.snippets)
+            if not getattr(res, "summary", None):
+                res.summary = self._summarize(res.snippets)
 
         return results
 
