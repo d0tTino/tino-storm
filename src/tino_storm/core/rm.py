@@ -66,6 +66,7 @@ class YouRM(dspy.Retrieve):
                 results = requests.get(
                     url,
                     headers=headers,
+                    timeout=10,
                 ).json()
 
                 authoritative_results = []
@@ -74,7 +75,15 @@ class YouRM(dspy.Retrieve):
                         authoritative_results.append(r)
                 if "hits" in results:
                     collected_results.extend(authoritative_results[: self.k])
-            except Exception as e:
+            except requests.RequestException as e:
+                logging.error(f"Error occurs when searching query {query}: {e}")
+                asyncio.run(
+                    event_emitter.emit(
+                        ResearchAdded(topic=query, information_table={"error": str(e)})
+                    )
+                )
+                raise
+            except Exception as e:  # noqa: BLE001
                 logging.error(f"Error occurs when searching query {query}: {e}")
                 asyncio.run(
                     event_emitter.emit(
@@ -163,7 +172,10 @@ class BingSearch(dspy.Retrieve):
             try:
                 log_request("GET", self.endpoint)
                 results = requests.get(
-                    self.endpoint, headers=headers, params={**self.params, "q": query}
+                    self.endpoint,
+                    headers=headers,
+                    params={**self.params, "q": query},
+                    timeout=10,
                 ).json()
 
                 for d in results["webPages"]["value"]:
@@ -173,7 +185,15 @@ class BingSearch(dspy.Retrieve):
                             "title": d["name"],
                             "description": d["snippet"],
                         }
-            except Exception as e:
+            except requests.RequestException as e:
+                logging.error(f"Error occurs when searching query {query}: {e}")
+                asyncio.run(
+                    event_emitter.emit(
+                        ResearchAdded(topic=query, information_table={"error": str(e)})
+                    )
+                )
+                return []
+            except Exception as e:  # noqa: BLE001
                 logging.error(f"Error occurs when searching query {query}: {e}")
 
         try:
