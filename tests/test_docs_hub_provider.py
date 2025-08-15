@@ -72,3 +72,33 @@ def test_docs_hub_provider_search(monkeypatch):
 
     async_results = asyncio.run(run())
     assert [r.url for r in async_results] == ["docA", "docB"]
+
+
+def test_docs_hub_provider_search_async_non_blocking(monkeypatch):
+    client = _setup_index(monkeypatch)
+
+    import tino_storm.providers.docs_hub as docs_hub
+
+    provider = docs_hub.DocsHubProvider()
+
+    original_search_vaults = docs_hub.search_vaults
+
+    def slow_search_vaults(*args, **kwargs):
+        import time
+
+        time.sleep(0.05)
+        return original_search_vaults(*args, **kwargs)
+
+    monkeypatch.setattr(docs_hub, "search_vaults", slow_search_vaults)
+
+    async def run():
+        task = asyncio.create_task(
+            provider.search_async("q", ["docs_vault"], k_per_vault=2, rrf_k=5)
+        )
+        await asyncio.sleep(0.01)
+        assert not task.done()
+        return await task
+
+    async_results = asyncio.run(run())
+    assert [r.url for r in async_results] == ["docA", "docB"]
+    assert client.collections["docs_vault"].last_query_kwargs["query_texts"] == ["q"]
