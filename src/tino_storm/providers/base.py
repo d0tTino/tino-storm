@@ -95,10 +95,8 @@ class DefaultProvider(Provider):
             return self._bing(query)
         except Exception as e:  # pragma: no cover - network issues
             logging.error(f"Bing search failed for query {query}: {e}")
-            asyncio.run(
-                event_emitter.emit(
-                    ResearchAdded(topic=query, information_table={"error": str(e)})
-                )
+            event_emitter.emit_sync(
+                ResearchAdded(topic=query, information_table={"error": str(e)})
             )
             return []
 
@@ -144,6 +142,12 @@ class DefaultProvider(Provider):
                 summary = result[0].strip()
             except Exception as e:  # pragma: no cover - network/LLM issues
                 logging.error(f"LLM summarization failed: {e}")
+                event_emitter.emit_sync(
+                    ResearchAdded(
+                        topic=snippets[0],
+                        information_table={"error": str(e)},
+                    )
+                )
 
         if summary is None:
             summary = snippets[0]
