@@ -111,10 +111,8 @@ def search(
                 )
         except Exception as e:
             logging.error(f"Search failed for query {query}: {e}")
-            asyncio.run(
-                event_emitter.emit(
-                    ResearchAdded(topic=query, information_table={"error": str(e)})
-                )
+            event_emitter.emit_sync(
+                ResearchAdded(topic=query, information_table={"error": str(e)})
             )
             raise ResearchError(str(e)) from e
 
