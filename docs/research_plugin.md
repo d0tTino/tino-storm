@@ -132,7 +132,29 @@ except ResearchError as e:
     print("Search failed:", e)
 ```
 
-## Async event hooks
+## Async API usage
+
+The FastAPI app backing Tino Storm can be exercised from asynchronous code
+using ``httpx.AsyncClient``. Mount the app and await endpoint calls to issue
+requests without blocking the event loop.
+
+```python
+import asyncio
+from httpx import AsyncClient
+from tino_storm.api import app as api_app
+
+async def run():
+    async with AsyncClient(app=api_app, base_url="http://test") as app:
+        resp = await app.post(
+            "/search",
+            json={"query": "large language models", "vaults": ["science"]},
+        )
+        print(resp.json())
+
+asyncio.run(run())
+```
+
+## Event hooks
 
 Tino Storm exposes an ``event_emitter`` for reacting to research-related
 events. Subscribe to ``ResearchAdded`` to receive notifications when research
@@ -145,4 +167,19 @@ async def on_research(event: ResearchAdded):
     print("Research event:", event.topic, event.information_table)
 
 event_emitter.subscribe(ResearchAdded, on_research)
+```
+
+For synchronous code paths, use ``event_emitter.emit_sync`` to dispatch the
+same events. Any asynchronous handlers are executed on a temporary event loop
+so they do not block the caller.
+
+```python
+from tino_storm.events import event_emitter, ResearchAdded
+
+def on_research_sync(event: ResearchAdded):
+    print("Research event:", event.topic)
+
+event_emitter.subscribe(ResearchAdded, on_research_sync)
+
+event_emitter.emit_sync(ResearchAdded(topic="ai", information_table={}))
 ```
