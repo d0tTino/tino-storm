@@ -104,11 +104,9 @@ class ProviderAggregator(Provider):
             except Exception as e:
                 logging.exception("Provider %s failed in search_sync", p)
                 provider_name = getattr(p, "name", p.__class__.__name__)
-                asyncio.run(
-                    event_emitter.emit(
-                        ResearchAdded(
-                            topic=provider_name, information_table={"error": str(e)}
-                        )
+                event_emitter.emit_sync(
+                    ResearchAdded(
+                        topic=provider_name, information_table={"error": str(e)}
                     )
                 )
                 continue
