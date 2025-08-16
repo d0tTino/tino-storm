@@ -1,5 +1,8 @@
 from typing import Optional, List
+import asyncio
+import inspect
 import os
+from dataclasses import asdict
 
 try:
     from fastapi import FastAPI
@@ -133,14 +136,17 @@ def run_research(
 
 
 @app.post("/research")
-def research(req: ResearchRequest):
-    run_research(topic=req.topic, output_dir=req.output_dir, vault=req.vault)
+async def research(req: ResearchRequest):
+    await asyncio.to_thread(
+        run_research, topic=req.topic, output_dir=req.output_dir, vault=req.vault
+    )
     return {"status": "ok"}
 
 
 @app.post("/outline")
-def outline(req: ResearchRequest):
-    run_research(
+async def outline(req: ResearchRequest):
+    await asyncio.to_thread(
+        run_research,
         topic=req.topic,
         output_dir=req.output_dir,
         vault=req.vault,
@@ -151,8 +157,9 @@ def outline(req: ResearchRequest):
 
 
 @app.post("/draft")
-def draft(req: ResearchRequest):
-    run_research(
+async def draft(req: ResearchRequest):
+    await asyncio.to_thread(
+        run_research,
         topic=req.topic,
         output_dir=req.output_dir,
         vault=req.vault,
@@ -162,21 +169,25 @@ def draft(req: ResearchRequest):
 
 
 @app.post("/ingest")
-def ingest(req: IngestRequest):
+async def ingest(req: IngestRequest):
     from .ingest.watcher import VaultIngestHandler
 
     root = os.environ.get("STORM_VAULT_ROOT", "research")
     handler = VaultIngestHandler(root, vault=req.vault)
-    handler._ingest_text(req.text, req.source or "api", req.vault)
+    await asyncio.to_thread(
+        handler._ingest_text, req.text, req.source or "api", req.vault
+    )
     return {"status": "ok"}
 
 
 @app.post("/search")
-def search_endpoint(req: SearchRequest):
-    results = search(
+async def search_endpoint(req: SearchRequest):
+    result = search(
         req.query,
         req.vaults,
         k_per_vault=req.k_per_vault,
         rrf_k=req.rrf_k,
     )
-    return {"results": results}
+    if inspect.isawaitable(result):
+        result = await result
+    return {"results": [asdict(r) for r in result]}
