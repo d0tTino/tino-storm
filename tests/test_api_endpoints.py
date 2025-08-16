@@ -6,7 +6,7 @@ import dataclasses
 from tino_storm.search_result import ResearchResult
 
 try:  # pragma: no cover - optional dependency
-    from fastapi.testclient import TestClient
+    from httpx import AsyncClient
 except Exception:  # pragma: no cover - fallback stubs
     fastapi = sys.modules.get("fastapi")
     if fastapi is None:
@@ -39,11 +39,11 @@ except Exception:  # pragma: no cover - fallback stubs
         def json(self):
             return self._data
 
-    class TestClient:
-        def __init__(self, app):
+    class AsyncClient:
+        def __init__(self, app, base_url="http://test"):
             self.app = app
 
-        def post(self, path, json=None):
+        async def post(self, path, json=None):
             fn = self.app.routes[path]
             data = dict(json or {})
             if path in {"/research", "/outline", "/draft"}:
@@ -57,13 +57,17 @@ except Exception:  # pragma: no cover - fallback stubs
             arg = types.SimpleNamespace(**data)
             return _Resp(fn(arg))
 
-    fastapi.FastAPI = FastAPI
-    fastapi.testclient = types.ModuleType("fastapi.testclient")
-    fastapi.testclient.TestClient = TestClient
-    sys.modules["fastapi.testclient"] = fastapi.testclient
-    globals().update({"FastAPI": FastAPI, "TestClient": TestClient})
+        async def __aenter__(self):
+            return self
 
-from fastapi.testclient import TestClient  # type: ignore  # noqa: E402
+        async def __aexit__(self, *exc):
+            return False
+
+    fastapi.FastAPI = FastAPI
+    httpx_mod = types.ModuleType("httpx")
+    httpx_mod.AsyncClient = AsyncClient
+    sys.modules["httpx"] = httpx_mod
+    globals().update({"FastAPI": FastAPI, "AsyncClient": AsyncClient})
 import knowledge_storm.storm_wiki.engine as ks_engine
 import knowledge_storm
 
@@ -105,12 +109,16 @@ def dummy_runner_factory(output_dir):
     return DummyRunner(output_dir)
 
 
+async def _post(path, payload):
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        return await client.post(path, json=payload)
+
+
 def test_research_endpoint(monkeypatch):
     runner_inst = dummy_runner_factory("./results")
     monkeypatch.setattr("tino_storm.api._make_default_runner", lambda dir_: runner_inst)
 
-    client = TestClient(app)
-    resp = client.post("/research", json={"topic": "ai"})
+    resp = asyncio.run(_post("/research", {"topic": "ai"}))
     assert resp.status_code == 200
     assert resp.json() == {"status": "ok"}
     assert runner_inst.run_calls
@@ -124,8 +132,7 @@ def test_research_endpoint(monkeypatch):
 def test_outline_endpoint(monkeypatch):
     runner_inst = dummy_runner_factory("./results")
     monkeypatch.setattr("tino_storm.api._make_default_runner", lambda dir_: runner_inst)
-    client = TestClient(app)
-    resp = client.post("/outline", json={"topic": "ai"})
+    resp = asyncio.run(_post("/outline", {"topic": "ai"}))
     assert resp.status_code == 200
     assert resp.json() == {"status": "ok"}
     kwargs = runner_inst.run_calls[0]
@@ -136,8 +143,7 @@ def test_outline_endpoint(monkeypatch):
 def test_draft_endpoint(monkeypatch):
     runner_inst = dummy_runner_factory("./results")
     monkeypatch.setattr("tino_storm.api._make_default_runner", lambda dir_: runner_inst)
-    client = TestClient(app)
-    resp = client.post("/draft", json={"topic": "ai"})
+    resp = asyncio.run(_post("/draft", {"topic": "ai"}))
     assert resp.status_code == 200
     assert resp.json() == {"status": "ok"}
     kwargs = runner_inst.run_calls[0]
@@ -158,10 +164,11 @@ def test_ingest_endpoint(monkeypatch):
             captured["vault"] = vault
 
     monkeypatch.setattr("tino_storm.ingest.watcher.VaultIngestHandler", DummyHandler)
-    client = TestClient(app)
-    resp = client.post(
-        "/ingest",
-        json={"text": "hello", "vault": "topic", "source": "src"},
+    resp = asyncio.run(
+        _post(
+            "/ingest",
+            {"text": "hello", "vault": "topic", "source": "src"},
+        )
     )
     assert resp.status_code == 200
     assert resp.json() == {"status": "ok"}
@@ -181,8 +188,7 @@ def test_search_endpoint(monkeypatch):
         return [ResearchResult(url="u", snippets=["s"], meta={})]
 
     monkeypatch.setattr("tino_storm.api.search", fake_search)
-    client = TestClient(app)
-    resp = client.post("/search", json={"query": "q", "vaults": ["v1", "v2"]})
+    resp = asyncio.run(_post("/search", {"query": "q", "vaults": ["v1", "v2"]}))
     assert resp.status_code == 200
     data = resp.json()
     first = data["results"][0]
@@ -226,14 +232,12 @@ def test_search_endpoint_asyncio(monkeypatch):
         return [ResearchResult(url="u", snippets=["s"], meta={})]
 
     monkeypatch.setattr("tino_storm.api.search", fake_search)
-    client = TestClient(app)
 
     async def _run():
-        return await asyncio.to_thread(
-            client.post,
-            "/search",
-            json={"query": "q", "vaults": ["v1", "v2"]},
-        )
+        async with AsyncClient(app=app, base_url="http://test") as client:
+            return await client.post(
+                "/search", json={"query": "q", "vaults": ["v1", "v2"]}
+            )
 
     resp = asyncio.run(_run())
 
