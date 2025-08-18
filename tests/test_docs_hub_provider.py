@@ -10,6 +10,7 @@ sys.modules.setdefault("pytesseract", pytesseract)
 import asyncio  # noqa: E402
 
 from tino_storm.providers.registry import provider_registry  # noqa: E402
+from tino_storm.events import event_emitter, ResearchAdded  # noqa: E402
 
 
 class DummyCollection:
@@ -102,3 +103,30 @@ def test_docs_hub_provider_search_async_non_blocking(monkeypatch):
     async_results = asyncio.run(run())
     assert [r.url for r in async_results] == ["docA", "docB"]
     assert client.collections["docs_vault"].last_query_kwargs["query_texts"] == ["q"]
+
+
+def test_docs_hub_provider_search_async_failure(monkeypatch):
+    import tino_storm.providers.docs_hub as docs_hub
+
+    provider = docs_hub.DocsHubProvider()
+
+    def raise_err(*_a, **_k):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(docs_hub, "search_vaults", raise_err)
+    monkeypatch.setattr(event_emitter, "_subscribers", {})
+    events: list[ResearchAdded] = []
+
+    async def handler(e: ResearchAdded) -> None:
+        events.append(e)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+
+    async def run():
+        return await provider.search_async("topic", ["vault"])
+
+    results = asyncio.run(run())
+    assert results == []
+    assert len(events) == 1
+    assert events[0].topic == "topic"
+    assert events[0].information_table["error"] == "boom"

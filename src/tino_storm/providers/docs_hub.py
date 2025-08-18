@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Iterable, List, Optional
 
 from .base import Provider
 from .registry import register_provider
+from ..events import ResearchAdded, event_emitter
 from ..search_result import ResearchResult, as_research_result
 from ..ingest import search_vaults
 
@@ -24,16 +26,23 @@ class DocsHubProvider(Provider):
         vault: Optional[str] = None,
     ) -> List[ResearchResult]:
         """Asynchronously search the local docs index without blocking."""
-        raw_results = await asyncio.to_thread(
-            search_vaults,
-            query,
-            vaults,
-            k_per_vault=k_per_vault,
-            rrf_k=rrf_k,
-            chroma_path=chroma_path,
-            vault=vault,
-        )
-        return [as_research_result(r) for r in raw_results]
+        try:
+            raw_results = await asyncio.to_thread(
+                search_vaults,
+                query,
+                vaults,
+                k_per_vault=k_per_vault,
+                rrf_k=rrf_k,
+                chroma_path=chroma_path,
+                vault=vault,
+            )
+            return [as_research_result(r) for r in raw_results]
+        except Exception as e:  # pragma: no cover - network/IO errors
+            logging.exception("DocsHubProvider search_async failed")
+            await event_emitter.emit(
+                ResearchAdded(topic=query, information_table={"error": str(e)})
+            )
+            return []
 
     def search_sync(
         self,
