@@ -1,5 +1,7 @@
 import asyncio
 
+from typing import List
+
 from tino_storm.providers.base import Provider
 from tino_storm.providers.registry import provider_registry
 from tino_storm.providers.aggregator import ProviderAggregator
@@ -43,6 +45,20 @@ class DuplicateProvider(Provider):
             ResearchResult(url="dup", snippets=[], meta={}),
             ResearchResult(url="dup", snippets=[], meta={}),
         ]
+
+
+class SlowProvider(Provider):
+    name = "slow"
+
+    async def search_async(self, query, vaults, **kwargs):
+        await asyncio.sleep(0.05)
+        return [ResearchResult(url="slow", snippets=[], meta={})]
+
+    def search_sync(self, query, vaults, **kwargs):
+        import time
+
+        time.sleep(0.05)
+        return [ResearchResult(url="slow", snippets=[], meta={})]
 
 
 def test_resolve_provider_aggregates_and_runs_concurrently(monkeypatch):
@@ -130,3 +146,34 @@ def test_aggregator_returns_research_results():
     assert all(isinstance(r, ResearchResult) for r in async_results)
     sync_results = provider.search_sync("q", [])
     assert all(isinstance(r, ResearchResult) for r in sync_results)
+
+
+def test_timeout_emits_event_and_skips_provider(monkeypatch):
+    monkeypatch.setattr(provider_registry, "_providers", {})
+    provider_registry.register("slow", SlowProvider())
+    provider_registry.register("fast", DummyProvider("fast"))
+
+    # Reset subscribers and capture events
+    monkeypatch.setattr(event_emitter, "_subscribers", {})
+    events: List[ResearchAdded] = []
+
+    def handler(event: ResearchAdded) -> None:
+        events.append(event)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+
+    provider = _resolve_provider("slow,fast")
+
+    async def run_async():
+        return await provider.search_async("q", [], timeout=0.01)
+
+    async_results = asyncio.run(run_async())
+    assert {r.url for r in async_results} == {"fast"}
+    assert len(events) == 1
+    assert events[0].topic == "slow"
+
+    events.clear()
+    sync_results = provider.search_sync("q", [], timeout=0.01)
+    assert {r.url for r in sync_results} == {"fast"}
+    assert len(events) == 1
+    assert events[0].topic == "slow"
