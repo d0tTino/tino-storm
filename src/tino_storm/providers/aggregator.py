@@ -22,8 +22,11 @@ from ..events import ResearchAdded, event_emitter
 class ProviderAggregator(Provider):
     """Aggregate results from multiple providers."""
 
-    def __init__(self, provider_specs: Sequence[str | Provider]):
+    def __init__(
+        self, provider_specs: Sequence[str | Provider], timeout: Optional[float] = None
+    ):
         self.providers: List[Provider] = []
+        self.timeout = timeout
         for spec in provider_specs:
             if isinstance(spec, Provider):
                 self.providers.append(spec)
@@ -42,16 +45,21 @@ class ProviderAggregator(Provider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
+        actual_timeout = timeout if timeout is not None else self.timeout
         results = await asyncio.gather(
             *[
-                p.search_async(
-                    query,
-                    vaults,
-                    k_per_vault=k_per_vault,
-                    rrf_k=rrf_k,
-                    chroma_path=chroma_path,
-                    vault=vault,
+                asyncio.wait_for(
+                    p.search_async(
+                        query,
+                        vaults,
+                        k_per_vault=k_per_vault,
+                        rrf_k=rrf_k,
+                        chroma_path=chroma_path,
+                        vault=vault,
+                    ),
+                    timeout=actual_timeout,
                 )
                 for p in self.providers
             ],
@@ -87,20 +95,39 @@ class ProviderAggregator(Provider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
+        actual_timeout = timeout if timeout is not None else self.timeout
         merged: List[ResearchResult] = []
         for p in self.providers:
             try:
-                merged.extend(
-                    p.search_sync(
-                        query,
-                        vaults,
-                        k_per_vault=k_per_vault,
-                        rrf_k=rrf_k,
-                        chroma_path=chroma_path,
-                        vault=vault,
+                if actual_timeout is None:
+                    merged.extend(
+                        p.search_sync(
+                            query,
+                            vaults,
+                            k_per_vault=k_per_vault,
+                            rrf_k=rrf_k,
+                            chroma_path=chroma_path,
+                            vault=vault,
+                        )
                     )
-                )
+                else:
+                    res = asyncio.run(
+                        asyncio.wait_for(
+                            asyncio.to_thread(
+                                p.search_sync,
+                                query,
+                                vaults,
+                                k_per_vault=k_per_vault,
+                                rrf_k=rrf_k,
+                                chroma_path=chroma_path,
+                                vault=vault,
+                            ),
+                            timeout=actual_timeout,
+                        )
+                    )
+                    merged.extend(res)
             except Exception as e:
                 logging.exception("Provider %s failed in search_sync", p)
                 provider_name = getattr(p, "name", p.__class__.__name__)
