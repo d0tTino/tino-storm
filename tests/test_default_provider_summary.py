@@ -102,6 +102,25 @@ async def test_search_async_uses_summarizer_when_model_set(monkeypatch, anyio_ba
 
 @pytest.mark.anyio
 @pytest.mark.parametrize("anyio_backend", ["asyncio"], scope="module")
+async def test_summarize_sync_from_async(monkeypatch, anyio_backend):
+    """Calling the synchronous summarizer from an async context should not block."""
+
+    monkeypatch.delenv("STORM_SUMMARY_MODEL", raising=False)
+    provider = DefaultProvider()
+
+    async def fake_summarize(snippets, *, max_chars=200):
+        await asyncio.sleep(0)
+        return snippets[0]
+
+    monkeypatch.setattr(provider, "_summarize_async", fake_summarize)
+
+    summary = await asyncio.to_thread(provider._summarize, ["s"])
+
+    assert summary == "s"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("anyio_backend", ["asyncio"], scope="module")
 async def test_search_async_falls_back_on_summarizer_error(monkeypatch, anyio_backend):
     monkeypatch.setenv("STORM_SUMMARY_MODEL", "model")
     monkeypatch.setattr(

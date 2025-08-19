@@ -155,9 +155,28 @@ class DefaultProvider(Provider):
         return summary[:max_chars]
 
     def _summarize(self, snippets: List[str], *, max_chars: int = 200) -> Optional[str]:
-        """Synchronous wrapper for ``_summarize_async``."""
+        """Synchronous wrapper for ``_summarize_async``.
 
-        return asyncio.run(self._summarize_async(snippets, max_chars=max_chars))
+        Reuses an existing event loop when available instead of creating a
+        fresh one via ``asyncio.run``. This allows ``_summarize`` to execute in
+        contexts where an event loop may already be running.
+        """
+
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        if loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(
+                self._summarize_async(snippets, max_chars=max_chars), loop
+            )
+            return future.result()
+
+        return loop.run_until_complete(
+            self._summarize_async(snippets, max_chars=max_chars)
+        )
 
     def search_sync(
         self,
