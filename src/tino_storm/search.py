@@ -23,7 +23,10 @@ def _resolve_provider(provider: Provider | str | None) -> Provider:
     if provider is None:
         spec = os.environ.get("STORM_SEARCH_PROVIDER")
         if spec:
-            return load_provider(spec)
+            try:
+                return load_provider(spec)
+            except (ImportError, TypeError) as e:
+                raise ResearchError(f"Failed to load provider '{spec}': {e}") from e
         return DefaultProvider()
     if isinstance(provider, str):
         if "," in provider:
@@ -32,7 +35,10 @@ def _resolve_provider(provider: Provider | str | None) -> Provider:
         try:
             return provider_registry.get(provider)
         except KeyError:
-            return load_provider(provider)
+            try:
+                return load_provider(provider)
+            except (ImportError, TypeError) as e:
+                raise ResearchError(f"Failed to load provider '{provider}': {e}") from e
     return provider
 
 

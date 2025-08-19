@@ -11,6 +11,7 @@ from tino_storm.providers import (
     ParallelProvider,
     DefaultProvider,
 )
+from tino_storm.search import ResearchError, _resolve_provider
 from tino_storm.search_result import ResearchResult
 
 
@@ -25,6 +26,21 @@ def test_load_provider_raises(monkeypatch):
 
     with pytest.raises(TypeError):
         load_provider("dummy_mod.NotProvider")
+
+
+def test_resolve_provider_invalid_string(monkeypatch):
+    mod = types.ModuleType("dummy_mod2")
+
+    class NotProvider:
+        pass
+
+    mod.NotProvider = NotProvider
+    monkeypatch.setitem(sys.modules, "dummy_mod2", mod)
+
+    with pytest.raises(ResearchError) as exc:
+        _resolve_provider("dummy_mod2.NotProvider")
+
+    assert "Failed to load provider 'dummy_mod2.NotProvider'" in str(exc.value)
 
 
 def test_search_uses_env_provider(monkeypatch):
