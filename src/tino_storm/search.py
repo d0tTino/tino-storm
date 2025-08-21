@@ -18,6 +18,10 @@ from .ingest.utils import list_vaults
 class ResearchError(RuntimeError):
     """Raised when a search provider fails to complete the query."""
 
+    def __init__(self, message: str, *, provider_spec: str | None = None) -> None:
+        super().__init__(message)
+        self.provider_spec = provider_spec
+
 
 def _resolve_provider(provider: Provider | str | None) -> Provider:
     if provider is None:
@@ -25,8 +29,11 @@ def _resolve_provider(provider: Provider | str | None) -> Provider:
         if spec:
             try:
                 return load_provider(spec)
-            except (ImportError, TypeError) as e:
-                raise ResearchError(f"Failed to load provider '{spec}': {e}") from e
+            except Exception as e:
+                logging.exception("Failed to load provider '%s'", spec)
+                raise ResearchError(
+                    f"Failed to load provider '{spec}': {e}", provider_spec=spec
+                ) from e
         return DefaultProvider()
     if isinstance(provider, str):
         if "," in provider:
@@ -37,8 +44,12 @@ def _resolve_provider(provider: Provider | str | None) -> Provider:
         except KeyError:
             try:
                 return load_provider(provider)
-            except (ImportError, TypeError) as e:
-                raise ResearchError(f"Failed to load provider '{provider}': {e}") from e
+            except Exception as e:
+                logging.exception("Failed to load provider '%s'", provider)
+                raise ResearchError(
+                    f"Failed to load provider '{provider}': {e}",
+                    provider_spec=provider,
+                ) from e
     return provider
 
 
