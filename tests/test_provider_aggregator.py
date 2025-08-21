@@ -4,7 +4,7 @@ from typing import List
 
 from tino_storm.providers.base import Provider
 from tino_storm.providers.registry import provider_registry
-from tino_storm.providers.aggregator import ProviderAggregator
+from tino_storm.providers.aggregator import ProviderAggregator, canonical_url
 from tino_storm.search import _resolve_provider
 from tino_storm.search_result import ResearchResult
 from tino_storm.events import ResearchAdded, event_emitter
@@ -44,6 +44,42 @@ class DuplicateProvider(Provider):
         return [
             ResearchResult(url="dup", snippets=[], meta={}),
             ResearchResult(url="dup", snippets=[], meta={}),
+        ]
+
+
+class QueryVariantProviderA(Provider):
+    name = "qa"
+
+    async def search_async(self, query, vaults, **kwargs):
+        return [
+            ResearchResult(
+                url="https://example.com/path?a=1&b=2", snippets=[], meta={}
+            )
+        ]
+
+    def search_sync(self, query, vaults, **kwargs):
+        return [
+            ResearchResult(
+                url="https://example.com/path?a=1&b=2", snippets=[], meta={}
+            )
+        ]
+
+
+class QueryVariantProviderB(Provider):
+    name = "qb"
+
+    async def search_async(self, query, vaults, **kwargs):
+        return [
+            ResearchResult(
+                url="https://example.com/path?b=2&a=1", snippets=[], meta={}
+            )
+        ]
+
+    def search_sync(self, query, vaults, **kwargs):
+        return [
+            ResearchResult(
+                url="https://example.com/path?b=2&a=1", snippets=[], meta={}
+            )
         ]
 
 
@@ -146,6 +182,18 @@ def test_aggregator_returns_research_results():
     assert all(isinstance(r, ResearchResult) for r in async_results)
     sync_results = provider.search_sync("q", [])
     assert all(isinstance(r, ResearchResult) for r in sync_results)
+
+
+def test_query_string_variants_are_deduplicated():
+    provider = ProviderAggregator([QueryVariantProviderA(), QueryVariantProviderB()])
+
+    async_results = asyncio.run(provider.search_async("q", []))
+    assert len(async_results) == 1
+    assert canonical_url(async_results[0].url) == "https://example.com/path"
+
+    sync_results = provider.search_sync("q", [])
+    assert len(sync_results) == 1
+    assert canonical_url(sync_results[0].url) == "https://example.com/path"
 
 
 def test_timeout_emits_event_and_skips_provider(monkeypatch):
