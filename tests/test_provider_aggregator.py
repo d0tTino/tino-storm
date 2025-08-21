@@ -52,16 +52,12 @@ class QueryVariantProviderA(Provider):
 
     async def search_async(self, query, vaults, **kwargs):
         return [
-            ResearchResult(
-                url="https://example.com/path?a=1&b=2", snippets=[], meta={}
-            )
+            ResearchResult(url="https://example.com/path?a=1&b=2", snippets=[], meta={})
         ]
 
     def search_sync(self, query, vaults, **kwargs):
         return [
-            ResearchResult(
-                url="https://example.com/path?a=1&b=2", snippets=[], meta={}
-            )
+            ResearchResult(url="https://example.com/path?a=1&b=2", snippets=[], meta={})
         ]
 
 
@@ -70,16 +66,12 @@ class QueryVariantProviderB(Provider):
 
     async def search_async(self, query, vaults, **kwargs):
         return [
-            ResearchResult(
-                url="https://example.com/path?b=2&a=1", snippets=[], meta={}
-            )
+            ResearchResult(url="https://example.com/path?b=2&a=1", snippets=[], meta={})
         ]
 
     def search_sync(self, query, vaults, **kwargs):
         return [
-            ResearchResult(
-                url="https://example.com/path?b=2&a=1", snippets=[], meta={}
-            )
+            ResearchResult(url="https://example.com/path?b=2&a=1", snippets=[], meta={})
         ]
 
 
@@ -210,6 +202,16 @@ def test_timeout_emits_event_and_skips_provider(monkeypatch):
 
     event_emitter.subscribe(ResearchAdded, handler)
 
+    orig_wait_for = asyncio.wait_for
+
+    async def wait_for_wrapper(*args, **kwargs):
+        try:
+            return await orig_wait_for(*args, **kwargs)
+        except asyncio.TimeoutError:
+            raise asyncio.TimeoutError("timeout")
+
+    monkeypatch.setattr(asyncio, "wait_for", wait_for_wrapper)
+
     provider = _resolve_provider("slow,fast")
 
     async def run_async():
@@ -219,9 +221,11 @@ def test_timeout_emits_event_and_skips_provider(monkeypatch):
     assert {r.url for r in async_results} == {"fast"}
     assert len(events) == 1
     assert events[0].topic == "slow"
+    assert events[0].information_table["error"] == "timeout"
 
     events.clear()
     sync_results = provider.search_sync("q", [], timeout=0.01)
     assert {r.url for r in sync_results} == {"fast"}
     assert len(events) == 1
     assert events[0].topic == "slow"
+    assert events[0].information_table["error"] == "timeout"
