@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Iterable, List, Dict, Any, Optional
 
 from .base import DefaultProvider, format_bing_items
 from .docs_hub import DocsHubProvider
 from .registry import register_provider
+from ..events import ResearchAdded, event_emitter
 from ..ingest import search_vaults
 from ..retrieval import reciprocal_rank_fusion, score_results, add_posteriors
 from ..search_result import ResearchResult, as_research_result
@@ -49,22 +51,37 @@ class MultiSourceProvider(DefaultProvider):
         bing_task = asyncio.to_thread(self._bing_search, query)
 
         vault_res, docs_res, bing_res = await asyncio.gather(
-            vault_task, docs_task, bing_task
+            vault_task, docs_task, bing_task, return_exceptions=True
         )
 
         rankings: List[List[Dict[str, Any]]] = []
-        if vault_res:
-            rankings.append(vault_res)
-        if docs_res:
-            rankings.append(
-                [
-                    {"url": r.url, "snippets": r.snippets, "meta": r.meta}
-                    for r in docs_res
-                ]
-            )
-        formatted = format_bing_items(bing_res)
-        if formatted:
-            rankings.append(score_results(formatted))
+
+        for source, res in (
+            ("vault", vault_res),
+            ("docs", docs_res),
+            ("bing", bing_res),
+        ):
+            if isinstance(res, Exception):
+                logging.exception("%s search failed in MultiSourceProvider", source)
+                await event_emitter.emit(
+                    ResearchAdded(topic=query, information_table={"error": str(res)})
+                )
+                res = []
+
+            if source == "vault" and res:
+                rankings.append(res)
+            elif source == "docs" and res:
+                rankings.append(
+                    [
+                        {"url": r.url, "snippets": r.snippets, "meta": r.meta}
+                        for r in res
+                    ]
+                )
+            elif source == "bing":
+                formatted = format_bing_items(res)
+                if formatted:
+                    rankings.append(score_results(formatted))
+
         if not rankings:
             return []
 
