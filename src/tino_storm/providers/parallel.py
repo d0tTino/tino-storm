@@ -4,11 +4,13 @@ import asyncio
 from typing import Iterable, List, Dict, Any, Optional
 
 from .base import DefaultProvider, format_bing_items
+from .registry import register_provider
 from ..ingest import search_vaults
 from ..retrieval import reciprocal_rank_fusion, score_results, add_posteriors
 from ..search_result import ResearchResult, as_research_result
 
 
+@register_provider("parallel")
 class ParallelProvider(DefaultProvider):
     """Provider that queries local vaults and Bing concurrently."""
 
