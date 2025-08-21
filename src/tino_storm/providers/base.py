@@ -5,7 +5,7 @@ import importlib
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Iterable, List, Dict, Any, Optional
+from typing import Iterable, List, Dict, Any, Optional, Coroutine
 
 from ..search_result import ResearchResult, as_research_result
 
@@ -82,6 +82,8 @@ class DefaultProvider(Provider):
         self.bing_kwargs = bing_kwargs
         self._bing = None
         self._summarizer = None
+        # Cache summarization tasks by snippet text
+        self._summary_tasks: Dict[str, asyncio.Task] = {}
 
     def _bing_search(self, query: str) -> List[Dict[str, Any]]:
         if self._bing is None:
@@ -131,36 +133,41 @@ class DefaultProvider(Provider):
         if not snippets:
             return None
 
-        summarizer = self._get_summarizer()
-        summary: Optional[str] = None
-        if summarizer:
-            try:  # pragma: no cover - exercised when env var is set
-                prompt = (
-                    "Summarize the following in one short sentence:\n" + snippets[0]
-                )
-                result = await asyncio.to_thread(summarizer, prompt)
-                summary = result[0].strip()
-            except Exception as e:  # pragma: no cover - network/LLM issues
-                logging.error(f"LLM summarization failed: {e}")
-                event_emitter.emit_sync(
-                    ResearchAdded(
-                        topic=snippets[0],
-                        information_table={"error": str(e)},
+        key = "\n".join(snippets)
+        cached = self._summary_tasks.get(key)
+        if cached is not None:
+            return await cached
+
+        async def _run() -> str:
+            summarizer = self._get_summarizer()
+            summary: Optional[str] = None
+            if summarizer:
+                try:  # pragma: no cover - exercised when env var is set
+                    prompt = (
+                        "Summarize the following in one short sentence:\n" + snippets[0]
                     )
-                )
+                    result = await asyncio.to_thread(summarizer, prompt)
+                    summary = result[0].strip()
+                except Exception as e:  # pragma: no cover - network/LLM issues
+                    logging.error(f"LLM summarization failed: {e}")
+                    event_emitter.emit_sync(
+                        ResearchAdded(
+                            topic=snippets[0],
+                            information_table={"error": str(e)},
+                        )
+                    )
 
-        if summary is None:
-            summary = snippets[0]
+            if summary is None:
+                summary = snippets[0]
 
-        return summary[:max_chars]
+            return summary[:max_chars]
 
-    def _summarize(self, snippets: List[str], *, max_chars: int = 200) -> Optional[str]:
-        """Synchronous wrapper for ``_summarize_async``.
+        task: asyncio.Task = asyncio.create_task(_run())
+        self._summary_tasks[key] = task
+        return await task
 
-        Reuses an existing event loop when available instead of creating a
-        fresh one via ``asyncio.run``. This allows ``_summarize`` to execute in
-        contexts where an event loop may already be running.
-        """
+    def _run(self, coro: Coroutine[Any, Any, Any]) -> Any:
+        """Run *coro* on a persistent event loop."""
 
         try:
             loop = asyncio.get_event_loop()
@@ -169,14 +176,14 @@ class DefaultProvider(Provider):
             asyncio.set_event_loop(loop)
 
         if loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(
-                self._summarize_async(snippets, max_chars=max_chars), loop
-            )
-            return future.result()
+            return asyncio.run_coroutine_threadsafe(coro, loop).result()
 
-        return loop.run_until_complete(
-            self._summarize_async(snippets, max_chars=max_chars)
-        )
+        return loop.run_until_complete(coro)
+
+    def _summarize(self, snippets: List[str], *, max_chars: int = 200) -> Optional[str]:
+        """Synchronous wrapper for ``_summarize_async``."""
+
+        return self._run(self._summarize_async(snippets, max_chars=max_chars))
 
     def search_sync(
         self,
@@ -211,7 +218,7 @@ class DefaultProvider(Provider):
                     *(self._summarize_async(res.snippets) for res in unsummarized)
                 )
 
-            summaries = asyncio.run(_gather())
+            summaries = self._run(_gather())
             for res, summary in zip(unsummarized, summaries):
                 res.summary = summary
 
