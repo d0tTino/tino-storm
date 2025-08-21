@@ -11,12 +11,32 @@ from __future__ import annotations
 import asyncio
 import logging
 from typing import Iterable, List, Dict, Optional, Sequence
+from urllib.parse import urlsplit, urlunsplit
 
 
 from .base import Provider, load_provider
 from .registry import provider_registry
 from ..search_result import ResearchResult
 from ..events import ResearchAdded, event_emitter
+
+
+def canonical_url(url: str) -> str:
+    """Return a canonicalized representation of ``url`` for deduplication.
+
+    The canonical form drops query strings and fragments, lowercases the
+    scheme and hostname, and removes any trailing slash from the path. If the
+    URL is malformed it is returned unchanged.
+    """
+
+    try:
+        parts = urlsplit(url)
+    except Exception:
+        return url
+
+    scheme = parts.scheme.lower()
+    netloc = parts.netloc.lower()
+    path = parts.path.rstrip("/")
+    return urlunsplit((scheme, netloc, path, "", ""))
 
 
 class ProviderAggregator(Provider):
@@ -82,8 +102,10 @@ class ProviderAggregator(Provider):
         deduped: Dict[str, ResearchResult] = {}
         for item in merged:
             url = getattr(item, "url", None)
-            if url and url not in deduped:
-                deduped[url] = item
+            if url:
+                key = canonical_url(url)
+                if key not in deduped:
+                    deduped[key] = item
         return list(deduped.values())
 
     def search_sync(
@@ -141,6 +163,8 @@ class ProviderAggregator(Provider):
         deduped: Dict[str, ResearchResult] = {}
         for item in merged:
             url = getattr(item, "url", None)
-            if url and url not in deduped:
-                deduped[url] = item
+            if url:
+                key = canonical_url(url)
+                if key not in deduped:
+                    deduped[key] = item
         return list(deduped.values())
