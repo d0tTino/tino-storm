@@ -80,6 +80,31 @@ def test_search_sync_summarizes_in_parallel(monkeypatch):
     assert max_active > 1
 
 
+def test_search_sync_caches_duplicate_snippets(monkeypatch):
+    monkeypatch.setenv("STORM_SUMMARY_MODEL", "model")
+    monkeypatch.setattr(
+        "tino_storm.providers.base.search_vaults",
+        lambda *a, **k: [
+            {"url": "u1", "snippets": ["s"], "meta": {}},
+            {"url": "u2", "snippets": ["s"], "meta": {}},
+        ],
+    )
+
+    provider = DefaultProvider()
+    calls = 0
+
+    def fake_summarizer(_prompt):
+        nonlocal calls
+        calls += 1
+        return ["summary"]
+
+    monkeypatch.setattr(provider, "_get_summarizer", lambda: fake_summarizer)
+    results = provider.search_sync("q", [])
+
+    assert [r.summary for r in results] == ["summary", "summary"]
+    assert calls == 1
+
+
 @pytest.mark.anyio
 @pytest.mark.parametrize("anyio_backend", ["asyncio"], scope="module")
 async def test_search_async_uses_summarizer_when_model_set(monkeypatch, anyio_backend):
@@ -169,3 +194,30 @@ async def test_search_async_summarizes_in_parallel(monkeypatch, anyio_backend):
 
     assert [r.summary for r in results] == ["s1", "s2", "s3"]
     assert max_active > 1
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("anyio_backend", ["asyncio"], scope="module")
+async def test_search_async_caches_duplicate_snippets(monkeypatch, anyio_backend):
+    monkeypatch.setenv("STORM_SUMMARY_MODEL", "model")
+    monkeypatch.setattr(
+        "tino_storm.providers.base.search_vaults",
+        lambda *a, **k: [
+            {"url": "u1", "snippets": ["s"], "meta": {}},
+            {"url": "u2", "snippets": ["s"], "meta": {}},
+        ],
+    )
+
+    provider = DefaultProvider()
+    calls = 0
+
+    def fake_summarizer(_prompt):
+        nonlocal calls
+        calls += 1
+        return ["summary"]
+
+    monkeypatch.setattr(provider, "_get_summarizer", lambda: fake_summarizer)
+    results = await provider.search_async("q", [])
+
+    assert [r.summary for r in results] == ["summary", "summary"]
+    assert calls == 1
