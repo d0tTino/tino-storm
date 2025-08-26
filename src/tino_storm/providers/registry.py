@@ -22,7 +22,10 @@ class ProviderRegistry:
         for ep in entry_points(group="tino_storm.providers"):
             try:
                 provider = ep.load()
-            except Exception:
+            except Exception as exc:  # pragma: no cover - warning handled
+                logging.warning(
+                    "Failed to load provider entry-point %s: %s", ep.name, exc
+                )
                 continue
             self.register(ep.name, provider)
 
