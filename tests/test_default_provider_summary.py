@@ -221,3 +221,14 @@ async def test_search_async_caches_duplicate_snippets(monkeypatch, anyio_backend
 
     assert [r.summary for r in results] == ["summary", "summary"]
     assert calls == 1
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("anyio_backend", ["asyncio"], scope="module")
+async def test_summarize_async_clears_completed_tasks(monkeypatch, anyio_backend):
+    monkeypatch.delenv("STORM_SUMMARY_MODEL", raising=False)
+    provider = DefaultProvider()
+
+    for i in range(3):
+        await provider._summarize_async([f"s{i}"])
+        assert provider._summary_tasks == {}
