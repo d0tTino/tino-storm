@@ -120,45 +120,40 @@ class ProviderAggregator(Provider):
         timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
         actual_timeout = timeout if timeout is not None else self.timeout
+
+        async def _run_all() -> List[object]:
+            tasks = []
+            for p in self.providers:
+                coro = asyncio.to_thread(
+                    p.search_sync,
+                    query,
+                    vaults,
+                    k_per_vault=k_per_vault,
+                    rrf_k=rrf_k,
+                    chroma_path=chroma_path,
+                    vault=vault,
+                )
+                if actual_timeout is not None:
+                    coro = asyncio.wait_for(coro, timeout=actual_timeout)
+                tasks.append(coro)
+            if tasks:
+                return await asyncio.gather(*tasks, return_exceptions=True)
+            return []
+
+        results = asyncio.run(_run_all())
+
         merged: List[ResearchResult] = []
-        for p in self.providers:
-            try:
-                if actual_timeout is None:
-                    merged.extend(
-                        p.search_sync(
-                            query,
-                            vaults,
-                            k_per_vault=k_per_vault,
-                            rrf_k=rrf_k,
-                            chroma_path=chroma_path,
-                            vault=vault,
-                        )
-                    )
-                else:
-                    res = asyncio.run(
-                        asyncio.wait_for(
-                            asyncio.to_thread(
-                                p.search_sync,
-                                query,
-                                vaults,
-                                k_per_vault=k_per_vault,
-                                rrf_k=rrf_k,
-                                chroma_path=chroma_path,
-                                vault=vault,
-                            ),
-                            timeout=actual_timeout,
-                        )
-                    )
-                    merged.extend(res)
-            except Exception as e:
-                logging.exception("Provider %s failed in search_sync", p)
-                provider_name = getattr(p, "name", p.__class__.__name__)
+        for provider, r in zip(self.providers, results):
+            if isinstance(r, Exception):
+                logging.exception("Provider %s failed in search_sync", provider)
+                provider_name = getattr(provider, "name", provider.__class__.__name__)
                 event_emitter.emit_sync(
                     ResearchAdded(
-                        topic=provider_name, information_table={"error": str(e)}
+                        topic=provider_name, information_table={"error": str(r)}
                     )
                 )
                 continue
+            merged.extend(r)
 
         deduped: Dict[str, ResearchResult] = {}
         for item in merged:
