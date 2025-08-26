@@ -164,6 +164,7 @@ class DefaultProvider(Provider):
 
         task: asyncio.Task = asyncio.create_task(_run())
         self._summary_tasks[key] = task
+        task.add_done_callback(lambda t, k=key: self._summary_tasks.pop(k, None))
         return await task
 
     def _run(self, coro: Coroutine[Any, Any, Any]) -> Any:
