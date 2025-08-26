@@ -78,6 +78,7 @@ class ProviderAggregator(Provider):
                         rrf_k=rrf_k,
                         chroma_path=chroma_path,
                         vault=vault,
+                        timeout=actual_timeout,
                     ),
                     timeout=actual_timeout,
                 )
@@ -143,10 +144,41 @@ class ProviderAggregator(Provider):
         results = asyncio.run(_run_all())
 
         merged: List[ResearchResult] = []
-        for provider, r in zip(self.providers, results):
-            if isinstance(r, Exception):
-                logging.exception("Provider %s failed in search_sync", provider)
-                provider_name = getattr(provider, "name", provider.__class__.__name__)
+        for p in self.providers:
+            try:
+                if actual_timeout is None:
+                    merged.extend(
+                        p.search_sync(
+                            query,
+                            vaults,
+                            k_per_vault=k_per_vault,
+                            rrf_k=rrf_k,
+                            chroma_path=chroma_path,
+                            vault=vault,
+                            timeout=actual_timeout,
+                        )
+                    )
+                else:
+                    res = asyncio.run(
+                        asyncio.wait_for(
+                            asyncio.to_thread(
+                                p.search_sync,
+                                query,
+                                vaults,
+                                k_per_vault=k_per_vault,
+                                rrf_k=rrf_k,
+                                chroma_path=chroma_path,
+                                vault=vault,
+                                timeout=actual_timeout,
+                            ),
+                            timeout=actual_timeout,
+                        )
+                    )
+                    merged.extend(res)
+            except Exception as e:
+                logging.exception("Provider %s failed in search_sync", p)
+                provider_name = getattr(p, "name", p.__class__.__name__)
+
                 event_emitter.emit_sync(
                     ResearchAdded(
                         topic=provider_name, information_table={"error": str(r)}

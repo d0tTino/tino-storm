@@ -56,6 +56,7 @@ def test_search_uses_env_provider(monkeypatch):
             rrf_k=60,
             chroma_path=None,
             vault=None,
+            timeout=None,
         ):
             calls["args"] = (
                 query,
@@ -64,6 +65,7 @@ def test_search_uses_env_provider(monkeypatch):
                 rrf_k,
                 chroma_path,
                 vault,
+                timeout,
             )
             return [ResearchResult(url="ok", snippets=[], meta={})]
 
@@ -75,7 +77,7 @@ def test_search_uses_env_provider(monkeypatch):
     result = tino_storm.search("q", ["v"])
 
     assert result == [ResearchResult(url="ok", snippets=[], meta={})]
-    assert calls["args"] == ("q", ["v"], 5, 60, None, None)
+    assert calls["args"] == ("q", ["v"], 5, 60, None, None, None)
 
 
 def test_parallel_provider_gathers_and_merges(monkeypatch):

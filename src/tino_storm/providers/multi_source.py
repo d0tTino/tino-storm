@@ -30,6 +30,7 @@ class MultiSourceProvider(DefaultProvider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
         vault_task = asyncio.to_thread(
             search_vaults,
@@ -47,6 +48,7 @@ class MultiSourceProvider(DefaultProvider):
             rrf_k=rrf_k,
             chroma_path=chroma_path,
             vault=vault,
+            timeout=timeout,
         )
         bing_task = asyncio.to_thread(self._bing_search, query)
 
@@ -98,6 +100,7 @@ class MultiSourceProvider(DefaultProvider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
         return asyncio.run(
             self.search_async(
@@ -107,5 +110,6 @@ class MultiSourceProvider(DefaultProvider):
                 rrf_k=rrf_k,
                 chroma_path=chroma_path,
                 vault=vault,
+                timeout=timeout,
             )
         )

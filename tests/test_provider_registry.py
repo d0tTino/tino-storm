@@ -13,6 +13,7 @@ class SampleProvider(Provider):
         rrf_k=60,
         chroma_path=None,
         vault=None,
+        timeout=None,
     ) -> list[ResearchResult]:
         return [ResearchResult(url="custom", snippets=["ok"], meta={})]
 

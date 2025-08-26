@@ -18,9 +18,12 @@ class DummyAsyncProvider(Provider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
         return [
-            ResearchResult(url="", snippets=[], meta={"query": query, "vaults": list(vaults)})
+            ResearchResult(
+                url="", snippets=[], meta={"query": query, "vaults": list(vaults)}
+            )
         ]
 
     def search_sync(
@@ -32,5 +35,6 @@ class DummyAsyncProvider(Provider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
         raise NotImplementedError("DummyAsyncProvider only implements search_async")

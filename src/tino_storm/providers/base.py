@@ -41,6 +41,7 @@ class Provider(ABC):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
         """Asynchronously search and return results."""
         return await asyncio.to_thread(
@@ -51,6 +52,7 @@ class Provider(ABC):
             rrf_k=rrf_k,
             chroma_path=chroma_path,
             vault=vault,
+            timeout=timeout,
         )
 
     @abstractmethod
@@ -63,6 +65,7 @@ class Provider(ABC):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
         """Synchronously search and return results."""
 
@@ -195,6 +198,7 @@ class DefaultProvider(Provider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
         raw_results = search_vaults(
             query,
@@ -234,6 +238,7 @@ class DefaultProvider(Provider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
         raw_results = await asyncio.to_thread(
             search_vaults,

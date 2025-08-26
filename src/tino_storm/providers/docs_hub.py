@@ -24,6 +24,7 @@ class DocsHubProvider(Provider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
         """Asynchronously search the local docs index without blocking."""
         try:
@@ -53,6 +54,7 @@ class DocsHubProvider(Provider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
         """Synchronously search the local docs index."""
         raw_results = search_vaults(

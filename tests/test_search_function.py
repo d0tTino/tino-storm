@@ -22,6 +22,7 @@ def test_search_sync(monkeypatch):
             rrf_k=60,
             chroma_path=None,
             vault=None,
+            timeout=None,
         ):
             called["args"] = (
                 query,
@@ -30,6 +31,7 @@ def test_search_sync(monkeypatch):
                 rrf_k,
                 chroma_path,
                 vault,
+                timeout,
             )
             return [ResearchResult(url="ok", snippets=[], meta={})]
 
@@ -44,7 +46,7 @@ def test_search_sync(monkeypatch):
     result = tino_storm.search("q", ["v"])
 
     assert result == [ResearchResult(url="ok", snippets=[], meta={})]
-    assert called["args"] == ("q", ["v"], 5, 60, None, None)
+    assert called["args"] == ("q", ["v"], 5, 60, None, None, None)
 
 
 def test_search_async(monkeypatch):
@@ -67,6 +69,7 @@ def test_search_async(monkeypatch):
             rrf_k=60,
             chroma_path=None,
             vault=None,
+            timeout=None,
         ):
             called["sync"] = True
             called["args"] = (
@@ -76,6 +79,7 @@ def test_search_async(monkeypatch):
                 rrf_k,
                 chroma_path,
                 vault,
+                timeout,
             )
             return [ResearchResult(url="async", snippets=[], meta={})]
 
@@ -94,7 +98,7 @@ def test_search_async(monkeypatch):
 
     assert result == [ResearchResult(url="async", snippets=[], meta={})]
     assert called["thread"]
-    assert called["args"] == ("q", ["v"], 5, 60, None, None)
+    assert called["args"] == ("q", ["v"], 5, 60, None, None, None)
 
 
 def test_search_awaits_provider_coroutine(monkeypatch):
@@ -113,6 +117,7 @@ def test_search_awaits_provider_coroutine(monkeypatch):
             rrf_k=60,
             chroma_path=None,
             vault=None,
+            timeout=None,
         ):
             called["args"] = (
                 query,
@@ -121,6 +126,7 @@ def test_search_awaits_provider_coroutine(monkeypatch):
                 rrf_k,
                 chroma_path,
                 vault,
+                timeout,
             )
             return [ResearchResult(url="awaited", snippets=[], meta={})]
 
@@ -141,7 +147,7 @@ def test_search_awaits_provider_coroutine(monkeypatch):
     result = asyncio.run(_run())
 
     assert result == [ResearchResult(url="awaited", snippets=[], meta={})]
-    assert called["args"] == ("q", ["v"], 5, 60, None, None)
+    assert called["args"] == ("q", ["v"], 5, 60, None, None, None)
     assert "sync" not in called
 
 
@@ -165,6 +171,7 @@ def test_search_without_vaults_uses_default(monkeypatch):
             rrf_k=60,
             chroma_path=None,
             vault=None,
+            timeout=None,
         ):
             called["args"] = (
                 query,
@@ -173,6 +180,7 @@ def test_search_without_vaults_uses_default(monkeypatch):
                 rrf_k,
                 chroma_path,
                 vault,
+                timeout,
             )
             return [ResearchResult(url="ok", snippets=[], meta={})]
 
@@ -188,7 +196,7 @@ def test_search_without_vaults_uses_default(monkeypatch):
 
     assert result == [ResearchResult(url="ok", snippets=[], meta={})]
     assert called["list"]
-    assert called["args"] == ("q", ["a", "b"], 5, 60, None, None)
+    assert called["args"] == ("q", ["a", "b"], 5, 60, None, None, None)
 
 
 def test_search_falls_back_to_asyncio_run(monkeypatch):
