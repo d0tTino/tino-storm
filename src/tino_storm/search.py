@@ -62,6 +62,7 @@ async def search_async(
     chroma_path: Optional[str] = None,
     vault: Optional[str] = None,
     provider: Provider | str | None = None,
+    timeout: Optional[float] = None,
 ) -> List[ResearchResult]:
     """Asynchronously query ``vaults`` using the configured provider."""
 
@@ -77,6 +78,7 @@ async def search_async(
             rrf_k=rrf_k,
             chroma_path=chroma_path,
             vault=vault,
+            timeout=timeout,
         )
     except Exception as e:
         logging.error(f"Search failed for query {query}: {e}")
@@ -95,6 +97,7 @@ def search(
     chroma_path: Optional[str] = None,
     vault: Optional[str] = None,
     provider: Provider | str | None = None,
+    timeout: Optional[float] = None,
 ) -> List[ResearchResult]:
     """Query ``vaults`` synchronously or return an awaitable when in an event loop."""
 
@@ -114,6 +117,7 @@ def search(
                     rrf_k=rrf_k,
                     chroma_path=chroma_path,
                     vault=vault,
+                    timeout=timeout,
                 )
             except NotImplementedError:
                 return asyncio.run(
@@ -124,6 +128,7 @@ def search(
                         rrf_k=rrf_k,
                         chroma_path=chroma_path,
                         vault=vault,
+                        timeout=timeout,
                     )
                 )
         except Exception as e:
@@ -141,4 +146,5 @@ def search(
         chroma_path=chroma_path,
         vault=vault,
         provider=provider,
+        timeout=timeout,
     )

@@ -78,6 +78,7 @@ class ProviderAggregator(Provider):
                         rrf_k=rrf_k,
                         chroma_path=chroma_path,
                         vault=vault,
+                        timeout=actual_timeout,
                     ),
                     timeout=actual_timeout,
                 )
@@ -132,6 +133,7 @@ class ProviderAggregator(Provider):
                             rrf_k=rrf_k,
                             chroma_path=chroma_path,
                             vault=vault,
+                            timeout=actual_timeout,
                         )
                     )
                 else:
@@ -145,6 +147,7 @@ class ProviderAggregator(Provider):
                                 rrf_k=rrf_k,
                                 chroma_path=chroma_path,
                                 vault=vault,
+                                timeout=actual_timeout,
                             ),
                             timeout=actual_timeout,
                         )

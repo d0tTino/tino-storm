@@ -23,6 +23,7 @@ class ParallelProvider(DefaultProvider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
         vault_task = asyncio.to_thread(
             search_vaults,
@@ -58,6 +59,7 @@ class ParallelProvider(DefaultProvider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
         return asyncio.run(
             self.search_async(
@@ -67,5 +69,6 @@ class ParallelProvider(DefaultProvider):
                 rrf_k=rrf_k,
                 chroma_path=chroma_path,
                 vault=vault,
+                timeout=timeout,
             )
         )

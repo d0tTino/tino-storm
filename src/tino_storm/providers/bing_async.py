@@ -25,6 +25,7 @@ class BingAsyncProvider(Provider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
         api_key = os.environ.get("BING_SEARCH_API_KEY")
         if not api_key:
@@ -40,7 +41,11 @@ class BingAsyncProvider(Provider):
         # ``format_bing_items`` for snippet normalization.
         normalized = []
         for item in items:
-            if "snippet" in item and "description" not in item and "snippets" not in item:
+            if (
+                "snippet" in item
+                and "description" not in item
+                and "snippets" not in item
+            ):
                 item = {**item, "description": item["snippet"]}
             if "name" in item and "title" not in item:
                 item = {**item, "title": item["name"]}
@@ -57,5 +62,6 @@ class BingAsyncProvider(Provider):
         rrf_k: int = 60,
         chroma_path: Optional[str] = None,
         vault: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
         raise NotImplementedError("BingAsyncProvider only implements search_async")
