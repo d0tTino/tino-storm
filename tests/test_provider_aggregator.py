@@ -168,6 +168,25 @@ def test_aggregator_emits_event_and_deduplicates(monkeypatch):
     assert events[0].information_table["error"] == "boom"
 
 
+def test_search_sync_dedupes_and_emits_event(monkeypatch):
+    # Reset event subscribers and capture emitted events
+    monkeypatch.setattr(event_emitter, "_subscribers", {})
+    events = []
+
+    def handler(event: ResearchAdded) -> None:
+        events.append(event)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+
+    provider = ProviderAggregator([DuplicateProvider(), FailingProvider()])
+
+    results = provider.search_sync("q", [])
+    assert {r.url for r in results} == {"dup"}
+    assert len(events) == 1
+    assert events[0].topic == "failing"
+    assert events[0].information_table["error"] == "boom"
+
+
 def test_aggregator_returns_research_results():
     provider = ProviderAggregator([DummyProvider("p")])
     async_results = asyncio.run(provider.search_async("q", []))
