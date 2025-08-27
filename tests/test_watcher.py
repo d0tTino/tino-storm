@@ -2,6 +2,7 @@ import os
 import sys
 import types
 import importlib.util
+import importlib.machinery
 
 if "chromadb" not in sys.modules:
     chromadb = types.ModuleType("chromadb")
@@ -64,6 +65,8 @@ if spec is None:
     events_mod.FileSystemEventHandler = FileSystemEventHandler
     watchdog.observers = observers_mod
     watchdog.events = events_mod
+    observers_mod.__spec__ = importlib.machinery.ModuleSpec("watchdog.observers", loader=None)
+    events_mod.__spec__ = importlib.machinery.ModuleSpec("watchdog.events", loader=None)
     sys.modules["watchdog"] = watchdog
     sys.modules["watchdog.observers"] = observers_mod
     sys.modules["watchdog.events"] = events_mod
