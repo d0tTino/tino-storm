@@ -24,6 +24,15 @@ class ResearchError(RuntimeError):
 
 
 def _resolve_provider(provider: Provider | str | None) -> Provider:
+    def _emit_load_error(spec: str, err: Exception) -> None:
+        event = ResearchAdded(topic=spec, information_table={"error": str(err)})
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            event_emitter.emit_sync(event)
+        else:
+            loop.create_task(event_emitter.emit(event))
+
     if provider is None:
         spec = os.environ.get("STORM_SEARCH_PROVIDER")
         if spec:
@@ -31,6 +40,7 @@ def _resolve_provider(provider: Provider | str | None) -> Provider:
                 return load_provider(spec)
             except Exception as e:
                 logging.exception("Failed to load provider '%s'", spec)
+                _emit_load_error(spec, e)
                 raise ResearchError(
                     f"Failed to load provider '{spec}': {e}", provider_spec=spec
                 ) from e
@@ -46,6 +56,7 @@ def _resolve_provider(provider: Provider | str | None) -> Provider:
                 return load_provider(provider)
             except Exception as e:
                 logging.exception("Failed to load provider '%s'", provider)
+                _emit_load_error(provider, e)
                 raise ResearchError(
                     f"Failed to load provider '{provider}': {e}",
                     provider_spec=provider,
