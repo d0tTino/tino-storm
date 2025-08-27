@@ -57,12 +57,19 @@ class DocsHubProvider(Provider):
         timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
         """Synchronously search the local docs index."""
-        raw_results = search_vaults(
-            query,
-            vaults,
-            k_per_vault=k_per_vault,
-            rrf_k=rrf_k,
-            chroma_path=chroma_path,
-            vault=vault,
-        )
-        return [as_research_result(r) for r in raw_results]
+        try:
+            raw_results = search_vaults(
+                query,
+                vaults,
+                k_per_vault=k_per_vault,
+                rrf_k=rrf_k,
+                chroma_path=chroma_path,
+                vault=vault,
+            )
+            return [as_research_result(r) for r in raw_results]
+        except Exception as e:  # pragma: no cover - network/IO errors
+            logging.exception("DocsHubProvider search_sync failed")
+            event_emitter.emit_sync(
+                ResearchAdded(topic=query, information_table={"error": str(e)})
+            )
+            return []

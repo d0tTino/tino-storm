@@ -130,3 +130,27 @@ def test_docs_hub_provider_search_async_failure(monkeypatch):
     assert len(events) == 1
     assert events[0].topic == "topic"
     assert events[0].information_table["error"] == "boom"
+
+
+def test_docs_hub_provider_search_sync_failure(monkeypatch):
+    import tino_storm.providers.docs_hub as docs_hub
+
+    provider = docs_hub.DocsHubProvider()
+
+    def raise_err(*_a, **_k):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(docs_hub, "search_vaults", raise_err)
+    monkeypatch.setattr(event_emitter, "_subscribers", {})
+    events: list[ResearchAdded] = []
+
+    def handler(e: ResearchAdded) -> None:
+        events.append(e)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+
+    results = provider.search_sync("topic", ["vault"])
+    assert results == []
+    assert len(events) == 1
+    assert events[0].topic == "topic"
+    assert events[0].information_table["error"] == "boom"
