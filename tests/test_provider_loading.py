@@ -12,6 +12,7 @@ from tino_storm.providers import (
     DefaultProvider,
 )
 from tino_storm.search import ResearchError, _resolve_provider
+from tino_storm.events import ResearchAdded, event_emitter
 from tino_storm.search_result import ResearchResult
 
 
@@ -41,6 +42,25 @@ def test_resolve_provider_invalid_string(monkeypatch):
         _resolve_provider("dummy_mod2.NotProvider")
 
     assert "Failed to load provider 'dummy_mod2.NotProvider'" in str(exc.value)
+
+
+def test_resolve_provider_emits_event_on_failure():
+    events: list[ResearchAdded] = []
+
+    def handler(event: ResearchAdded) -> None:
+        events.append(event)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+    try:
+        with pytest.raises(ResearchError):
+            _resolve_provider("nonexistent.module.Provider")
+    finally:
+        event_emitter.unsubscribe(ResearchAdded, handler)
+
+    assert len(events) == 1
+    event = events[0]
+    assert event.topic == "nonexistent.module.Provider"
+    assert "No module named" in event.information_table["error"]
 
 
 def test_search_uses_env_provider(monkeypatch):
