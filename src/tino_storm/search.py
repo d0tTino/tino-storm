@@ -41,9 +41,7 @@ def _resolve_provider(provider: Provider | str | None) -> Provider:
             except Exception as e:
                 logging.exception("Failed to load provider '%s'", spec)
                 _emit_load_error(spec, e)
-                raise ResearchError(
-                    f"Failed to load provider '{spec}': {e}", provider_spec=spec
-                ) from e
+                return DefaultProvider()
         return DefaultProvider()
     if isinstance(provider, str):
         if "," in provider:
@@ -57,10 +55,7 @@ def _resolve_provider(provider: Provider | str | None) -> Provider:
             except Exception as e:
                 logging.exception("Failed to load provider '%s'", provider)
                 _emit_load_error(provider, e)
-                raise ResearchError(
-                    f"Failed to load provider '{provider}': {e}",
-                    provider_spec=provider,
-                ) from e
+                return DefaultProvider()
     return provider
 
 
