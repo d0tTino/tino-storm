@@ -28,7 +28,9 @@ The search API returns a list of `ResearchResult` objects containing the URL,
 text snippets, optional metadata and a short summary from the retrieved
 documents. By default the first snippet is used as the summary. If the
 `STORM_SUMMARY_MODEL` environment variable is set, that model will be invoked
-to generate a one-sentence summary for each result.
+to generate a one-sentence summary for each result. The optional
+`STORM_SUMMARY_TIMEOUT` variable limits how long the summarizer is allowed to
+run before the first snippet is used as a fallback.
 
 ```python
 from tino_storm.search_result import ResearchResult
