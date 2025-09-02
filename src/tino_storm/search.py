@@ -15,6 +15,9 @@ from .search_result import ResearchResult
 from .ingest.utils import list_vaults
 
 
+_PROVIDER_CACHE: dict[str, Provider] = {}
+
+
 class ResearchError(RuntimeError):
     """Raised when a search provider fails to complete the query."""
 
@@ -37,7 +40,9 @@ def _resolve_provider(provider: Provider | str | None) -> Provider:
         spec = os.environ.get("STORM_SEARCH_PROVIDER")
         if spec:
             try:
-                return load_provider(spec)
+                if spec not in _PROVIDER_CACHE:
+                    _PROVIDER_CACHE[spec] = load_provider(spec)
+                return _PROVIDER_CACHE[spec]
             except Exception as e:
                 logging.exception("Failed to load provider '%s'", spec)
                 _emit_load_error(spec, e)
@@ -51,7 +56,9 @@ def _resolve_provider(provider: Provider | str | None) -> Provider:
             return provider_registry.get(provider)
         except KeyError:
             try:
-                return load_provider(provider)
+                if provider not in _PROVIDER_CACHE:
+                    _PROVIDER_CACHE[provider] = load_provider(provider)
+                return _PROVIDER_CACHE[provider]
             except Exception as e:
                 logging.exception("Failed to load provider '%s'", provider)
                 _emit_load_error(provider, e)
