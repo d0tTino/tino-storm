@@ -4,14 +4,13 @@ import types
 import pytest
 
 import asyncio
-import tino_storm
 from tino_storm.providers import (
     Provider,
     load_provider,
     ParallelProvider,
     DefaultProvider,
 )
-from tino_storm.search import ResearchError, _resolve_provider
+from tino_storm.search import _resolve_provider, search as search_fn
 from tino_storm.events import ResearchAdded, event_emitter
 from tino_storm.search_result import ResearchResult
 
@@ -38,10 +37,20 @@ def test_resolve_provider_invalid_string(monkeypatch):
     mod.NotProvider = NotProvider
     monkeypatch.setitem(sys.modules, "dummy_mod2", mod)
 
-    with pytest.raises(ResearchError) as exc:
-        _resolve_provider("dummy_mod2.NotProvider")
+    monkeypatch.setattr(event_emitter, "_subscribers", {})
+    events = []
 
-    assert "Failed to load provider 'dummy_mod2.NotProvider'" in str(exc.value)
+    async def handler(e):
+        events.append(e)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+
+    provider = _resolve_provider("dummy_mod2.NotProvider")
+
+    assert isinstance(provider, DefaultProvider)
+    assert len(events) == 1
+    assert events[0].topic == "dummy_mod2.NotProvider"
+    assert "error" in events[0].information_table
 
 
 def test_resolve_provider_emits_event_on_failure():
@@ -51,12 +60,10 @@ def test_resolve_provider_emits_event_on_failure():
         events.append(event)
 
     event_emitter.subscribe(ResearchAdded, handler)
-    try:
-        with pytest.raises(ResearchError):
-            _resolve_provider("nonexistent.module.Provider")
-    finally:
-        event_emitter.unsubscribe(ResearchAdded, handler)
+    provider = _resolve_provider("nonexistent.module.Provider")
+    event_emitter.unsubscribe(ResearchAdded, handler)
 
+    assert isinstance(provider, DefaultProvider)
     assert len(events) == 1
     event = events[0]
     assert event.topic == "nonexistent.module.Provider"
@@ -94,7 +101,7 @@ def test_search_uses_env_provider(monkeypatch):
     monkeypatch.setitem(sys.modules, "dummy_provider_mod", mod)
     monkeypatch.setenv("STORM_SEARCH_PROVIDER", "dummy_provider_mod.DummyProvider")
 
-    result = tino_storm.search("q", ["v"])
+    result = search_fn("q", ["v"])
 
     assert result == [ResearchResult(url="ok", snippets=[], meta={})]
     assert calls["args"] == ("q", ["v"], 5, 60, None, None, None)

@@ -1,20 +1,38 @@
-import pytest
-
-from tino_storm.search import _resolve_provider, ResearchError
-
-
-def test_resolve_provider_raises_on_malformed_spec():
-    spec = "malformed-spec"
-    with pytest.raises(ResearchError) as exc:
-        _resolve_provider(spec)
-    assert exc.value.provider_spec == spec
-    assert f"Failed to load provider '{spec}'" in str(exc.value)
+from tino_storm.events import ResearchAdded, event_emitter
+from tino_storm.providers import DefaultProvider
+from tino_storm.search import _resolve_provider
 
 
-def test_resolve_provider_env_uses_spec(monkeypatch):
+def test_resolve_provider_fallback_on_malformed_spec(monkeypatch):
+    monkeypatch.setattr(event_emitter, "_subscribers", {})
+    events = []
+
+    async def handler(e):
+        events.append(e)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+
+    provider = _resolve_provider("malformed-spec")
+    assert isinstance(provider, DefaultProvider)
+    assert len(events) == 1
+    assert events[0].topic == "malformed-spec"
+    assert "error" in events[0].information_table
+
+
+def test_resolve_provider_env_invalid_fallback(monkeypatch):
+    monkeypatch.setattr(event_emitter, "_subscribers", {})
+    events = []
+
+    async def handler(e):
+        events.append(e)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+
     spec = "anotherbad"
     monkeypatch.setenv("STORM_SEARCH_PROVIDER", spec)
-    with pytest.raises(ResearchError) as exc:
-        _resolve_provider(None)
-    assert exc.value.provider_spec == spec
-    assert f"Failed to load provider '{spec}'" in str(exc.value)
+    provider = _resolve_provider(None)
+
+    assert isinstance(provider, DefaultProvider)
+    assert len(events) == 1
+    assert events[0].topic == spec
+    assert "error" in events[0].information_table
