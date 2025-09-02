@@ -33,6 +33,7 @@ class ParallelProvider(DefaultProvider):
             rrf_k=rrf_k,
             chroma_path=chroma_path,
             vault=vault,
+            timeout=timeout,
         )
         bing_task = asyncio.to_thread(self._bing_search, query)
         vault_res, bing_res = await asyncio.gather(vault_task, bing_task)

@@ -40,6 +40,7 @@ class MultiSourceProvider(DefaultProvider):
             rrf_k=rrf_k,
             chroma_path=chroma_path,
             vault=vault,
+            timeout=timeout,
         )
         docs_task = self.docs_provider.search_async(
             query,
