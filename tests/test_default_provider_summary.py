@@ -65,7 +65,7 @@ def test_search_sync_summarizes_in_parallel(monkeypatch):
     active = 0
     max_active = 0
 
-    async def fake_summarize(snippets, *, max_chars=200):
+    async def fake_summarize(snippets, *, max_chars=200, timeout=None):
         nonlocal active, max_active
         active += 1
         max_active = max(max_active, active)
@@ -133,7 +133,7 @@ async def test_summarize_sync_from_async(monkeypatch, anyio_backend):
     monkeypatch.delenv("STORM_SUMMARY_MODEL", raising=False)
     provider = DefaultProvider()
 
-    async def fake_summarize(snippets, *, max_chars=200):
+    async def fake_summarize(snippets, *, max_chars=200, timeout=None):
         await asyncio.sleep(0)
         return snippets[0]
 
@@ -166,6 +166,30 @@ async def test_search_async_falls_back_on_summarizer_error(monkeypatch, anyio_ba
 
 @pytest.mark.anyio
 @pytest.mark.parametrize("anyio_backend", ["asyncio"], scope="module")
+async def test_search_async_summarizer_timeout(monkeypatch, anyio_backend):
+    monkeypatch.setenv("STORM_SUMMARY_MODEL", "model")
+    monkeypatch.setenv("STORM_SUMMARY_TIMEOUT", "0.01")
+    monkeypatch.setattr(
+        "tino_storm.providers.base.search_vaults",
+        lambda *a, **k: [{"url": "u", "snippets": ["s"], "meta": {}}],
+    )
+
+    provider = DefaultProvider()
+
+    def slow_summarizer(_prompt):
+        import time
+
+        time.sleep(0.1)
+        return ["llm summary"]
+
+    monkeypatch.setattr(provider, "_get_summarizer", lambda: slow_summarizer)
+    results = await provider.search_async("q", [])
+
+    assert results[0].summary == "s"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("anyio_backend", ["asyncio"], scope="module")
 async def test_search_async_summarizes_in_parallel(monkeypatch, anyio_backend):
     monkeypatch.delenv("STORM_SUMMARY_MODEL", raising=False)
     monkeypatch.setattr(
@@ -181,7 +205,7 @@ async def test_search_async_summarizes_in_parallel(monkeypatch, anyio_backend):
     active = 0
     max_active = 0
 
-    async def fake_summarize(snippets, *, max_chars=200):
+    async def fake_summarize(snippets, *, max_chars=200, timeout=None):
         nonlocal active, max_active
         active += 1
         max_active = max(max_active, active)

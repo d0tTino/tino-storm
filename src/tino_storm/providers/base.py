@@ -178,7 +178,11 @@ class DefaultProvider(Provider):
         return self._summarizer or None
 
     async def _summarize_async(
-        self, snippets: List[str], *, max_chars: int = 200
+        self,
+        snippets: List[str],
+        *,
+        max_chars: int = 200,
+        timeout: Optional[float] = None,
     ) -> Optional[str]:
         """Return a short summary for the provided snippets asynchronously."""
 
@@ -198,7 +202,14 @@ class DefaultProvider(Provider):
                     prompt = (
                         "Summarize the following in one short sentence:\n" + snippets[0]
                     )
-                    result = await asyncio.to_thread(summarizer, prompt)
+                    if timeout is None:
+                        t_str = os.environ.get("STORM_SUMMARY_TIMEOUT")
+                        timeout_val = float(t_str) if t_str else None
+                    else:
+                        timeout_val = timeout
+                    result = await asyncio.wait_for(
+                        asyncio.to_thread(summarizer, prompt), timeout=timeout_val
+                    )
                     summary = result[0].strip()
                 except Exception as e:  # pragma: no cover - network/LLM issues
                     logging.error(f"LLM summarization failed: {e}")
@@ -228,10 +239,18 @@ class DefaultProvider(Provider):
         future = asyncio.run_coroutine_threadsafe(coro, loop)
         return future.result()
 
-    def _summarize(self, snippets: List[str], *, max_chars: int = 200) -> Optional[str]:
+    def _summarize(
+        self,
+        snippets: List[str],
+        *,
+        max_chars: int = 200,
+        timeout: Optional[float] = None,
+    ) -> Optional[str]:
         """Synchronous wrapper for ``_summarize_async``."""
 
-        return self._run(self._summarize_async(snippets, max_chars=max_chars))
+        return self._run(
+            self._summarize_async(snippets, max_chars=max_chars, timeout=timeout)
+        )
 
     def search_sync(
         self,
