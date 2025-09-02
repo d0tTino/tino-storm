@@ -10,7 +10,7 @@ from tino_storm.providers import (
     ParallelProvider,
     DefaultProvider,
 )
-from tino_storm.search import _resolve_provider, search as search_fn
+from tino_storm.search import _resolve_provider, search as search_fn, _PROVIDER_CACHE
 from tino_storm.events import ResearchAdded, event_emitter
 from tino_storm.search_result import ResearchResult
 
@@ -156,3 +156,27 @@ def test_default_provider_formats_bing(monkeypatch):
     assert results == [
         ResearchResult(url="u", snippets=["d"], meta={"title": "t"}, summary="d")
     ]
+
+
+def test_resolve_provider_caches_instance(monkeypatch):
+    calls = {"count": 0}
+
+    class DummyProvider(Provider):
+        def __init__(self):
+            calls["count"] += 1
+
+        def search_sync(self, *a, **k):
+            return []
+
+    mod = types.ModuleType("dummy_provider_cache_mod")
+    mod.DummyProvider = DummyProvider
+    monkeypatch.setitem(sys.modules, "dummy_provider_cache_mod", mod)
+
+    _PROVIDER_CACHE.clear()
+    try:
+        provider1 = _resolve_provider("dummy_provider_cache_mod.DummyProvider")
+        provider2 = _resolve_provider("dummy_provider_cache_mod.DummyProvider")
+        assert provider1 is provider2
+        assert calls["count"] == 1
+    finally:
+        _PROVIDER_CACHE.clear()
