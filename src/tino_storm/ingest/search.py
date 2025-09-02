@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import atexit
+import asyncio
 from pathlib import Path
 from typing import Any, Iterable, List, Dict, Optional
 
@@ -28,6 +29,7 @@ def search_vaults(
     rrf_k: int = 60,
     chroma_path: Optional[str] = None,
     vault: Optional[str] = None,
+    timeout: Optional[float] = None,
 ) -> List[Dict[str, Any]]:
     """Query multiple Chroma namespaces and combine results using RRF."""
 
@@ -63,7 +65,20 @@ def search_vaults(
                 client_map[pw] = c
             collection = c.get_or_create_collection(vault_name)
         try:
-            res = collection.query(query_texts=[query], n_results=k_per_vault)
+            if timeout is not None:
+
+                async def _query() -> Dict[str, Any]:
+                    return await asyncio.to_thread(
+                        collection.query,
+                        query_texts=[query],
+                        n_results=k_per_vault,
+                    )
+
+                res = asyncio.run(asyncio.wait_for(_query(), timeout))
+            else:
+                res = collection.query(query_texts=[query], n_results=k_per_vault)
+        except asyncio.TimeoutError:
+            raise
         except Exception:
             res = {"documents": [[]], "metadatas": [[]]}
 

@@ -36,6 +36,7 @@ class DocsHubProvider(Provider):
                 rrf_k=rrf_k,
                 chroma_path=chroma_path,
                 vault=vault,
+                timeout=timeout,
             )
             return [as_research_result(r) for r in raw_results]
         except Exception as e:  # pragma: no cover - network/IO errors
@@ -65,6 +66,7 @@ class DocsHubProvider(Provider):
                 rrf_k=rrf_k,
                 chroma_path=chroma_path,
                 vault=vault,
+                timeout=timeout,
             )
             return [as_research_result(r) for r in raw_results]
         except Exception as e:  # pragma: no cover - network/IO errors

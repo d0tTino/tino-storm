@@ -251,6 +251,7 @@ class DefaultProvider(Provider):
             rrf_k=rrf_k,
             chroma_path=chroma_path,
             vault=vault,
+            timeout=timeout,
         )
         if raw_results:
             results = [as_research_result(r) for r in raw_results]
@@ -292,6 +293,7 @@ class DefaultProvider(Provider):
             rrf_k=rrf_k,
             chroma_path=chroma_path,
             vault=vault,
+            timeout=timeout,
         )
         if raw_results:
             results = [as_research_result(r) for r in raw_results]
