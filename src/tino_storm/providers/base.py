@@ -4,6 +4,8 @@ import asyncio
 import importlib
 import logging
 import os
+import atexit
+import threading
 from abc import ABC, abstractmethod
 from typing import Iterable, List, Dict, Any, Optional, Coroutine
 
@@ -12,6 +14,53 @@ from ..search_result import ResearchResult, as_research_result
 from ..ingest import search_vaults
 from ..core.rm import BingSearch
 from ..events import ResearchAdded, event_emitter
+
+
+_loop: Optional[asyncio.AbstractEventLoop] = None
+_thread: Optional[threading.Thread] = None
+_loop_lock = threading.Lock()
+
+
+def _start_loop() -> asyncio.AbstractEventLoop:
+    """Start a background event loop and return it."""
+
+    global _loop, _thread
+    with _loop_lock:
+        if _loop is not None:
+            return _loop
+
+        _loop = asyncio.new_event_loop()
+
+        def run() -> None:
+            asyncio.set_event_loop(_loop)
+            _loop.run_forever()
+
+        _thread = threading.Thread(target=run, name="tino-storm-loop", daemon=True)
+        _thread.start()
+        atexit.register(_stop_loop)
+        return _loop
+
+
+def _get_loop() -> Optional[asyncio.AbstractEventLoop]:
+    return _loop
+
+
+def _get_loop_thread() -> Optional[threading.Thread]:
+    return _thread
+
+
+def _stop_loop() -> None:
+    """Stop the background event loop."""
+
+    global _loop, _thread
+    loop, thread = _loop, _thread
+    _loop = None
+    _thread = None
+    if loop is not None:
+        loop.call_soon_threadsafe(loop.stop)
+        if thread is not None:
+            thread.join()
+        loop.close()
 
 
 def format_bing_items(items: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -171,18 +220,13 @@ class DefaultProvider(Provider):
         return await task
 
     def _run(self, coro: Coroutine[Any, Any, Any]) -> Any:
-        """Run *coro* on a persistent event loop."""
+        """Run *coro* on the background event loop."""
 
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        if loop.is_running():
-            return asyncio.run_coroutine_threadsafe(coro, loop).result()
-
-        return loop.run_until_complete(coro)
+        loop = _get_loop()
+        if loop is None:
+            loop = _start_loop()
+        future = asyncio.run_coroutine_threadsafe(coro, loop)
+        return future.result()
 
     def _summarize(self, snippets: List[str], *, max_chars: int = 200) -> Optional[str]:
         """Synchronous wrapper for ``_summarize_async``."""
