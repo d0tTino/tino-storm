@@ -246,3 +246,14 @@ def test_timeout_emits_event_and_skips_provider(monkeypatch):
     assert len(events) == 1
     assert events[0].topic == "slow"
     assert events[0].information_table["error"] == "timeout"
+
+
+def test_search_sync_inside_running_event_loop():
+    provider = ProviderAggregator([DummyProvider("p")])
+
+    async def run():
+        # Invoking search_sync while an event loop is already running should work
+        return provider.search_sync("q", [])
+
+    results = asyncio.run(run())
+    assert {r.url for r in results} == {"p"}

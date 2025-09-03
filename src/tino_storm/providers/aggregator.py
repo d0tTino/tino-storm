@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from typing import Iterable, List, Dict, Optional, Sequence
 from urllib.parse import urlsplit, urlunsplit
 
@@ -122,10 +123,10 @@ class ProviderAggregator(Provider):
     ) -> List[ResearchResult]:
         actual_timeout = timeout if timeout is not None else self.timeout
 
-        async def _run_all() -> List[object]:
-            tasks = []
-            for p in self.providers:
-                coro = asyncio.to_thread(
+        merged: List[ResearchResult] = []
+        with ThreadPoolExecutor() as executor:
+            futures = [
+                executor.submit(
                     p.search_sync,
                     query,
                     vaults,
@@ -135,28 +136,40 @@ class ProviderAggregator(Provider):
                     vault=vault,
                     timeout=actual_timeout,
                 )
-                if actual_timeout is not None:
-                    coro = asyncio.wait_for(coro, timeout=actual_timeout)
-                tasks.append(coro)
-            if tasks:
-                return await asyncio.gather(*tasks, return_exceptions=True)
-            return []
+                for p in self.providers
+            ]
 
-        results = asyncio.run(_run_all())
-
-        merged: List[ResearchResult] = []
-        for provider, r in zip(self.providers, results):
-            if isinstance(r, Exception):
-                e = r
-                logging.exception("Provider %s failed in search_sync", provider)
-                provider_name = getattr(provider, "name", provider.__class__.__name__)
-                event_emitter.emit_sync(
-                    ResearchAdded(
-                        topic=provider_name, information_table={"error": str(e)}
+            for provider, future in zip(self.providers, futures):
+                try:
+                    r = future.result(timeout=actual_timeout)
+                except FuturesTimeoutError:
+                    logging.exception(
+                        "Provider %s timed out in search_sync", provider
                     )
-                )
-                continue
-            merged.extend(r)
+                    provider_name = getattr(
+                        provider, "name", provider.__class__.__name__
+                    )
+                    event_emitter.emit_sync(
+                        ResearchAdded(
+                            topic=provider_name,
+                            information_table={"error": "timeout"},
+                        )
+                    )
+                except Exception as e:  # pragma: no cover - defensive
+                    logging.exception(
+                        "Provider %s failed in search_sync", provider
+                    )
+                    provider_name = getattr(
+                        provider, "name", provider.__class__.__name__
+                    )
+                    event_emitter.emit_sync(
+                        ResearchAdded(
+                            topic=provider_name,
+                            information_table={"error": str(e)},
+                        )
+                    )
+                else:
+                    merged.extend(r)
 
         deduped: Dict[str, ResearchResult] = {}
         for item in merged:
