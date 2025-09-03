@@ -4,6 +4,7 @@ from .registry import ProviderRegistry, provider_registry, register_provider
 from .aggregator import ProviderAggregator
 from .docs_hub import DocsHubProvider
 from .multi_source import MultiSourceProvider
+from .vector_db import VectorDBProvider
 
 
 __all__ = [
@@ -13,6 +14,7 @@ __all__ = [
     "ProviderAggregator",
     "DocsHubProvider",
     "MultiSourceProvider",
+    "VectorDBProvider",
     "load_provider",
     "ProviderRegistry",
     "provider_registry",
