@@ -56,6 +56,64 @@ async def test_unsubscribed_handler_not_called(anyio_backend):
     assert calls == []
 
 
+@pytest.mark.anyio
+@pytest.mark.parametrize("anyio_backend", ["asyncio"], scope="module")
+async def test_unsubscribe_one_of_multiple_handlers(anyio_backend):
+    emitter = EventEmitter()
+    calls = []
+
+    def handler_one(event):
+        calls.append(("one", event.value))
+
+    def handler_two(event):
+        calls.append(("two", event.value))
+
+    emitter.subscribe(DummyEvent, handler_one)
+    emitter.subscribe(DummyEvent, handler_two)
+    emitter.unsubscribe(DummyEvent, handler_one)
+
+    await emitter.emit(DummyEvent(10))
+
+    assert calls == [("two", 10)]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("anyio_backend", ["asyncio"], scope="module")
+async def test_unsubscribe_failing_handler_stops_errors(caplog, anyio_backend):
+    emitter = EventEmitter()
+    calls = []
+
+    def failing_handler(event):
+        raise RuntimeError("boom")
+
+    def good_handler(event):
+        calls.append(event.value)
+
+    emitter.subscribe(DummyEvent, failing_handler)
+    emitter.subscribe(DummyEvent, good_handler)
+
+    with caplog.at_level(logging.ERROR):
+        await emitter.emit(DummyEvent(1))
+
+    assert calls == [1]
+    assert any(
+        record.levelno == logging.ERROR
+        and "Error in handler failing_handler for event DummyEvent"
+        in record.getMessage()
+        for record in caplog.records
+    )
+
+    emitter.unsubscribe(DummyEvent, failing_handler)
+    caplog.clear()
+    await emitter.emit(DummyEvent(2))
+
+    assert calls == [1, 2]
+    assert not any(
+        record.levelno == logging.ERROR and "failing_handler" in record.getMessage()
+        for record in caplog.records
+    )
+
+
 def test_emit_sync_runs_sync_and_async_handlers():
     emitter = EventEmitter()
     calls = []
