@@ -7,6 +7,7 @@ import os
 import atexit
 import threading
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 from typing import Iterable, List, Dict, Any, Optional, Coroutine
 
 from ..search_result import ResearchResult, as_research_result
@@ -19,6 +20,9 @@ from ..events import ResearchAdded, event_emitter
 _loop: Optional[asyncio.AbstractEventLoop] = None
 _thread: Optional[threading.Thread] = None
 _loop_lock = threading.Lock()
+
+# Maximum number of in-flight or cached summary tasks.
+SUMMARY_CACHE_LIMIT = 100
 
 
 def _start_loop() -> asyncio.AbstractEventLoop:
@@ -134,8 +138,8 @@ class DefaultProvider(Provider):
         self.bing_kwargs = bing_kwargs
         self._bing = None
         self._summarizer = None
-        # Cache summarization tasks by snippet text
-        self._summary_tasks: Dict[str, asyncio.Task] = {}
+        # Cache summarization tasks by snippet text, keeping insertion order
+        self._summary_tasks: OrderedDict[str, asyncio.Task] = OrderedDict()
 
     def _bing_search(self, query: str) -> List[Dict[str, Any]]:
         if self._bing is None:
@@ -227,6 +231,8 @@ class DefaultProvider(Provider):
 
         task: asyncio.Task = asyncio.create_task(_run())
         self._summary_tasks[key] = task
+        while len(self._summary_tasks) > SUMMARY_CACHE_LIMIT:
+            self._summary_tasks.popitem(last=False)
         task.add_done_callback(lambda t, k=key: self._summary_tasks.pop(k, None))
         return await task
 
