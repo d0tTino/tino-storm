@@ -2,8 +2,10 @@ import sys
 import types
 import asyncio
 import dataclasses
+import logging
 
 from tino_storm.search_result import ResearchResult
+from tino_storm.events import ResearchAdded, event_emitter
 
 try:  # pragma: no cover - optional dependency
     from httpx import AsyncClient
@@ -196,6 +198,48 @@ def test_search_endpoint(monkeypatch):
         first = dataclasses.asdict(first)
     assert first == {"url": "u", "snippets": ["s"], "meta": {}, "summary": None}
     assert called["args"] == ("q", ["v1", "v2"], 5, 60)
+
+
+def test_ingestion_failure_emits_event(monkeypatch, tmp_path, caplog):
+    events: list[ResearchAdded] = []
+
+    def handler(event: ResearchAdded) -> None:
+        events.append(event)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+
+    class RunnerWithArticle(DummyRunner):
+        def run(self, **kwargs):
+            super().run(**kwargs)
+            path = tmp_path / "storm_gen_article_polished.txt"
+            path.write_text("data")
+
+    runner_inst = RunnerWithArticle(str(tmp_path))
+    monkeypatch.setattr("tino_storm.api._make_default_runner", lambda dir_: runner_inst)
+
+    class FailingHandler:
+        def __init__(self, root, **kwargs):
+            pass
+
+        def _ingest_text(self, text, src, vault):
+            raise RuntimeError("boom")
+
+    monkeypatch.setattr("tino_storm.ingest.watcher.VaultIngestHandler", FailingHandler)
+
+    with caplog.at_level(logging.ERROR):
+        resp = asyncio.run(
+            _post(
+                "/research",
+                {"topic": "t", "vault": "v", "output_dir": str(tmp_path)},
+            )
+        )
+
+    event_emitter.unsubscribe(ResearchAdded, handler)
+
+    assert resp.status_code == 200
+    assert events and "error" in events[0].information_table
+    assert "boom" in events[0].information_table["error"]
+    assert "Error ingesting article" in caplog.text
 
 
 def test_make_default_runner_local_model(monkeypatch):

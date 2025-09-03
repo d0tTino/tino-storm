@@ -1,6 +1,7 @@
 from typing import Optional, List
 import asyncio
 import inspect
+import logging
 import os
 from dataclasses import asdict
 
@@ -26,6 +27,7 @@ except ImportError as e:  # pragma: no cover - optional dependency
     ) from e
 
 from . import search
+from .events import ResearchAdded, event_emitter
 
 
 class ResearchRequest(BaseModel):
@@ -131,8 +133,11 @@ def run_research(
             if os.path.exists(article_path):
                 text = open(article_path, "r", encoding="utf-8").read()
                 handler._ingest_text(text, article_path, vault)
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001
+            logging.exception("Error ingesting article for vault %s", vault)
+            event_emitter.emit_sync(
+                ResearchAdded(topic=vault, information_table={"error": str(exc)})
+            )
 
 
 @app.post("/research")
