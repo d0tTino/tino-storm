@@ -5,6 +5,41 @@ import pytest
 from tino_storm.providers import DefaultProvider
 
 
+def test_summarize_sync(monkeypatch):
+    """_summarize should run to completion when no loop is running."""
+
+    monkeypatch.delenv("STORM_SUMMARY_MODEL", raising=False)
+    provider = DefaultProvider()
+
+    async def fake_summarize(snippets, *, max_chars=200, timeout=None):
+        return snippets[0]
+
+    monkeypatch.setattr(provider, "_summarize_async", fake_summarize)
+    result = provider._summarize(["s"])
+
+    assert result == "s"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("anyio_backend", ["asyncio"], scope="module")
+async def test_summarize_creates_task_in_loop(monkeypatch, anyio_backend):
+    """_summarize should create a task when a loop is active."""
+
+    monkeypatch.delenv("STORM_SUMMARY_MODEL", raising=False)
+    provider = DefaultProvider()
+
+    async def fake_summarize(snippets, *, max_chars=200, timeout=None):
+        await asyncio.sleep(0)
+        return snippets[0]
+
+    monkeypatch.setattr(provider, "_summarize_async", fake_summarize)
+
+    task = provider._summarize(["s"])
+
+    assert isinstance(task, asyncio.Task)
+    assert await task == "s"
+
+
 def test_search_sync_populates_summary_without_model(monkeypatch):
     monkeypatch.delenv("STORM_SUMMARY_MODEL", raising=False)
     monkeypatch.setattr(
