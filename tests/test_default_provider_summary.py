@@ -1,4 +1,5 @@
 import asyncio
+import threading
 import pytest
 
 from tino_storm.providers import DefaultProvider
@@ -256,3 +257,30 @@ async def test_summarize_async_clears_completed_tasks(monkeypatch, anyio_backend
     for i in range(3):
         await provider._summarize_async([f"s{i}"])
         assert provider._summary_tasks == {}
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("anyio_backend", ["asyncio"], scope="module")
+async def test_summarize_async_cache_eviction(monkeypatch, anyio_backend):
+    monkeypatch.setenv("STORM_SUMMARY_MODEL", "model")
+    provider = DefaultProvider()
+    event = threading.Event()
+
+    def slow_summarizer(_prompt):
+        event.wait()
+        return ["summary"]
+
+    monkeypatch.setattr(provider, "_get_summarizer", lambda: slow_summarizer)
+
+    tasks = [
+        asyncio.create_task(provider._summarize_async([f"s{i}"])) for i in range(105)
+    ]
+    await asyncio.sleep(0)
+
+    assert len(provider._summary_tasks) == 100
+    assert "s0" not in provider._summary_tasks
+    assert "s5" in provider._summary_tasks
+
+    event.set()
+    await asyncio.gather(*tasks)
+    assert provider._summary_tasks == {}
