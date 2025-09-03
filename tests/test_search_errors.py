@@ -1,6 +1,7 @@
+import pytest
+
 from tino_storm.events import ResearchAdded, event_emitter
-from tino_storm.providers import DefaultProvider
-from tino_storm.search import _resolve_provider
+from tino_storm.search import _resolve_provider, ResearchError
 
 
 def test_resolve_provider_fallback_on_malformed_spec(monkeypatch):
@@ -12,11 +13,12 @@ def test_resolve_provider_fallback_on_malformed_spec(monkeypatch):
 
     event_emitter.subscribe(ResearchAdded, handler)
 
-    provider = _resolve_provider("malformed-spec")
-    assert isinstance(provider, DefaultProvider)
+    with pytest.raises(ResearchError) as exc:
+        _resolve_provider("malformed-spec")
     assert len(events) == 1
     assert events[0].topic == "malformed-spec"
     assert "error" in events[0].information_table
+    assert exc.value.provider_spec == "malformed-spec"
 
 
 def test_resolve_provider_env_invalid_fallback(monkeypatch):
@@ -30,9 +32,10 @@ def test_resolve_provider_env_invalid_fallback(monkeypatch):
 
     spec = "anotherbad"
     monkeypatch.setenv("STORM_SEARCH_PROVIDER", spec)
-    provider = _resolve_provider(None)
+    with pytest.raises(ResearchError) as exc:
+        _resolve_provider(None)
 
-    assert isinstance(provider, DefaultProvider)
     assert len(events) == 1
     assert events[0].topic == spec
     assert "error" in events[0].information_table
+    assert exc.value.provider_spec == spec

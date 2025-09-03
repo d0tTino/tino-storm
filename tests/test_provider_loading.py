@@ -10,7 +10,12 @@ from tino_storm.providers import (
     ParallelProvider,
     DefaultProvider,
 )
-from tino_storm.search import _resolve_provider, search as search_fn, _PROVIDER_CACHE
+from tino_storm.search import (
+    _resolve_provider,
+    search as search_fn,
+    _PROVIDER_CACHE,
+    ResearchError,
+)
 from tino_storm.events import ResearchAdded, event_emitter
 from tino_storm.search_result import ResearchResult
 
@@ -45,12 +50,13 @@ def test_resolve_provider_invalid_string(monkeypatch):
 
     event_emitter.subscribe(ResearchAdded, handler)
 
-    provider = _resolve_provider("dummy_mod2.NotProvider")
+    with pytest.raises(ResearchError) as exc:
+        _resolve_provider("dummy_mod2.NotProvider")
 
-    assert isinstance(provider, DefaultProvider)
     assert len(events) == 1
     assert events[0].topic == "dummy_mod2.NotProvider"
     assert "error" in events[0].information_table
+    assert exc.value.provider_spec == "dummy_mod2.NotProvider"
 
 
 def test_resolve_provider_emits_event_on_failure():
@@ -60,14 +66,15 @@ def test_resolve_provider_emits_event_on_failure():
         events.append(event)
 
     event_emitter.subscribe(ResearchAdded, handler)
-    provider = _resolve_provider("nonexistent.module.Provider")
+    with pytest.raises(ResearchError) as exc:
+        _resolve_provider("nonexistent.module.Provider")
     event_emitter.unsubscribe(ResearchAdded, handler)
 
-    assert isinstance(provider, DefaultProvider)
     assert len(events) == 1
     event = events[0]
     assert event.topic == "nonexistent.module.Provider"
     assert "No module named" in event.information_table["error"]
+    assert exc.value.provider_spec == "nonexistent.module.Provider"
 
 
 def test_search_uses_env_provider(monkeypatch):
