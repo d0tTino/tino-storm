@@ -49,7 +49,8 @@ async def test_unsubscribed_handler_not_called(anyio_backend):
         calls.append(event.value)
 
     emitter.subscribe(DummyEvent, handler)
-    emitter.unsubscribe(DummyEvent, handler)
+    assert emitter.unsubscribe(DummyEvent, handler) is True
+    assert emitter.unsubscribe(DummyEvent, handler) is False
 
     await emitter.emit(DummyEvent(42))
 
@@ -70,7 +71,8 @@ async def test_unsubscribe_one_of_multiple_handlers(anyio_backend):
 
     emitter.subscribe(DummyEvent, handler_one)
     emitter.subscribe(DummyEvent, handler_two)
-    emitter.unsubscribe(DummyEvent, handler_one)
+    assert emitter.unsubscribe(DummyEvent, handler_one) is True
+    assert emitter.unsubscribe(DummyEvent, handler_one) is False
 
     await emitter.emit(DummyEvent(10))
 
@@ -103,7 +105,8 @@ async def test_unsubscribe_failing_handler_stops_errors(caplog, anyio_backend):
         for record in caplog.records
     )
 
-    emitter.unsubscribe(DummyEvent, failing_handler)
+    assert emitter.unsubscribe(DummyEvent, failing_handler) is True
+    assert emitter.unsubscribe(DummyEvent, failing_handler) is False
     caplog.clear()
     await emitter.emit(DummyEvent(2))
 

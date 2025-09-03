@@ -46,21 +46,25 @@ class EventEmitter:
     def subscribe(self, event_type: Type[Any], handler: Callable[[Any], Any]) -> None:
         self._subscribers.setdefault(event_type, []).append(handler)
 
-    def unsubscribe(self, event_type: Type[Any], handler: Callable[[Any], Any]) -> None:
+    def unsubscribe(self, event_type: Type[Any], handler: Callable[[Any], Any]) -> bool:
         """Remove a previously registered handler.
 
         The handler is removed from the subscriber list for ``event_type``.
-        If the handler or event type is not registered, the call is a no-op.
+        If the handler or event type is not registered, ``False`` is returned.
+
+        Returns:
+            ``True`` if the handler was removed, ``False`` otherwise.
         """
         handlers = self._subscribers.get(event_type)
         if not handlers:
-            return
+            return False
         try:
             handlers.remove(handler)
         except ValueError:
-            return
+            return False
         if not handlers:
             del self._subscribers[event_type]
+        return True
 
     async def emit(
         self,
