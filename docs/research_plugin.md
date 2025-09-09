@@ -51,6 +51,24 @@ export STORM_SEARCH_PROVIDER=my_package.providers.MyProvider
 This provider will be loaded automatically whenever `tino_storm.search()` is
 invoked.
 
+### Misconfigured providers
+
+If a provider specified via `STORM_SEARCH_PROVIDER` fails to load or lacks
+required settings, `tino_storm.search()` raises `ResearchError`. Wrap calls in a
+`try`/`except` block to handle these errors gracefully.
+
+```python
+import os
+import tino_storm
+from tino_storm.search import ResearchError
+
+os.environ["STORM_SEARCH_PROVIDER"] = "my_package.providers.MisconfiguredProvider"
+try:
+    tino_storm.search("large language models")
+except ResearchError as exc:
+    print("Provider misconfigured:", exc)
+```
+
 ### Registering providers programmatically
 
 Providers can also be registered directly in code using the provider
