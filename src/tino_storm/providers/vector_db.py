@@ -44,7 +44,7 @@ class VectorDBProvider(Provider):
 
         try:
             retriever = self._ensure_retriever()
-            raw_results = await asyncio.to_thread(retriever.forward, query)
+            raw_results = await asyncio.to_thread(retriever.forward, query, vault=vault)
             return [as_research_result(r) for r in raw_results]
         except Exception as e:  # pragma: no cover - network/IO errors
             logging.exception("VectorDBProvider search_async failed")
@@ -68,7 +68,7 @@ class VectorDBProvider(Provider):
 
         try:
             retriever = self._ensure_retriever()
-            raw_results = retriever.forward(query)
+            raw_results = retriever.forward(query, vault=vault)
             return [as_research_result(r) for r in raw_results]
         except Exception as e:  # pragma: no cover - network/IO errors
             logging.exception("VectorDBProvider search_sync failed")

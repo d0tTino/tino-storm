@@ -143,9 +143,7 @@ class ProviderAggregator(Provider):
                 try:
                     r = future.result(timeout=actual_timeout)
                 except FuturesTimeoutError:
-                    logging.exception(
-                        "Provider %s timed out in search_sync", provider
-                    )
+                    logging.exception("Provider %s timed out in search_sync", provider)
                     provider_name = getattr(
                         provider, "name", provider.__class__.__name__
                     )
@@ -156,9 +154,7 @@ class ProviderAggregator(Provider):
                         )
                     )
                 except Exception as e:  # pragma: no cover - defensive
-                    logging.exception(
-                        "Provider %s failed in search_sync", provider
-                    )
+                    logging.exception("Provider %s failed in search_sync", provider)
                     provider_name = getattr(
                         provider, "name", provider.__class__.__name__
                     )
