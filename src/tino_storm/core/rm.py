@@ -204,7 +204,9 @@ class BingSearch(dspy.Retrieve):
             logging.error(f"Error occurs when fetching webpages for {queries}: {e}")
             asyncio.run(
                 event_emitter.emit(
-                    ResearchAdded(topic=str(queries), information_table={"error": str(e)})
+                    ResearchAdded(
+                        topic=str(queries), information_table={"error": str(e)}
+                    )
                 )
             )
             valid_url_to_snippets = {}
