@@ -44,7 +44,10 @@ class ProviderAggregator(Provider):
     """Aggregate results from multiple providers."""
 
     def __init__(
-        self, provider_specs: Sequence[str | Provider], timeout: Optional[float] = None
+        self,
+        provider_specs: Sequence[str | Provider],
+        timeout: Optional[float] = None,
+        max_concurrency: Optional[int] = None,
     ):
         self.providers: List[Provider] = []
         self.timeout = timeout
@@ -56,6 +59,11 @@ class ProviderAggregator(Provider):
                     self.providers.append(provider_registry.get(spec))
                 except KeyError:
                     self.providers.append(load_provider(spec))
+
+        # Default concurrency is the number of providers when not specified
+        self.max_concurrency = (
+            max_concurrency if max_concurrency is not None else len(self.providers)
+        )
 
     async def search_async(
         self,
@@ -69,9 +77,11 @@ class ProviderAggregator(Provider):
         timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
         actual_timeout = timeout if timeout is not None else self.timeout
-        results = await asyncio.gather(
-            *[
-                asyncio.wait_for(
+        semaphore = asyncio.Semaphore(self.max_concurrency)
+
+        async def run_provider(p: Provider) -> List[ResearchResult]:
+            async with semaphore:
+                return await asyncio.wait_for(
                     p.search_async(
                         query,
                         vaults,
@@ -83,8 +93,9 @@ class ProviderAggregator(Provider):
                     ),
                     timeout=actual_timeout,
                 )
-                for p in self.providers
-            ],
+
+        results = await asyncio.gather(
+            *(run_provider(p) for p in self.providers),
             return_exceptions=True,
         )
         merged: List[ResearchResult] = []

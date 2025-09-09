@@ -257,3 +257,33 @@ def test_search_sync_inside_running_event_loop():
 
     results = asyncio.run(run())
     assert {r.url for r in results} == {"p"}
+
+
+def test_aggregator_throttles_max_concurrency():
+    current = 0
+    peak = 0
+
+    class CountingProvider(Provider):
+        def __init__(self, name: str):
+            self.name = name
+
+        async def search_async(self, query, vaults, **kwargs):
+            nonlocal current, peak
+            current += 1
+            peak = max(peak, current)
+            await asyncio.sleep(0.01)
+            current -= 1
+            return [ResearchResult(url=self.name, snippets=[], meta={})]
+
+        def search_sync(self, query, vaults, **kwargs):  # pragma: no cover - not used
+            return [ResearchResult(url=self.name, snippets=[], meta={})]
+
+    providers = [CountingProvider("p1"), CountingProvider("p2"), CountingProvider("p3")]
+    aggregator = ProviderAggregator(providers, max_concurrency=1)
+
+    async def run():
+        return await aggregator.search_async("q", [])
+
+    results = asyncio.run(run())
+    assert {r.url for r in results} == {"p1", "p2", "p3"}
+    assert peak == 1
