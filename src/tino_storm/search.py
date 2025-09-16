@@ -101,7 +101,7 @@ async def search_async(
         raise ResearchError(str(e)) from e
 
 
-def search(
+def search_sync(
     query: str,
     vaults: Iterable[str] | None = None,
     *,
@@ -112,27 +112,28 @@ def search(
     provider: Provider | str | None = None,
     timeout: Optional[float] = None,
 ) -> List[ResearchResult]:
-    """Query ``vaults`` synchronously or return an awaitable when in an event loop."""
+    """Synchronously query ``vaults`` using the configured provider."""
 
     if vaults is None:
         vaults = list_vaults()
 
+    provider = _resolve_provider(provider)
+
     try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        provider = _resolve_provider(provider)
+        return provider.search_sync(
+            query,
+            vaults,
+            k_per_vault=k_per_vault,
+            rrf_k=rrf_k,
+            chroma_path=chroma_path,
+            vault=vault,
+            timeout=timeout,
+        )
+    except NotImplementedError:
         try:
+            asyncio.get_running_loop()
+        except RuntimeError:
             try:
-                return provider.search_sync(
-                    query,
-                    vaults,
-                    k_per_vault=k_per_vault,
-                    rrf_k=rrf_k,
-                    chroma_path=chroma_path,
-                    vault=vault,
-                    timeout=timeout,
-                )
-            except NotImplementedError:
                 return asyncio.run(
                     provider.search_async(
                         query,
@@ -144,14 +145,38 @@ def search(
                         timeout=timeout,
                     )
                 )
-        except Exception as e:
-            logging.error(f"Search failed for query {query}: {e}")
-            event_emitter.emit_sync(
-                ResearchAdded(topic=query, information_table={"error": str(e)})
-            )
-            raise ResearchError(str(e)) from e
+            except Exception as e:  # pragma: no cover - defensive fallback
+                logging.error(f"Search failed for query {query}: {e}")
+                event_emitter.emit_sync(
+                    ResearchAdded(topic=query, information_table={"error": str(e)})
+                )
+                raise ResearchError(str(e)) from e
+        raise RuntimeError(
+            "search_sync cannot run inside a running event loop when the provider "
+            "only implements asynchronous search; use search_async instead."
+        ) from None
+    except Exception as e:
+        logging.error(f"Search failed for query {query}: {e}")
+        event_emitter.emit_sync(
+            ResearchAdded(topic=query, information_table={"error": str(e)})
+        )
+        raise ResearchError(str(e)) from e
 
-    return search_async(
+
+async def search(
+    query: str,
+    vaults: Iterable[str] | None = None,
+    *,
+    k_per_vault: int = 5,
+    rrf_k: int = 60,
+    chroma_path: Optional[str] = None,
+    vault: Optional[str] = None,
+    provider: Provider | str | None = None,
+    timeout: Optional[float] = None,
+) -> List[ResearchResult]:
+    """Asynchronously query ``vaults`` via :func:`search_async`."""
+
+    return await search_async(
         query,
         vaults,
         k_per_vault=k_per_vault,

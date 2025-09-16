@@ -185,7 +185,7 @@ def test_ingest_endpoint(monkeypatch):
 def test_search_endpoint(monkeypatch):
     called = {}
 
-    def fake_search(query, vaults, *, k_per_vault=5, rrf_k=60):
+    async def fake_search(query, vaults, *, k_per_vault=5, rrf_k=60):
         called["args"] = (query, list(vaults), k_per_vault, rrf_k)
         return [ResearchResult(url="u", snippets=["s"], meta={})]
 
@@ -271,7 +271,7 @@ def test_search_endpoint_asyncio(monkeypatch):
 
     called = {}
 
-    def fake_search(query, vaults, *, k_per_vault=5, rrf_k=60):
+    async def fake_search(query, vaults, *, k_per_vault=5, rrf_k=60):
         called["args"] = (query, list(vaults), k_per_vault, rrf_k)
         return [ResearchResult(url="u", snippets=["s"], meta={})]
 

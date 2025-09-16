@@ -12,7 +12,7 @@ from tino_storm.providers import (
 )
 from tino_storm.search import (
     _resolve_provider,
-    search as search_fn,
+    search_sync as search_fn,
     _PROVIDER_CACHE,
     ResearchError,
 )

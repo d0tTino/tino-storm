@@ -1,6 +1,5 @@
 from typing import Optional, List
 import asyncio
-import inspect
 import logging
 import os
 from dataclasses import asdict
@@ -187,12 +186,10 @@ async def ingest(req: IngestRequest):
 
 @app.post("/search")
 async def search_endpoint(req: SearchRequest):
-    result = search(
+    result = await search(
         req.query,
         req.vaults,
         k_per_vault=req.k_per_vault,
         rrf_k=req.rrf_k,
     )
-    if inspect.isawaitable(result):
-        result = await result
     return {"results": [asdict(r) for r in result]}

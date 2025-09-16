@@ -7,7 +7,7 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from tino_storm.search import search, ResearchError  # noqa: E402
+from tino_storm.search import search_sync, ResearchError  # noqa: E402
 
 
 class SlowCollection:
@@ -33,4 +33,4 @@ def test_search_vaults_timeout(monkeypatch):
     )
 
     with pytest.raises(ResearchError):
-        search("q", ["v1"], timeout=0.05)
+        search_sync("q", ["v1"], timeout=0.05)

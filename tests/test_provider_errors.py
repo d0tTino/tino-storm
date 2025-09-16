@@ -1,6 +1,6 @@
 import pytest
 from tino_storm.events import event_emitter, ResearchAdded
-from tino_storm.search import ResearchError, search
+from tino_storm.search import ResearchError, search_sync
 
 
 def test_bing_error_emits_event(monkeypatch):
@@ -88,7 +88,7 @@ def test_search_provider_exception_emits_event(monkeypatch):
             raise RuntimeError("boom")
 
     with pytest.raises(ResearchError):
-        search("topic", [], provider=StubProvider())
+        search_sync("topic", [], provider=StubProvider())
 
     assert len(events) == 1
     assert events[0].topic == "topic"

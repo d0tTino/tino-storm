@@ -9,7 +9,7 @@ from types import ModuleType
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .search import search
+    from .search import search, search_sync
 
 __all__ = [
     "__version__",
@@ -22,6 +22,7 @@ __all__ = [
     "ResearchSkill",
     "search",
     "search_async",
+    "search_sync",
 ]
 
 __version__ = "1.2.0"
@@ -42,6 +43,7 @@ _ATTR_MAP = {
     "ResearchSkill": ("tino_storm.skills", "ResearchSkill"),
     "search": ("tino_storm.search", "search"),
     "search_async": ("tino_storm.search", "search_async"),
+    "search_sync": ("tino_storm.search", "search_sync"),
 }
 
 
@@ -56,12 +58,16 @@ def __getattr__(name: str):
 
 
 def __call__(query: str, **kwargs):
-    return search(query, **kwargs)
+    from .search import search_sync as _search_sync
+
+    return _search_sync(query, **kwargs)
 
 
 class _CallableModule(ModuleType):
     def __call__(self, query: str, **kwargs):
-        return search(query, **kwargs)
+        from .search import search_sync as _search_sync
+
+        return _search_sync(query, **kwargs)
 
 
 sys.modules[__name__].__class__ = _CallableModule

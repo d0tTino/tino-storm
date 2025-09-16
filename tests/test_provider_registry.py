@@ -31,5 +31,5 @@ def test_registry_retrieves_and_searches_with_custom_provider():
     provider = provider_registry.get("sample")
     assert isinstance(provider, SampleProvider)
 
-    results = tino_storm.search("query", [], provider="sample")
+    results = tino_storm.search_sync("query", [], provider="sample")
     assert results == [ResearchResult(url="custom", snippets=["ok"], meta={})]
