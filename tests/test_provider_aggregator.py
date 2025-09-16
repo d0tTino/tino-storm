@@ -5,7 +5,7 @@ from typing import List
 from tino_storm.providers.base import Provider
 from tino_storm.providers.registry import provider_registry
 from tino_storm.providers.aggregator import ProviderAggregator, canonical_url
-from tino_storm.search import _resolve_provider, search, search_async
+from tino_storm.search import _resolve_provider, search_async, search_sync
 from tino_storm.search_result import ResearchResult
 from tino_storm.events import ResearchAdded, event_emitter
 
@@ -241,7 +241,7 @@ def test_timeout_emits_event_and_skips_provider(monkeypatch):
     assert events[0].information_table["error"] == "timeout"
 
     events.clear()
-    sync_results = search("q", [], provider="slow,fast", timeout=0.01)
+    sync_results = search_sync("q", [], provider="slow,fast", timeout=0.01)
     assert {r.url for r in sync_results} == {"fast"}
     assert len(events) == 1
     assert events[0].topic == "slow"

@@ -125,7 +125,7 @@ def test_cli_search(monkeypatch, capsys):
         calls.append((query, list(vaults), k_per_vault, rrf_k))
         return [ResearchResult(url="example.com", snippets=["result"], meta={})]
 
-    monkeypatch.setattr("tino_storm.cli.search", fake_search)
+    monkeypatch.setattr("tino_storm.cli.search_sync", fake_search)
 
     main(["search", "--query", "ai", "--vaults", "science,notes"])
 
@@ -202,7 +202,7 @@ def test_cli_search_asyncio(monkeypatch, capsys):
         calls.append((query, list(vaults), k_per_vault, rrf_k))
         return [ResearchResult(url="example.com", snippets=["result"], meta={})]
 
-    monkeypatch.setattr("tino_storm.cli.search", fake_search)
+    monkeypatch.setattr("tino_storm.cli.search_sync", fake_search)
 
     async def _run():
         await asyncio.to_thread(

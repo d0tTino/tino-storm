@@ -1,3 +1,5 @@
+import importlib
+
 import tino_storm
 
 
@@ -9,7 +11,8 @@ def test_module_callable(monkeypatch):
         calls["kwargs"] = kwargs
         return "result"
 
-    monkeypatch.setitem(tino_storm.__dict__, "search", fake_search)
+    search_mod = importlib.import_module("tino_storm.search")
+    monkeypatch.setattr(search_mod, "search_sync", fake_search)
 
     result = tino_storm("my query", foo="bar")
 

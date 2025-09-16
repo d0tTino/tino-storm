@@ -2,7 +2,7 @@ import pytest
 
 import tino_storm
 from tino_storm.events import ResearchAdded, event_emitter
-from tino_storm.search import ResearchError, search as search_func
+from tino_storm.search import ResearchError, search_sync as search_func
 
 
 def test_invalid_env_provider_emits_event(monkeypatch):
@@ -17,10 +17,10 @@ def test_invalid_env_provider_emits_event(monkeypatch):
     spec = "nonexistent.module.Provider"
     monkeypatch.setenv("STORM_SEARCH_PROVIDER", spec)
 
-    monkeypatch.setattr(tino_storm, "search", search_func)
+    monkeypatch.setattr(tino_storm, "search_sync", search_func)
 
     with pytest.raises(ResearchError) as exc:
-        tino_storm.search("topic", [])
+        tino_storm.search_sync("topic", [])
 
     assert exc.value.provider_spec == spec
     assert len(events) == 1

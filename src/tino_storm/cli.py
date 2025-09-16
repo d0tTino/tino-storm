@@ -1,6 +1,6 @@
 import argparse
 
-from . import search
+from . import search_sync
 
 start_watcher = None  # populated lazily for ingest command
 
@@ -124,7 +124,7 @@ def main(argv=None):
             reddit_client_secret=args.reddit_client_secret,
         )
     elif args.command == "search":
-        results = search(
+        results = search_sync(
             args.query,
             args.vaults.split(","),
             k_per_vault=args.k_per_vault,
