@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import threading
 from typing import Iterable, List, Optional
 
 from .providers import (
@@ -16,6 +17,7 @@ from .ingest.utils import list_vaults
 
 
 _PROVIDER_CACHE: dict[str, Provider] = {}
+_PROVIDER_CACHE_LOCK = threading.Lock()
 
 
 class ResearchError(RuntimeError):
@@ -40,9 +42,12 @@ def _resolve_provider(provider: Provider | str | None) -> Provider:
         spec = os.environ.get("STORM_SEARCH_PROVIDER")
         if spec:
             try:
-                if spec not in _PROVIDER_CACHE:
-                    _PROVIDER_CACHE[spec] = load_provider(spec)
-                return _PROVIDER_CACHE[spec]
+                with _PROVIDER_CACHE_LOCK:
+                    provider_instance = _PROVIDER_CACHE.get(spec)
+                    if provider_instance is None:
+                        provider_instance = load_provider(spec)
+                        _PROVIDER_CACHE[spec] = provider_instance
+                    return provider_instance
             except Exception as e:
                 logging.exception("Failed to load provider '%s'", spec)
                 _emit_load_error(spec, e)
@@ -56,9 +61,12 @@ def _resolve_provider(provider: Provider | str | None) -> Provider:
             return provider_registry.get(provider)
         except KeyError:
             try:
-                if provider not in _PROVIDER_CACHE:
-                    _PROVIDER_CACHE[provider] = load_provider(provider)
-                return _PROVIDER_CACHE[provider]
+                with _PROVIDER_CACHE_LOCK:
+                    provider_instance = _PROVIDER_CACHE.get(provider)
+                    if provider_instance is None:
+                        provider_instance = load_provider(provider)
+                        _PROVIDER_CACHE[provider] = provider_instance
+                    return provider_instance
             except Exception as e:
                 logging.exception("Failed to load provider '%s'", provider)
                 _emit_load_error(provider, e)

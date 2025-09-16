@@ -1,9 +1,10 @@
+import asyncio
 import sys
+import threading
 import types
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-
-import asyncio
 from tino_storm.providers import (
     Provider,
     load_provider,
@@ -184,6 +185,22 @@ def test_resolve_provider_caches_instance(monkeypatch):
         provider1 = _resolve_provider("dummy_provider_cache_mod.DummyProvider")
         provider2 = _resolve_provider("dummy_provider_cache_mod.DummyProvider")
         assert provider1 is provider2
+        assert calls["count"] == 1
+
+        calls["count"] = 0
+        _PROVIDER_CACHE.clear()
+
+        barrier = threading.Barrier(5)
+
+        def load_provider_concurrently():
+            barrier.wait()
+            return _resolve_provider("dummy_provider_cache_mod.DummyProvider")
+
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = [executor.submit(load_provider_concurrently) for _ in range(5)]
+            providers = [future.result() for future in futures]
+
+        assert len({id(p) for p in providers}) == 1
         assert calls["count"] == 1
     finally:
         _PROVIDER_CACHE.clear()
