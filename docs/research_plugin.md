@@ -161,10 +161,10 @@ requests without blocking the event loop.
 ```python
 import asyncio
 from httpx import AsyncClient
-from tino_storm.api import app as api_app
+from tino_storm.api import get_app
 
 async def run():
-    async with AsyncClient(app=api_app, base_url="http://test") as app:
+    async with AsyncClient(app=get_app(), base_url="http://test") as app:
         resp = await app.post(
             "/search",
             json={"query": "large language models", "vaults": ["science"]},
@@ -173,6 +173,11 @@ async def run():
 
 asyncio.run(run())
 ```
+
+Use `tino_storm.api.get_app()` to instantiate the FastAPI application only when
+the optional dependency is installed. The helper raises a descriptive
+`RuntimeError` if the `tino-storm[research]` extra is missing so API consumers
+receive actionable feedback at runtime.
 
 ## Event hooks
 
