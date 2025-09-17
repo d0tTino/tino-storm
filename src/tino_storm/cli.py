@@ -115,6 +115,15 @@ def main(argv=None):
 
             start_watcher = _start_watcher
 
+        missing = getattr(start_watcher, "__tino_missing_dependency__", None)
+        if missing:
+            message = getattr(
+                start_watcher,
+                "__tino_missing_dependency_message__",
+                "watchdog is required for ingestion features; install with 'tino-storm[research]'",
+            )
+            raise SystemExit(message)
+
         start_watcher(
             root=args.root,
             twitter_limit=args.twitter_limit,

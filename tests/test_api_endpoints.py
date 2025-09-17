@@ -1,11 +1,15 @@
 import asyncio
-import importlib.machinery
 import dataclasses
+import importlib.machinery
 import logging
 import sys
 import types
 
+import knowledge_storm
+import knowledge_storm.storm_wiki.engine as ks_engine
 import pytest
+
+from tino_storm import api as api_module
 
 from tino_storm.events import ResearchAdded, event_emitter
 from tino_storm.search_result import ResearchResult
@@ -98,9 +102,6 @@ class AsyncClient:
     async def __aexit__(self, *exc):
         return False
 
-import knowledge_storm.storm_wiki.engine as ks_engine
-import knowledge_storm
-
 for attr in [
     "STORMWikiRunnerArguments",
     "STORMWikiRunner",
@@ -118,8 +119,6 @@ if "knowledge_storm.rm" not in sys.modules:
 
     rm_mod.BingSearch = BingSearch
     sys.modules["knowledge_storm.rm"] = rm_mod
-
-from tino_storm import api as api_module
 
 app = api_module.app
 get_app = api_module.get_app

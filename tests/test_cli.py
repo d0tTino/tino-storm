@@ -3,6 +3,8 @@ import sys
 import types
 import asyncio
 
+import pytest
+
 import knowledge_storm.storm_wiki.engine as ks_engine
 
 # Expose required classes on the package root if not already provided
@@ -191,6 +193,27 @@ def test_cli_ingest(monkeypatch, tmp_path):
         "reddit_client_secret": "sec",
         "vault": None,
     }
+
+
+def test_cli_ingest_missing_watchdog(monkeypatch):
+    """ingest command exits gracefully when watchdog extras are absent."""
+
+    from tino_storm.ingest import WATCHDOG_INSTALL_HINT
+
+    class Proxy:
+        __tino_missing_dependency__ = "watchdog"
+        __tino_missing_dependency_message__ = WATCHDOG_INSTALL_HINT
+
+        def __call__(self, *args, **kwargs):  # pragma: no cover - defensive
+            raise AssertionError("proxy should not be invoked")
+
+    monkeypatch.setattr("tino_storm.cli.start_watcher", None)
+    monkeypatch.setattr("tino_storm.ingest.start_watcher", Proxy())
+
+    with pytest.raises(SystemExit) as exc:
+        main(["ingest"])
+
+    assert str(exc.value) == WATCHDOG_INSTALL_HINT
 
 
 def test_cli_search_asyncio(monkeypatch, capsys):
