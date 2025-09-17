@@ -10,11 +10,7 @@ from . import search
 from .events import ResearchAdded, event_emitter
 
 if TYPE_CHECKING:  # pragma: no cover - imported for type hints only
-    from knowledge_storm import (
-        STORMWikiRunner,
-        STORMWikiRunnerArguments,
-        STORMWikiLMConfigs,
-    )
+    from knowledge_storm import STORMWikiRunner
 
 
 @dataclass(frozen=True)
