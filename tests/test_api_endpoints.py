@@ -1,75 +1,103 @@
-import sys
-import types
 import asyncio
+import importlib.machinery
 import dataclasses
 import logging
+import sys
+import types
 
-from tino_storm.search_result import ResearchResult
+import pytest
+
 from tino_storm.events import ResearchAdded, event_emitter
+from tino_storm.search_result import ResearchResult
 
-try:  # pragma: no cover - optional dependency
-    from httpx import AsyncClient
-except Exception:  # pragma: no cover - fallback stubs
-    fastapi = sys.modules.get("fastapi")
-    if fastapi is None:
-        fastapi = types.ModuleType("fastapi")
-        sys.modules["fastapi"] = fastapi
+_MISSING = object()
+
+if "fastapi" not in sys.modules:
+    fastapi_mod = types.ModuleType("fastapi")
+    fastapi_mod.__spec__ = importlib.machinery.ModuleSpec("fastapi", loader=None)
 
     class FastAPI:
-        def __init__(self, *a, **k):
+        def __init__(self, *args, **kwargs):
             self.routes = {}
 
-        def post(self, path, *a, **k):
+        def post(self, path, *args, **kwargs):
             def decorator(fn):
                 self.routes[path] = fn
                 return fn
 
             return decorator
 
-        def get(self, path, *a, **k):
-            def decorator(fn):
-                self.routes[path] = fn
-                return fn
+    fastapi_mod.FastAPI = FastAPI
+    sys.modules["fastapi"] = fastapi_mod
 
-            return decorator
+if "pydantic" not in sys.modules:
+    pydantic_mod = types.ModuleType("pydantic")
+    pydantic_mod.__spec__ = importlib.machinery.ModuleSpec("pydantic", loader=None)
 
-    class _Resp:
-        def __init__(self, data):
-            self.status_code = 200
-            self._data = data
+    class BaseModel:
+        __fields__: dict = {}
 
-        def json(self):
-            return self._data
+        def __init_subclass__(cls, **kwargs):
+            super().__init_subclass__(**kwargs)
+            annotations = getattr(cls, "__annotations__", {})
+            fields = {}
+            for name in annotations:
+                default = getattr(cls, name, _MISSING)
+                fields[name] = default
+            cls.__fields__ = fields
 
-    class AsyncClient:
-        def __init__(self, app, base_url="http://test"):
-            self.app = app
+        def __init__(self, **data):
+            for name, default in self.__fields__.items():
+                if name in data:
+                    value = data[name]
+                elif default is not _MISSING:
+                    value = default
+                else:
+                    raise TypeError(f"Missing field '{name}'")
+                setattr(self, name, value)
 
-        async def post(self, path, json=None):
-            fn = self.app.routes[path]
-            data = dict(json or {})
-            if path in {"/research", "/outline", "/draft"}:
-                data.setdefault("output_dir", "./results")
-                data.setdefault("vault", None)
-            elif path == "/ingest":
-                data.setdefault("source", None)
-            elif path == "/search":
-                data.setdefault("k_per_vault", 5)
-                data.setdefault("rrf_k", 60)
-            arg = types.SimpleNamespace(**data)
-            return _Resp(fn(arg))
+        def model_dump(self):
+            return {name: getattr(self, name) for name in self.__fields__}
 
-        async def __aenter__(self):
-            return self
+    pydantic_mod.BaseModel = BaseModel
+    sys.modules["pydantic"] = pydantic_mod
 
-        async def __aexit__(self, *exc):
-            return False
+class _Resp:
+    def __init__(self, data):
+        self.status_code = 200
+        self._data = data
 
-    fastapi.FastAPI = FastAPI
-    httpx_mod = types.ModuleType("httpx")
-    httpx_mod.AsyncClient = AsyncClient
-    sys.modules["httpx"] = httpx_mod
-    globals().update({"FastAPI": FastAPI, "AsyncClient": AsyncClient})
+    def json(self):
+        return self._data
+
+
+class AsyncClient:
+    def __init__(self, app, base_url="http://test"):
+        self.app = app
+
+    async def post(self, path, json=None):
+        fn = self.app.routes[path]
+        data = dict(json or {})
+        if path in {"/research", "/outline", "/draft"}:
+            data.setdefault("output_dir", "./results")
+            data.setdefault("vault", None)
+        elif path == "/ingest":
+            data.setdefault("source", None)
+        elif path == "/search":
+            data.setdefault("k_per_vault", 5)
+            data.setdefault("rrf_k", 60)
+        arg = types.SimpleNamespace(**data)
+        result = fn(arg)
+        if asyncio.iscoroutine(result):
+            result = await result
+        return _Resp(result)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
 import knowledge_storm.storm_wiki.engine as ks_engine
 import knowledge_storm
 
@@ -91,7 +119,10 @@ if "knowledge_storm.rm" not in sys.modules:
     rm_mod.BingSearch = BingSearch
     sys.modules["knowledge_storm.rm"] = rm_mod
 
-from tino_storm.api import app  # noqa: E402
+from tino_storm import api as api_module
+
+app = api_module.app
+get_app = api_module.get_app
 
 
 class DummyRunner:
@@ -112,13 +143,13 @@ def dummy_runner_factory(output_dir):
 
 
 async def _post(path, payload):
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(app=get_app(), base_url="http://test") as client:
         return await client.post(path, json=payload)
 
 
 def test_research_endpoint(monkeypatch):
     runner_inst = dummy_runner_factory("./results")
-    monkeypatch.setattr("tino_storm.api._make_default_runner", lambda dir_: runner_inst)
+    monkeypatch.setattr(api_module, "_make_default_runner", lambda dir_: runner_inst)
 
     resp = asyncio.run(_post("/research", {"topic": "ai"}))
     assert resp.status_code == 200
@@ -133,7 +164,7 @@ def test_research_endpoint(monkeypatch):
 
 def test_outline_endpoint(monkeypatch):
     runner_inst = dummy_runner_factory("./results")
-    monkeypatch.setattr("tino_storm.api._make_default_runner", lambda dir_: runner_inst)
+    monkeypatch.setattr(api_module, "_make_default_runner", lambda dir_: runner_inst)
     resp = asyncio.run(_post("/outline", {"topic": "ai"}))
     assert resp.status_code == 200
     assert resp.json() == {"status": "ok"}
@@ -144,7 +175,7 @@ def test_outline_endpoint(monkeypatch):
 
 def test_draft_endpoint(monkeypatch):
     runner_inst = dummy_runner_factory("./results")
-    monkeypatch.setattr("tino_storm.api._make_default_runner", lambda dir_: runner_inst)
+    monkeypatch.setattr(api_module, "_make_default_runner", lambda dir_: runner_inst)
     resp = asyncio.run(_post("/draft", {"topic": "ai"}))
     assert resp.status_code == 200
     assert resp.json() == {"status": "ok"}
@@ -189,7 +220,7 @@ def test_search_endpoint(monkeypatch):
         called["args"] = (query, list(vaults), k_per_vault, rrf_k)
         return [ResearchResult(url="u", snippets=["s"], meta={})]
 
-    monkeypatch.setattr("tino_storm.api.search", fake_search)
+    monkeypatch.setattr(api_module, "search", fake_search)
     resp = asyncio.run(_post("/search", {"query": "q", "vaults": ["v1", "v2"]}))
     assert resp.status_code == 200
     data = resp.json()
@@ -215,7 +246,7 @@ def test_ingestion_failure_emits_event(monkeypatch, tmp_path, caplog):
             path.write_text("data")
 
     runner_inst = RunnerWithArticle(str(tmp_path))
-    monkeypatch.setattr("tino_storm.api._make_default_runner", lambda dir_: runner_inst)
+    monkeypatch.setattr(api_module, "_make_default_runner", lambda dir_: runner_inst)
 
     class FailingHandler:
         def __init__(self, root, **kwargs):
@@ -253,9 +284,7 @@ def test_make_default_runner_local_model(monkeypatch):
 
     monkeypatch.setattr("dspy.HFModel", HFModel)
 
-    from tino_storm import api
-
-    runner = api._make_default_runner("./out")
+    runner = api_module._make_default_runner("./out")
 
     assert created == ["google/flan-t5-small"]
     lm_cfg = runner.lm_configs
@@ -275,10 +304,10 @@ def test_search_endpoint_asyncio(monkeypatch):
         called["args"] = (query, list(vaults), k_per_vault, rrf_k)
         return [ResearchResult(url="u", snippets=["s"], meta={})]
 
-    monkeypatch.setattr("tino_storm.api.search", fake_search)
+    monkeypatch.setattr(api_module, "search", fake_search)
 
     async def _run():
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        async with AsyncClient(app=get_app(), base_url="http://test") as client:
             return await client.post(
                 "/search", json={"query": "q", "vaults": ["v1", "v2"]}
             )
@@ -292,3 +321,25 @@ def test_search_endpoint_asyncio(monkeypatch):
         first = dataclasses.asdict(first)
     assert first == {"url": "u", "snippets": ["s"], "meta": {}, "summary": None}
     assert called["args"] == ("q", ["v1", "v2"], 5, 60)
+
+
+def test_create_fastapi_app_missing_dependency(monkeypatch):
+    stub_fastapi = types.ModuleType("fastapi")
+    stub_fastapi.__spec__ = importlib.machinery.ModuleSpec("fastapi", loader=None)
+    stub_pydantic = types.ModuleType("pydantic")
+    stub_pydantic.__spec__ = importlib.machinery.ModuleSpec("pydantic", loader=None)
+    monkeypatch.setitem(sys.modules, "fastapi", stub_fastapi)
+    monkeypatch.setitem(sys.modules, "pydantic", stub_pydantic)
+
+    with pytest.raises(RuntimeError, match="fastapi is required"):
+        api_module._create_fastapi_app()
+
+
+def test_make_default_runner_missing_dependency(monkeypatch):
+    stub = types.ModuleType("knowledge_storm")
+    monkeypatch.setitem(sys.modules, "knowledge_storm", stub)
+    monkeypatch.delitem(sys.modules, "knowledge_storm.lm", raising=False)
+    monkeypatch.delitem(sys.modules, "knowledge_storm.rm", raising=False)
+
+    with pytest.raises(RuntimeError, match="knowledge-storm is required"):
+        api_module._make_default_runner("./results")

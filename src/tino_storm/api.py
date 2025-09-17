@@ -1,63 +1,201 @@
-from typing import Optional, List
+from __future__ import annotations
+
 import asyncio
 import logging
 import os
-from dataclasses import asdict
-
-try:
-    from fastapi import FastAPI
-    from pydantic import BaseModel
-except ImportError as e:  # pragma: no cover - optional dependency
-    raise ImportError(
-        "fastapi is required for the API; install with 'tino-storm[research]'"
-    ) from e
-
-try:
-    from knowledge_storm import (
-        STORMWikiRunnerArguments,
-        STORMWikiRunner,
-        STORMWikiLMConfigs,
-    )
-    from knowledge_storm.lm import LitellmModel
-    from knowledge_storm.rm import BingSearch
-except ImportError as e:  # pragma: no cover - optional dependency
-    raise ImportError(
-        "knowledge-storm is required for research features; install with 'tino-storm[research]'"
-    ) from e
+from dataclasses import asdict, dataclass
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from . import search
 from .events import ResearchAdded, event_emitter
 
-
-class ResearchRequest(BaseModel):
-    topic: str
-    output_dir: Optional[str] = "./results"
-    vault: Optional[str] = None
-
-
-class IngestRequest(BaseModel):
-    text: str
-    vault: str
-    source: Optional[str] = None
+if TYPE_CHECKING:  # pragma: no cover - imported for type hints only
+    from knowledge_storm import (
+        STORMWikiRunner,
+        STORMWikiRunnerArguments,
+        STORMWikiLMConfigs,
+    )
 
 
-class SearchRequest(BaseModel):
-    query: str
-    vaults: List[str]
-    k_per_vault: int = 5
-    rrf_k: int = 60
+@dataclass(frozen=True)
+class _RequestModels:
+    research: type
+    ingest: type
+    search: type
 
 
-app = FastAPI(title="tino-storm API")
+def _model_to_dict(instance: Any) -> Dict[str, Any]:
+    """Return a plain dictionary for ``instance`` regardless of its origin."""
+
+    if hasattr(instance, "model_dump"):
+        return instance.model_dump()
+    if hasattr(instance, "dict"):
+        return instance.dict()
+    if isinstance(instance, dict):
+        return dict(instance)
+    try:
+        return dict(vars(instance))
+    except TypeError as exc:  # pragma: no cover - defensive
+        raise TypeError("Unsupported request payload type") from exc
 
 
-def _make_default_runner(output_dir: str) -> STORMWikiRunner:
+def _register_routes(app: Any, models: _RequestModels) -> None:
+    """Attach API routes to ``app`` using the provided request models."""
+
+    ResearchRequestModel = models.research
+    IngestRequestModel = models.ingest
+    SearchRequestModel = models.search
+
+    @app.post("/research")
+    async def research(req: ResearchRequestModel) -> Dict[str, str]:
+        data = _model_to_dict(req)
+        await asyncio.to_thread(
+            run_research,
+            topic=data["topic"],
+            output_dir=data.get("output_dir", "./results"),
+            vault=data.get("vault"),
+        )
+        return {"status": "ok"}
+
+    @app.post("/outline")
+    async def outline(req: ResearchRequestModel) -> Dict[str, str]:
+        data = _model_to_dict(req)
+        await asyncio.to_thread(
+            run_research,
+            topic=data["topic"],
+            output_dir=data.get("output_dir", "./results"),
+            vault=data.get("vault"),
+            do_generate_article=False,
+            do_polish_article=False,
+        )
+        return {"status": "ok"}
+
+    @app.post("/draft")
+    async def draft(req: ResearchRequestModel) -> Dict[str, str]:
+        data = _model_to_dict(req)
+        await asyncio.to_thread(
+            run_research,
+            topic=data["topic"],
+            output_dir=data.get("output_dir", "./results"),
+            vault=data.get("vault"),
+            do_polish_article=False,
+        )
+        return {"status": "ok"}
+
+    @app.post("/ingest")
+    async def ingest(req: IngestRequestModel) -> Dict[str, str]:
+        data = _model_to_dict(req)
+        from .ingest.watcher import VaultIngestHandler
+
+        root = os.environ.get("STORM_VAULT_ROOT", "research")
+        handler = VaultIngestHandler(root, vault=data["vault"])
+        await asyncio.to_thread(
+            handler._ingest_text,
+            data["text"],
+            data.get("source") or "api",
+            data["vault"],
+        )
+        return {"status": "ok"}
+
+    @app.post("/search")
+    async def search_endpoint(req: SearchRequestModel) -> Dict[str, Any]:
+        data = _model_to_dict(req)
+        result = await search(
+            data["query"],
+            data["vaults"],
+            k_per_vault=data.get("k_per_vault", 5),
+            rrf_k=data.get("rrf_k", 60),
+        )
+        return {"results": [asdict(r) for r in result]}
+
+
+def _create_fastapi_app():
+    try:
+        from fastapi import FastAPI
+        from pydantic import BaseModel
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        raise RuntimeError(
+            "fastapi is required for the API; install with 'tino-storm[research]'"
+        ) from exc
+
+    class ResearchRequest(BaseModel):
+        topic: str
+        output_dir: Optional[str] = "./results"
+        vault: Optional[str] = None
+
+    class IngestRequest(BaseModel):
+        text: str
+        vault: str
+        source: Optional[str] = None
+
+    class SearchRequest(BaseModel):
+        query: str
+        vaults: List[str]
+        k_per_vault: int = 5
+        rrf_k: int = 60
+
+    fastapi_app = FastAPI(title="tino-storm API")
+    _register_routes(
+        fastapi_app,
+        _RequestModels(
+            research=ResearchRequest,
+            ingest=IngestRequest,
+            search=SearchRequest,
+        ),
+    )
+    return fastapi_app
+
+
+class _LazyFastAPIApp:
+    """Proxy that creates the FastAPI app on first access."""
+
+    __slots__ = ("_app",)
+
+    def __init__(self) -> None:
+        self._app = None
+
+    def _ensure_app(self):
+        if self._app is None:
+            self._app = _create_fastapi_app()
+        return self._app
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._ensure_app(), name)
+
+    async def __call__(self, scope, receive, send):
+        app = self._ensure_app()
+        await app(scope, receive, send)
+
+
+app = _LazyFastAPIApp()
+
+
+def get_app():
+    """Return the FastAPI application, instantiating it on demand."""
+
+    return app._ensure_app()
+
+
+def _make_default_runner(output_dir: str) -> "STORMWikiRunner":
     """Create a ``STORMWikiRunner`` with default language models.
 
     When the ``cloud_allowed`` environment variable is unset or evaluates to
     ``False`` the runner is configured to use the lightweight local model used
     by ``ResearchSkill``. Otherwise OpenAI models are used.
     """
+
+    try:
+        from knowledge_storm import (
+            STORMWikiLMConfigs,
+            STORMWikiRunner,
+            STORMWikiRunnerArguments,
+        )
+        from knowledge_storm.lm import LitellmModel
+        from knowledge_storm.rm import BingSearch
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        raise RuntimeError(
+            "knowledge-storm is required for research features; install with 'tino-storm[research]'"
+        ) from exc
 
     lm_configs = STORMWikiLMConfigs()
 
@@ -138,58 +276,3 @@ def run_research(
                 ResearchAdded(topic=vault, information_table={"error": str(exc)})
             )
 
-
-@app.post("/research")
-async def research(req: ResearchRequest):
-    await asyncio.to_thread(
-        run_research, topic=req.topic, output_dir=req.output_dir, vault=req.vault
-    )
-    return {"status": "ok"}
-
-
-@app.post("/outline")
-async def outline(req: ResearchRequest):
-    await asyncio.to_thread(
-        run_research,
-        topic=req.topic,
-        output_dir=req.output_dir,
-        vault=req.vault,
-        do_generate_article=False,
-        do_polish_article=False,
-    )
-    return {"status": "ok"}
-
-
-@app.post("/draft")
-async def draft(req: ResearchRequest):
-    await asyncio.to_thread(
-        run_research,
-        topic=req.topic,
-        output_dir=req.output_dir,
-        vault=req.vault,
-        do_polish_article=False,
-    )
-    return {"status": "ok"}
-
-
-@app.post("/ingest")
-async def ingest(req: IngestRequest):
-    from .ingest.watcher import VaultIngestHandler
-
-    root = os.environ.get("STORM_VAULT_ROOT", "research")
-    handler = VaultIngestHandler(root, vault=req.vault)
-    await asyncio.to_thread(
-        handler._ingest_text, req.text, req.source or "api", req.vault
-    )
-    return {"status": "ok"}
-
-
-@app.post("/search")
-async def search_endpoint(req: SearchRequest):
-    result = await search(
-        req.query,
-        req.vaults,
-        k_per_vault=req.k_per_vault,
-        rrf_k=req.rrf_k,
-    )
-    return {"results": [asdict(r) for r in result]}
