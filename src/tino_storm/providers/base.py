@@ -4,9 +4,11 @@ import asyncio
 import importlib
 import logging
 import os
+import threading
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-from typing import Iterable, List, Dict, Any, Optional
+from contextlib import suppress
+from typing import Any, Awaitable, Dict, Iterable, List, Optional, TypeVar
 
 from ..search_result import ResearchResult, as_research_result
 
@@ -16,6 +18,47 @@ from ..events import ResearchAdded, event_emitter
 
 # Maximum number of in-flight or cached summary tasks.
 SUMMARY_CACHE_LIMIT = 100
+
+T = TypeVar("T")
+
+
+def _run_coroutine_in_loop(coro: Awaitable[T]) -> T:
+    loop = asyncio.new_event_loop()
+    try:
+        try:
+            result = loop.run_until_complete(coro)
+        finally:
+            with suppress(Exception):
+                loop.run_until_complete(loop.shutdown_asyncgens())
+        return result
+    finally:
+        loop.close()
+
+
+def _run_coroutine_in_new_loop(coro: Awaitable[T]) -> T:
+    """Execute *coro* even when the caller already has a running loop."""
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return _run_coroutine_in_loop(coro)
+
+    result: list[T] = []
+    error: list[BaseException] = []
+
+    def runner() -> None:
+        try:
+            result.append(_run_coroutine_in_loop(coro))
+        except BaseException as exc:  # pragma: no cover - propagated below
+            error.append(exc)
+
+    thread = threading.Thread(target=runner, name="storm-loop-runner")
+    thread.start()
+    thread.join()
+
+    if error:
+        raise error[0]
+    return result[0]
 
 
 def format_bing_items(items: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -196,22 +239,21 @@ class DefaultProvider(Provider):
     ) -> Optional[str | asyncio.Task]:
         """Run ``_summarize_async`` using the current event loop if present.
 
-        When called without a running event loop, ``asyncio.run`` is used and
-        the summary string is returned. If an event loop is already running, a
-        task is created and returned to allow the caller to await the result
-        without blocking.
+        When called without a running event loop, the coroutine is executed on
+        a dedicated loop and the summary string is returned. If an event loop
+        is already running, a task is created and returned to allow the caller
+        to await the result without blocking.
         """
 
         try:
-            asyncio.get_running_loop()
+            loop = asyncio.get_running_loop()
         except RuntimeError:
-            return asyncio.run(
+            return _run_coroutine_in_new_loop(
                 self._summarize_async(snippets, max_chars=max_chars, timeout=timeout)
             )
-        else:
-            return asyncio.create_task(
-                self._summarize_async(snippets, max_chars=max_chars, timeout=timeout)
-            )
+        return loop.create_task(
+            self._summarize_async(snippets, max_chars=max_chars, timeout=timeout)
+        )
 
     def search_sync(
         self,
@@ -248,7 +290,7 @@ class DefaultProvider(Provider):
                     *(self._summarize_async(res.snippets) for res in unsummarized)
                 )
 
-            summaries = asyncio.run(_gather())
+            summaries = _run_coroutine_in_new_loop(_gather())
             for res, summary in zip(unsummarized, summaries):
                 res.summary = summary
 

@@ -116,6 +116,40 @@ def test_search_sync_summarizes_in_parallel(monkeypatch):
     assert max_active > 1
 
 
+@pytest.mark.anyio
+@pytest.mark.parametrize("anyio_backend", ["asyncio"], scope="module")
+async def test_search_sync_in_running_loop(monkeypatch, anyio_backend):
+    """Calling search_sync while a loop runs should still summarize results."""
+
+    monkeypatch.delenv("STORM_SUMMARY_MODEL", raising=False)
+    monkeypatch.setattr(
+        "tino_storm.providers.base.search_vaults",
+        lambda *a, **k: [
+            {"url": "u1", "snippets": ["s1"], "meta": {}},
+            {"url": "u2", "snippets": ["s2"], "meta": {}},
+        ],
+    )
+
+    provider = DefaultProvider()
+    active = 0
+    max_active = 0
+
+    async def fake_summarize(snippets, *, max_chars=200, timeout=None):
+        nonlocal active, max_active
+        active += 1
+        max_active = max(max_active, active)
+        await asyncio.sleep(0)
+        active -= 1
+        return snippets[0]
+
+    monkeypatch.setattr(provider, "_summarize_async", fake_summarize)
+
+    results = provider.search_sync("q", [])
+
+    assert [r.summary for r in results] == ["s1", "s2"]
+    assert max_active > 1
+
+
 def test_search_sync_caches_duplicate_snippets(monkeypatch):
     monkeypatch.setenv("STORM_SUMMARY_MODEL", "model")
     monkeypatch.setattr(
