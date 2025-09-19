@@ -42,6 +42,9 @@ which tino-storm
   ```
 
 - **research** – install the FastAPI server and filesystem watcher used by the CLI.
+  The `watchdog` dependency required for directory watching ships with this
+  extra, and the CLI will prompt you to install it automatically whenever a
+  command needs it.
 
   ```bash
   pip install tino-storm[research]
@@ -71,8 +74,9 @@ $ tino-storm ingest --root ./vault
 ### The `ingest` command
 
 `ingest` runs a small watcher that monitors a "vault" directory for new files.
-The watcher relies on the [`watchdog`](https://pypi.org/project/watchdog/) package,
-which is installed automatically with `tino-storm`.
+The watcher relies on the [`watchdog`](https://pypi.org/project/watchdog/)
+package, which is bundled with the `research` extra. When it is missing, the CLI
+asks whether to install it before continuing.
 Each first level subdirectory acts as the vault name. Dropped text files or
 files ending in `.url`/`.urls` are parsed and the contents stored in a local
 Chroma collection under `~/.tino_storm/chroma` (override with
@@ -122,6 +126,10 @@ import tino_storm
 # async usage
 results = await tino_storm.search("machine learning", ["science"])
 ```
+
+Chroma-powered local vault search is part of the default installation. Deployers
+should ensure the [`chromadb`](https://pypi.org/project/chromadb/) dependency is
+available when packaging the CLI to keep vault search working.
 
 ### Custom search providers
 
