@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from typing import Iterable, List, Dict, Any, Optional
 
-from .base import DefaultProvider, format_bing_items
+from .base import DefaultProvider, format_bing_items, _run_coroutine_in_new_loop
 from .registry import register_provider
 from ..ingest import search_vaults
 from ..retrieval import reciprocal_rank_fusion, score_results, add_posteriors
@@ -62,14 +62,19 @@ class ParallelProvider(DefaultProvider):
         vault: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
-        return asyncio.run(
-            self.search_async(
-                query,
-                vaults,
-                k_per_vault=k_per_vault,
-                rrf_k=rrf_k,
-                chroma_path=chroma_path,
-                vault=vault,
-                timeout=timeout,
-            )
+        coroutine = self.search_async(
+            query,
+            vaults,
+            k_per_vault=k_per_vault,
+            rrf_k=rrf_k,
+            chroma_path=chroma_path,
+            vault=vault,
+            timeout=timeout,
         )
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(coroutine)
+
+        return _run_coroutine_in_new_loop(coroutine)
