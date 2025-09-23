@@ -86,3 +86,35 @@ def test_multi_source_provider_handles_source_failure(monkeypatch):
     assert len(events) == 1
     assert events[0].topic == "q"
     assert events[0].information_table["error"] == "boom"
+
+
+def test_multi_source_provider_search_sync_in_running_loop(monkeypatch):
+    async def fake_to_thread(func, *a, **k):
+        return func(*a, **k)
+
+    monkeypatch.setattr(asyncio, "to_thread", fake_to_thread)
+    monkeypatch.setattr(
+        "tino_storm.providers.multi_source.search_vaults",
+        lambda *a, **k: [{"url": "vault", "snippets": [], "meta": {}}],
+    )
+
+    provider = MultiSourceProvider()
+    monkeypatch.setattr(
+        provider,
+        "_bing_search",
+        lambda q: [{"url": "bing", "description": "desc", "title": "t"}],
+    )
+
+    async def docs_search_async(query, vaults, **kwargs):
+        return [ResearchResult(url="docs", snippets=[], meta={})]
+
+    monkeypatch.setattr(provider.docs_provider, "search_async", docs_search_async)
+
+    async def run_sync_call():
+        # Ensure an event loop is running before invoking the synchronous API.
+        asyncio.get_running_loop()
+        return provider.search_sync("q", ["v"])
+
+    results = asyncio.run(run_sync_call())
+
+    assert {r.url for r in results} == {"vault", "docs", "bing"}
