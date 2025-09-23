@@ -4,7 +4,7 @@ import asyncio
 import logging
 from typing import Iterable, List, Dict, Any, Optional
 
-from .base import DefaultProvider, format_bing_items
+from .base import DefaultProvider, format_bing_items, _run_coroutine_in_new_loop
 from .docs_hub import DocsHubProvider
 from .registry import register_provider
 from ..events import ResearchAdded, event_emitter
@@ -103,14 +103,14 @@ class MultiSourceProvider(DefaultProvider):
         vault: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
-        return asyncio.run(
-            self.search_async(
-                query,
-                vaults,
-                k_per_vault=k_per_vault,
-                rrf_k=rrf_k,
-                chroma_path=chroma_path,
-                vault=vault,
-                timeout=timeout,
-            )
+        coroutine = self.search_async(
+            query,
+            vaults,
+            k_per_vault=k_per_vault,
+            rrf_k=rrf_k,
+            chroma_path=chroma_path,
+            vault=vault,
+            timeout=timeout,
         )
+
+        return _run_coroutine_in_new_loop(coroutine)
