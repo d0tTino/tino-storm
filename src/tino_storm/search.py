@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 import threading
-from typing import Iterable, List, Optional
+from typing import Callable, Iterable, List, Optional
 
 from .providers import (
     DefaultProvider,
@@ -18,6 +18,20 @@ from .ingest.utils import list_vaults
 
 _PROVIDER_CACHE: dict[str, Provider] = {}
 _PROVIDER_CACHE_LOCK = threading.Lock()
+_DEFAULT_PROVIDER_CACHE_KEY = "__default__"
+
+
+def _split_provider_specs(spec: str) -> List[str]:
+    return [part.strip() for part in spec.split(",") if part.strip()]
+
+
+def _get_or_create_provider(key: str, factory: Callable[[], Provider]) -> Provider:
+    with _PROVIDER_CACHE_LOCK:
+        provider_instance = _PROVIDER_CACHE.get(key)
+        if provider_instance is None:
+            provider_instance = factory()
+            _PROVIDER_CACHE[key] = provider_instance
+        return provider_instance
 
 
 class ResearchError(RuntimeError):
@@ -42,20 +56,23 @@ def _resolve_provider(provider: Provider | str | None) -> Provider:
         spec = os.environ.get("STORM_SEARCH_PROVIDER")
         if spec:
             try:
-                with _PROVIDER_CACHE_LOCK:
-                    provider_instance = _PROVIDER_CACHE.get(spec)
-                    if provider_instance is None:
-                        provider_instance = load_provider(spec)
-                        _PROVIDER_CACHE[spec] = provider_instance
-                    return provider_instance
+                if "," in spec:
+                    specs = _split_provider_specs(spec)
+
+                    def factory() -> Provider:
+                        return ProviderAggregator(specs)
+
+                    return _get_or_create_provider(spec, factory)
+
+                return _get_or_create_provider(spec, lambda: load_provider(spec))
             except Exception as e:
                 logging.exception("Failed to load provider '%s'", spec)
                 _emit_load_error(spec, e)
                 raise ResearchError(str(e), provider_spec=spec) from e
-        return DefaultProvider()
+        return _get_or_create_provider(_DEFAULT_PROVIDER_CACHE_KEY, DefaultProvider)
     if isinstance(provider, str):
         if "," in provider:
-            specs = [p.strip() for p in provider.split(",") if p.strip()]
+            specs = _split_provider_specs(provider)
             return ProviderAggregator(specs)
         try:
             return provider_registry.get(provider)

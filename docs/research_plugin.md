@@ -129,13 +129,20 @@ or the ``provider`` argument to ``search`` and ``search_async``.
 Multiple providers can be combined by passing a comma-separated list to the
 ``provider`` argument or the ``STORM_SEARCH_PROVIDER`` environment variable. The
 list is resolved into a ``ProviderAggregator`` which queries each provider and
-merges their results.
+merges their results. Whitespace around provider names is ignored, so both
+``"docs_hub,parallel"`` and ``"docs_hub, parallel"`` produce the same
+aggregation. When configured via ``STORM_SEARCH_PROVIDER`` the resulting
+provider is cached so repeated searches reuse any internal state.
 
 ```python
 results = await tino_storm.search_async(
     "large language models",
     provider="default,my-provider",
 )
+```
+
+```bash
+export STORM_SEARCH_PROVIDER="docs_hub, parallel"
 ```
 
 ## Error handling
