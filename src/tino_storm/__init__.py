@@ -3,6 +3,7 @@
 Primary classes are exposed here via lazy imports to avoid heavy
 dependencies unless needed."""
 
+import asyncio
 from importlib import import_module
 import sys
 from types import ModuleType
@@ -57,17 +58,26 @@ def __getattr__(name: str):
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-def __call__(query: str, **kwargs):
-    from .search import search_sync as _search_sync
+def _dispatch_call(query: str, **kwargs):
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        from .search import search_sync as _search_sync
 
-    return _search_sync(query, **kwargs)
+        return _search_sync(query, **kwargs)
+    else:
+        from .search import search as _search
+
+        return _search(query, **kwargs)
+
+
+def __call__(query: str, **kwargs):
+    return _dispatch_call(query, **kwargs)
 
 
 class _CallableModule(ModuleType):
     def __call__(self, query: str, **kwargs):
-        from .search import search_sync as _search_sync
-
-        return _search_sync(query, **kwargs)
+        return _dispatch_call(query, **kwargs)
 
 
 sys.modules[__name__].__class__ = _CallableModule
