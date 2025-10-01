@@ -6,6 +6,7 @@ import httpx
 import tino_storm.providers.bing_async  # noqa: F401 ensures provider registration
 from tino_storm.providers import provider_registry
 from tino_storm.providers.bing_async import BingAsyncProvider
+from tino_storm.events import ResearchAdded, event_emitter
 
 
 def test_bing_async_provider_fetches(monkeypatch):
@@ -37,3 +38,29 @@ def test_bing_async_provider_no_key(monkeypatch):
     provider = BingAsyncProvider()
     results = asyncio.run(provider.search_async("irrelevant", []))
     assert results == []
+
+
+def test_bing_async_provider_http_error(monkeypatch):
+    monkeypatch.setenv("BING_SEARCH_API_KEY", "test-key")
+
+    async def failing_get(*args, **kwargs):
+        raise httpx.HTTPError("network boom")
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", failing_get)
+
+    provider = BingAsyncProvider()
+    events: list[ResearchAdded] = []
+
+    def handler(event: ResearchAdded) -> None:
+        events.append(event)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+    try:
+        results = asyncio.run(provider.search_async("failing query", []))
+    finally:
+        event_emitter.unsubscribe(ResearchAdded, handler)
+
+    assert results == []
+    assert len(events) == 1
+    assert events[0].topic == "failing query"
+    assert events[0].information_table["error"] == "network boom"

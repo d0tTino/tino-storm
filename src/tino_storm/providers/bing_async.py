@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import os
+import logging
 from typing import Iterable, List, Optional
 
 import httpx
 
 from .base import Provider, format_bing_items
 from .registry import register_provider
+from ..events import ResearchAdded, event_emitter
 from ..search_result import ResearchResult, as_research_result
 
 BING_ENDPOINT = "https://api.bing.microsoft.com/v7.0/search"
@@ -32,10 +34,23 @@ class BingAsyncProvider(Provider):
             return []
         headers = {"Ocp-Apim-Subscription-Key": api_key}
         params = {"q": query, "count": k_per_vault}
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(BING_ENDPOINT, params=params, headers=headers)
-            resp.raise_for_status()
-            data = resp.json()
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(BING_ENDPOINT, params=params, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
+        except httpx.HTTPError as exc:
+            logging.exception("BingAsyncProvider HTTP request failed")
+            await event_emitter.emit(
+                ResearchAdded(topic=query, information_table={"error": str(exc)})
+            )
+            return []
+        except Exception as exc:  # pragma: no cover - defensive safety net
+            logging.exception("BingAsyncProvider unexpected error")
+            await event_emitter.emit(
+                ResearchAdded(topic=query, information_table={"error": str(exc)})
+            )
+            return []
         items = data.get("webPages", {}).get("value", [])
         # Map Bing's ``snippet`` field to ``description`` expected by
         # ``format_bing_items`` for snippet normalization.
