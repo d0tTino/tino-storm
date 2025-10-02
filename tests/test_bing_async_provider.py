@@ -40,6 +40,29 @@ def test_bing_async_provider_no_key(monkeypatch):
     assert results == []
 
 
+def test_bing_async_provider_uses_timeout(monkeypatch):
+    monkeypatch.setenv("BING_SEARCH_API_KEY", "test-key")
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"webPages": {"value": []}})
+
+    transport = httpx.MockTransport(handler)
+    original_async_client = httpx.AsyncClient
+    captured_timeout: dict[str, object] = {}
+
+    def client_factory(*args, **kwargs):
+        captured_timeout["value"] = kwargs.get("timeout")
+        kwargs.setdefault("transport", transport)
+        return original_async_client(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", client_factory)
+
+    provider = BingAsyncProvider()
+    asyncio.run(provider.search_async("query", [], timeout=3.5))
+
+    assert captured_timeout["value"] == 3.5
+
+
 def test_bing_async_provider_http_error(monkeypatch):
     monkeypatch.setenv("BING_SEARCH_API_KEY", "test-key")
 
