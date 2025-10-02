@@ -11,6 +11,7 @@ import asyncio  # noqa: E402
 
 from tino_storm.providers.registry import provider_registry  # noqa: E402
 from tino_storm.events import event_emitter, ResearchAdded  # noqa: E402
+from tino_storm.providers.docs_hub_client import DocsHubClientError  # noqa: E402
 
 
 class DummyCollection:
@@ -130,6 +131,8 @@ def test_docs_hub_provider_search_async_failure(monkeypatch):
     assert len(events) == 1
     assert events[0].topic == "topic"
     assert events[0].information_table["error"] == "boom"
+    assert events[0].information_table["stage"] == "local"
+    assert events[0].information_table["provider"] == "docs_hub"
 
 
 def test_docs_hub_provider_search_sync_failure(monkeypatch):
@@ -154,3 +157,134 @@ def test_docs_hub_provider_search_sync_failure(monkeypatch):
     assert len(events) == 1
     assert events[0].topic == "topic"
     assert events[0].information_table["error"] == "boom"
+    assert events[0].information_table["stage"] == "local"
+    assert events[0].information_table["provider"] == "docs_hub"
+
+
+def test_docs_hub_provider_remote_success(monkeypatch):
+    import tino_storm.providers.docs_hub as docs_hub
+
+    class RemoteClient:
+        base_url = "https://docs"
+        is_configured = True
+
+        def search(self, *args, **kwargs):
+            return [
+                {"url": "remote", "snippets": ["remote"], "meta": {"source": "api"}}
+            ]
+
+        async def search_async(self, *args, **kwargs):
+            return [
+                {"url": "remote", "snippets": ["remote"], "meta": {"source": "api"}}
+            ]
+
+    provider = docs_hub.DocsHubProvider(client=RemoteClient())
+
+    def raise_local(*_a, **_k):  # pragma: no cover - defensive
+        raise AssertionError("local search should not run")
+
+    monkeypatch.setattr(docs_hub, "search_vaults", raise_local)
+    monkeypatch.setattr(event_emitter, "_subscribers", {})
+
+    results = provider.search_sync("topic", ["vault"])
+    assert [r.url for r in results] == ["remote"]
+    assert [r.meta["source"] for r in results] == ["api"]
+
+    async def run_async():
+        return await provider.search_async("topic", ["vault"])
+
+    async_results = asyncio.run(run_async())
+    assert [r.url for r in async_results] == ["remote"]
+
+
+def test_docs_hub_provider_remote_failure_falls_back(monkeypatch):
+    import tino_storm.providers.docs_hub as docs_hub
+
+    class RemoteClient:
+        base_url = "https://docs"
+        is_configured = True
+
+        def search(self, *args, **kwargs):
+            raise DocsHubClientError("remote down")
+
+        async def search_async(self, *args, **kwargs):
+            raise DocsHubClientError("remote down")
+
+    provider = docs_hub.DocsHubProvider(client=RemoteClient())
+
+    monkeypatch.setattr(event_emitter, "_subscribers", {})
+    events: list[ResearchAdded] = []
+
+    async def handler(e: ResearchAdded) -> None:
+        events.append(e)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+
+    monkeypatch.setattr(
+        docs_hub,
+        "search_vaults",
+        lambda *a, **k: [
+            {"url": "local", "snippets": ["fallback"], "meta": {"source": "vault"}}
+        ],
+    )
+
+    results = provider.search_sync("topic", ["vault"])
+    assert [r.url for r in results] == ["local"]
+
+    async def run_async():
+        return await provider.search_async("topic", ["vault"])
+
+    async_results = asyncio.run(run_async())
+    assert [r.url for r in async_results] == ["local"]
+
+    assert len(events) == 2
+    remote_event = events[0]
+    assert remote_event.topic == "topic"
+    assert remote_event.information_table["error"] == "remote down"
+    assert remote_event.information_table["stage"] == "remote"
+    assert remote_event.information_table["provider"] == "docs_hub"
+    assert remote_event.information_table["fallback"] == "local"
+    assert remote_event.information_table["remote_url"] == "https://docs"
+
+
+def test_docs_hub_provider_remote_and_local_failure(monkeypatch):
+    import tino_storm.providers.docs_hub as docs_hub
+
+    class RemoteClient:
+        base_url = "https://docs"
+        is_configured = True
+
+        def search(self, *args, **kwargs):
+            raise DocsHubClientError("remote down")
+
+        async def search_async(self, *args, **kwargs):
+            raise DocsHubClientError("remote down")
+
+    provider = docs_hub.DocsHubProvider(client=RemoteClient())
+
+    def raise_local(*_a, **_k):
+        raise RuntimeError("local boom")
+
+    monkeypatch.setattr(docs_hub, "search_vaults", raise_local)
+    monkeypatch.setattr(event_emitter, "_subscribers", {})
+    events: list[ResearchAdded] = []
+
+    async def handler(e: ResearchAdded) -> None:
+        events.append(e)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+
+    results = provider.search_sync("topic", ["vault"])
+    assert results == []
+
+    async def run_async():
+        return await provider.search_async("topic", ["vault"])
+
+    async_results = asyncio.run(run_async())
+    assert async_results == []
+
+    stages = [event.information_table["stage"] for event in events]
+    assert stages.count("remote") == 2
+    assert stages.count("local") == 2
+    for event in events:
+        assert event.information_table["provider"] == "docs_hub"
