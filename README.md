@@ -131,6 +131,27 @@ Chroma-powered local vault search is part of the default installation. Deployers
 should ensure the [`chromadb`](https://pypi.org/project/chromadb/) dependency is
 available when packaging the CLI to keep vault search working.
 
+### Connecting to a remote Docs Hub
+
+`DocsHubProvider` can be configured to call a remote Docs Hub instance instead of
+querying the local Chroma collections. Set the following environment variables
+to route all Docs Hub queries through a remote service:
+
+- `STORM_DOCS_HUB_URL` – required HTTPS endpoint that accepts POST requests with
+  `query`, `vaults`, `k_per_vault` and `rrf_k` fields. The response must be a
+  list of mappings compatible with `ResearchResult` or a JSON object wrapping
+  them under a `results` key.
+- `STORM_DOCS_HUB_API_KEY` – optional bearer token included in the
+  `Authorization` header when present.
+- `STORM_DOCS_HUB_HEADERS` – optional JSON object of extra headers to include in
+  each request.
+- `STORM_DOCS_HUB_TIMEOUT` – optional request timeout in seconds.
+
+When the remote request fails, the provider automatically falls back to the
+local vault index and emits a `ResearchAdded` event with `stage="remote"` so
+operators can monitor outages. Local failures now emit the same event with
+`stage="local"` to keep diagnostics consistent.
+
 ### Custom search providers
 
 `tino_storm.search()` can use a pluggable provider for fetching results.

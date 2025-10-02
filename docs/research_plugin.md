@@ -38,6 +38,25 @@ from tino_storm.search_result import ResearchResult
 result = ResearchResult(url="https://example.com", snippets=["excerpt"], meta={})
 ```
 
+## Remote Docs Hub configuration
+
+`DocsHubProvider` queries the local vault index by default. Set the following
+environment variables to have it call a remote Docs Hub API before falling back
+to the local index:
+
+- `STORM_DOCS_HUB_URL` – HTTPS endpoint that accepts POST requests containing
+  the query payload. Responses should either be a JSON list of results or an
+  object with a `results` key.
+- `STORM_DOCS_HUB_API_KEY` – optional bearer token included in the
+  `Authorization` header.
+- `STORM_DOCS_HUB_HEADERS` – optional JSON object with additional headers.
+- `STORM_DOCS_HUB_TIMEOUT` – optional timeout in seconds for the HTTP request.
+
+When the remote lookup fails, the provider automatically emits a `ResearchAdded`
+event with `stage="remote"` and falls back to the local Chroma collections.
+Failures inside the local fallback emit the same event with `stage="local"` so
+operators can track which layer is failing.
+
 ## Custom search providers
 
 You can plug in your own search provider by setting the `STORM_SEARCH_PROVIDER`
