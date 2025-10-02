@@ -74,12 +74,22 @@ class MultiSourceProvider(DefaultProvider):
             if source == "vault" and res:
                 rankings.append(res)
             elif source == "docs" and res:
-                rankings.append(
-                    [
-                        {"url": r.url, "snippets": r.snippets, "meta": r.meta}
-                        for r in res
-                    ]
-                )
+                formatted_docs: List[Dict[str, Any]] = []
+                for r in res:
+                    info: Dict[str, Any] = {
+                        "url": r.url,
+                        "snippets": r.snippets,
+                        "meta": r.meta,
+                    }
+                    if r.summary is not None:
+                        info["summary"] = r.summary
+                    if r.score is not None:
+                        info["score"] = r.score
+                    if r.posterior is not None:
+                        info["posterior"] = r.posterior
+                    formatted_docs.append(info)
+
+                rankings.append(formatted_docs)
             elif source == "bing":
                 formatted = format_bing_items(res)
                 if formatted:
