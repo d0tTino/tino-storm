@@ -34,9 +34,14 @@ class BingAsyncProvider(Provider):
             return []
         headers = {"Ocp-Apim-Subscription-Key": api_key}
         params = {"q": query, "count": k_per_vault}
+        timeout_value = 10.0 if timeout is None else timeout
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.get(BING_ENDPOINT, params=params, headers=headers)
+            async with httpx.AsyncClient(timeout=timeout_value) as client:
+                resp = await client.get(
+                    BING_ENDPOINT,
+                    params=params,
+                    headers=headers,
+                )
                 resp.raise_for_status()
                 data = resp.json()
         except httpx.HTTPError as exc:
