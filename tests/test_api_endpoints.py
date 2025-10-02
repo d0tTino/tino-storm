@@ -226,7 +226,14 @@ def test_search_endpoint(monkeypatch):
     first = data["results"][0]
     if not isinstance(first, dict):
         first = dataclasses.asdict(first)
-    assert first == {"url": "u", "snippets": ["s"], "meta": {}, "summary": None}
+    assert first == {
+        "url": "u",
+        "snippets": ["s"],
+        "meta": {},
+        "summary": None,
+        "score": None,
+        "posterior": None,
+    }
     assert called["args"] == ("q", ["v1", "v2"], 5, 60)
 
 
@@ -318,7 +325,14 @@ def test_search_endpoint_asyncio(monkeypatch):
     first = data["results"][0]
     if not isinstance(first, dict):
         first = dataclasses.asdict(first)
-    assert first == {"url": "u", "snippets": ["s"], "meta": {}, "summary": None}
+    assert first == {
+        "url": "u",
+        "snippets": ["s"],
+        "meta": {},
+        "summary": None,
+        "score": None,
+        "posterior": None,
+    }
     assert called["args"] == ("q", ["v1", "v2"], 5, 60)
 
 

@@ -6,7 +6,7 @@ import atexit
 import json
 import asyncio
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, List
 
 try:
     from watchdog.events import FileSystemEventHandler
@@ -18,6 +18,7 @@ except ImportError as e:  # pragma: no cover - optional dependency
 
 import chromadb
 import trafilatura
+from weakref import ref, ReferenceType
 
 from ..ingestion import (
     TwitterScraper,
@@ -38,6 +39,64 @@ from ..security.encrypted_chroma import EncryptedChroma
 from ..events import ResearchAdded, event_emitter
 
 
+_DOC_CAPTURE: dict[int, tuple[ReferenceType[Any], List[str]]] = {}
+
+
+def _get_capture_entry(collection: Any) -> tuple[int, ReferenceType[Any], List[str]]:
+    key = id(collection)
+    entry = _DOC_CAPTURE.get(key)
+    if entry is not None:
+        obj_ref, docs = entry
+        if obj_ref() is collection:
+            return key, obj_ref, docs
+
+    docs: List[str] = []
+
+    def _cleanup(_ref: ReferenceType[Any]) -> None:
+        _DOC_CAPTURE.pop(key, None)
+
+    obj_ref = ref(collection, _cleanup)
+    _DOC_CAPTURE[key] = (obj_ref, docs)
+    return key, obj_ref, docs
+
+
+def _ensure_doc_capture(collection: Any) -> List[str]:
+    """Return a mutable list recording docs ingested into ``collection``."""
+
+    key, obj_ref, docs = _get_capture_entry(collection)
+
+    existing = getattr(collection, "docs", None)
+    if isinstance(existing, list):
+        return docs
+
+    try:
+        setattr(collection, "docs", docs)
+        return docs
+    except Exception:
+        cls = collection.__class__
+        current = getattr(cls, "docs", None)
+        if not isinstance(current, property):
+            def _get(self: Any) -> List[str]:
+                _, _, stored = _get_capture_entry(self)
+                return stored
+
+            def _set(self: Any, value: List[str]) -> None:
+                key, existing_ref, _ = _get_capture_entry(self)
+                _DOC_CAPTURE[key] = (existing_ref, list(value))
+
+            try:
+                setattr(cls, "docs", property(_get, _set))
+            except Exception:
+                pass
+    return _DOC_CAPTURE[key][1]
+
+
+def _record_documents(collection: Any, documents: List[str]) -> None:
+    if documents:
+        doc_list = _ensure_doc_capture(collection)
+        doc_list.extend(documents)
+
+
 def load_txt_documents(path: str):
     """Return documents loaded from ``path`` using ``llama_index``."""
 
@@ -54,29 +113,41 @@ class VaultIngestHandler(FileSystemEventHandler):
         orig_get = client.get_or_create_collection
         cache: dict[str, Any] = {}
 
+        class _DocCapturingCollection:
+            __slots__ = ("_collection", "docs", "__weakref__")
+
+            def __init__(self, collection: Any) -> None:
+                self._collection = collection
+                self.docs: List[str] = []
+
+            def add(
+                self,
+                documents=None,
+                metadatas=None,
+                ids=None,
+                embeddings=None,
+                **kwargs,
+            ):
+                if documents is not None:
+                    payload = list(documents)
+                    self.docs.extend(payload)
+                    _record_documents(self, payload)
+                return self._collection.add(
+                    documents=documents,
+                    metadatas=metadatas,
+                    ids=ids,
+                    embeddings=embeddings,
+                    **kwargs,
+                )
+
+            def __getattr__(self, name: str) -> Any:
+                return getattr(self._collection, name)
+
         def _get(name: str, **kwargs: Any):
             col = cache.get(name)
             if col is None:
-                col = orig_get(name, **kwargs)
+                col = _DocCapturingCollection(orig_get(name, **kwargs))
                 cache[name] = col
-            if not hasattr(col, "docs"):
-                col.docs = []
-                orig_add = col.add
-
-                def add(
-                    documents=None, metadatas=None, ids=None, embeddings=None, **kw
-                ):
-                    if documents is not None:
-                        col.docs.extend(documents)
-                    return orig_add(
-                        documents=documents,
-                        metadatas=metadatas,
-                        ids=ids,
-                        embeddings=embeddings,
-                        **kw,
-                    )
-
-                col.add = add
             return col
 
         client.get_or_create_collection = _get
@@ -89,8 +160,7 @@ class VaultIngestHandler(FileSystemEventHandler):
             client = EncryptedChroma(self._chroma_root, passphrase=passphrase)
         else:
             client = chromadb.PersistentClient(path=self._chroma_root)
-        if os.environ.get("PYTEST_CURRENT_TEST"):
-            self._instrument_client(client)
+        self._instrument_client(client)
         return client
 
     def _get_client(self, vault: str | None) -> Any:
@@ -138,23 +208,6 @@ class VaultIngestHandler(FileSystemEventHandler):
     def _ingest_text(self, text: str, source: str, vault: str) -> None:
         client = self._get_client(vault)
         collection = client.get_or_create_collection(vault)
-        if not hasattr(collection, "docs"):
-            orig_add = collection.add
-
-            def _add(
-                documents=None, metadatas=None, ids=None, embeddings=None, **kwargs
-            ):
-                if documents is not None:
-                    collection.docs = getattr(collection, "docs", []) + list(documents)
-                return orig_add(
-                    documents=documents,
-                    metadatas=metadatas,
-                    ids=ids,
-                    embeddings=embeddings,
-                    **kwargs,
-                )
-
-            collection.add = _add
 
         # Use timestamp to provide unique ids
         doc_id = f"{source}-{int(time.time()*1000)}"

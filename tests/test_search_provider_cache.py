@@ -1,10 +1,21 @@
 import pytest
 
+import importlib
+
 import tino_storm.search as search_module
 from tino_storm.providers import ProviderAggregator
 
 
 def _clear_provider_cache():
+    global search_module
+    search_module = importlib.import_module("tino_storm.search")
+    from tino_storm.providers.docs_hub import DocsHubProvider
+    from tino_storm.providers.parallel import ParallelProvider
+    registry = search_module.provider_registry
+    if "docs_hub" not in registry.available():
+        registry.register("docs_hub", DocsHubProvider)
+    if "parallel" not in registry.available():
+        registry.register("parallel", ParallelProvider)
     with search_module._PROVIDER_CACHE_LOCK:
         search_module._PROVIDER_CACHE.clear()
 

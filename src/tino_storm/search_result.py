@@ -12,6 +12,8 @@ class ResearchResult:
     snippets: List[str]
     meta: Dict[str, Any] = field(default_factory=dict)
     summary: Optional[str] = None
+    score: Optional[float] = None
+    posterior: Optional[float] = None
 
 
 def as_research_result(data: Dict[str, Any]) -> ResearchResult:
@@ -22,4 +24,6 @@ def as_research_result(data: Dict[str, Any]) -> ResearchResult:
         snippets=data.get("snippets", []),
         meta=data.get("meta", {}),
         summary=data.get("summary"),
+        score=data.get("score"),
+        posterior=data.get("posterior"),
     )
