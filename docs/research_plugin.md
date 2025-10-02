@@ -134,6 +134,15 @@ merges their results. Whitespace around provider names is ignored, so both
 aggregation. When configured via ``STORM_SEARCH_PROVIDER`` the resulting
 provider is cached so repeated searches reuse any internal state.
 
+The aggregator applies Reciprocal Rank Fusion (RRF) to re-rank the combined
+results, ensuring that high-ranking documents from any provider float to the
+top while still deduplicating URLs. When duplicates appear, the aggregator
+keeps the richest metadata available—preferring longer summaries and the
+highest ``score``/``posterior`` values. The ``k_per_vault`` argument continues to
+control how many fused items are returned, while ``rrf_k`` tunes both the RRF
+decay constant and the post-fusion trim (the aggregator returns up to
+``min(k_per_vault, rrf_k)`` items).
+
 ```python
 results = await tino_storm.search_async(
     "large language models",

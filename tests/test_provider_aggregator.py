@@ -89,6 +89,31 @@ class SlowProvider(Provider):
         return [ResearchResult(url="slow", snippets=[], meta={})]
 
 
+class RankingProvider(Provider):
+    def __init__(self, name: str, payload):
+        self.name = name
+        self._payload = payload
+
+    def _build(self):
+        return [
+            ResearchResult(
+                url=item["url"],
+                snippets=item.get("snippets", []),
+                meta=item.get("meta", {}),
+                summary=item.get("summary"),
+                score=item.get("score"),
+                posterior=item.get("posterior"),
+            )
+            for item in self._payload
+        ]
+
+    async def search_async(self, query, vaults, **kwargs):
+        return self._build()
+
+    def search_sync(self, query, vaults, **kwargs):
+        return self._build()
+
+
 def test_resolve_provider_aggregates_and_runs_concurrently(monkeypatch):
     monkeypatch.setattr(provider_registry, "_providers", {})
     provider_registry.register("p1", DummyProvider("p1"))
@@ -287,3 +312,74 @@ def test_aggregator_throttles_max_concurrency():
     results = asyncio.run(run())
     assert {r.url for r in results} == {"p1", "p2", "p3"}
     assert peak == 1
+
+
+def test_rrf_fusion_preserves_metadata_and_trims():
+    provider_a = RankingProvider(
+        "a",
+        [
+            {
+                "url": "https://example.com/a",
+                "summary": "Alpha",
+                "score": 0.2,
+                "posterior": 0.1,
+            },
+            {
+                "url": "https://example.com/b",
+                "summary": "Short",
+                "score": 0.7,
+                "meta": {"source": "a"},
+            },
+            {
+                "url": "https://example.com/c",
+                "summary": "Gamma",
+                "score": 0.1,
+            },
+        ],
+    )
+    provider_b = RankingProvider(
+        "b",
+        [
+            {
+                "url": "https://example.com/b?ref=1",
+                "summary": "Longer summary for B",
+                "score": 0.95,
+                "posterior": 0.8,
+                "meta": {"source": "b"},
+            },
+            {
+                "url": "https://example.com/d",
+                "summary": "Delta",
+                "score": 0.5,
+            },
+            {
+                "url": "https://example.com/a",
+                "summary": "Alpha extended",
+                "score": 0.4,
+            },
+        ],
+    )
+
+    aggregator = ProviderAggregator([provider_a, provider_b])
+
+    async_results = asyncio.run(
+        aggregator.search_async("q", [], k_per_vault=3, rrf_k=2)
+    )
+    assert [canonical_url(r.url) for r in async_results] == [
+        "https://example.com/b",
+        "https://example.com/a",
+    ]
+    assert len(async_results) == 2
+
+    top = async_results[0]
+    assert top.summary == "Longer summary for B"
+    assert top.score == 0.95
+    assert top.posterior == 0.8
+    assert top.meta["source"] == "b"
+
+    sync_results = aggregator.search_sync("q", [], k_per_vault=3, rrf_k=2)
+    assert [canonical_url(r.url) for r in sync_results] == [
+        "https://example.com/b",
+        "https://example.com/a",
+    ]
+    assert len(sync_results) == 2

@@ -11,12 +11,13 @@ from __future__ import annotations
 import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
-from typing import Iterable, List, Dict, Optional, Sequence
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Set
 from urllib.parse import urlsplit, urlunsplit
 
 
 from .base import Provider, load_provider
 from .registry import provider_registry
+from ..retrieval.rrf import reciprocal_rank_fusion
 from ..search_result import ResearchResult
 from ..events import ResearchAdded, event_emitter
 
@@ -38,6 +39,93 @@ def canonical_url(url: str) -> str:
     netloc = parts.netloc.lower()
     path = parts.path.rstrip("/")
     return urlunsplit((scheme, netloc, path, "", ""))
+
+
+def _update_best_metadata(existing: ResearchResult, candidate: ResearchResult) -> None:
+    """Merge ``candidate`` metadata into ``existing`` preferring richer fields."""
+
+    existing_score = existing.score if existing.score is not None else float("-inf")
+    candidate_score = candidate.score if candidate.score is not None else float("-inf")
+
+    if candidate.summary and (
+        not existing.summary
+        or len(candidate.summary) > len(existing.summary)
+        or candidate_score > existing_score
+    ):
+        existing.summary = candidate.summary
+
+    if candidate.score is not None and candidate.score > existing_score:
+        existing.score = candidate.score
+
+    if candidate.posterior is not None and (
+        existing.posterior is None or candidate.posterior > existing.posterior
+    ):
+        existing.posterior = candidate.posterior
+
+    if candidate.snippets and not existing.snippets:
+        existing.snippets = candidate.snippets
+
+    if candidate.meta:
+        merged_meta = dict(existing.meta)
+        merged_meta.update(candidate.meta)
+        existing.meta = merged_meta
+
+
+def _fuse_results(
+    provider_results: Sequence[Sequence[ResearchResult]],
+    *,
+    limit: Optional[int],
+    rrf_k: int,
+) -> List[ResearchResult]:
+    """Fuse results from multiple providers using Reciprocal Rank Fusion."""
+
+    canonical_to_result: Dict[str, ResearchResult] = {}
+    rankings: List[List[Dict[str, Any]]] = []
+
+    for results in provider_results:
+        ranking: List[Dict[str, Any]] = []
+        seen_in_ranking: Set[str] = set()
+
+        for item in results:
+            url = getattr(item, "url", None)
+            if not url:
+                continue
+
+            key = canonical_url(url)
+            existing = canonical_to_result.get(key)
+            if existing is None:
+                canonical_to_result[key] = item
+            else:
+                _update_best_metadata(existing, item)
+
+            if key not in seen_in_ranking:
+                ranking.append({"url": key})
+                seen_in_ranking.add(key)
+
+        if ranking:
+            rankings.append(ranking)
+
+    if not canonical_to_result:
+        return []
+
+    ordered_keys: List[str]
+    if rankings:
+        fused = reciprocal_rank_fusion(rankings, k=rrf_k)
+        ordered_keys = [entry["url"] for entry in fused if entry.get("url") in canonical_to_result]
+    else:  # pragma: no cover - defensive fallback when rankings are empty
+        ordered_keys = list(canonical_to_result.keys())
+
+    remaining = [
+        key for key in canonical_to_result.keys() if key not in ordered_keys
+    ]
+    ordered_keys.extend(remaining)
+
+    fused_results = [canonical_to_result[key] for key in ordered_keys]
+
+    if limit is not None and limit >= 0:
+        fused_results = fused_results[:limit]
+
+    return fused_results
 
 
 class ProviderAggregator(Provider):
@@ -98,7 +186,7 @@ class ProviderAggregator(Provider):
             *(run_provider(p) for p in self.providers),
             return_exceptions=True,
         )
-        merged: List[ResearchResult] = []
+        aggregated: List[List[ResearchResult]] = []
         for provider, r in zip(self.providers, results):
             if isinstance(r, Exception):
                 logging.exception("Provider %s failed in search_async", provider)
@@ -110,16 +198,10 @@ class ProviderAggregator(Provider):
                 )
                 continue
 
-            merged.extend(r)
+            aggregated.append(r)
 
-        deduped: Dict[str, ResearchResult] = {}
-        for item in merged:
-            url = getattr(item, "url", None)
-            if url:
-                key = canonical_url(url)
-                if key not in deduped:
-                    deduped[key] = item
-        return list(deduped.values())
+        limit = min(k_per_vault, rrf_k) if k_per_vault is not None else rrf_k
+        return _fuse_results(aggregated, limit=limit, rrf_k=rrf_k)
 
     def search_sync(
         self,
@@ -134,7 +216,7 @@ class ProviderAggregator(Provider):
     ) -> List[ResearchResult]:
         actual_timeout = timeout if timeout is not None else self.timeout
 
-        merged: List[ResearchResult] = []
+        aggregated: List[List[ResearchResult]] = []
         with ThreadPoolExecutor() as executor:
             futures = [
                 executor.submit(
@@ -176,13 +258,7 @@ class ProviderAggregator(Provider):
                         )
                     )
                 else:
-                    merged.extend(r)
+                    aggregated.append(r)
 
-        deduped: Dict[str, ResearchResult] = {}
-        for item in merged:
-            url = getattr(item, "url", None)
-            if url:
-                key = canonical_url(url)
-                if key not in deduped:
-                    deduped[key] = item
-        return list(deduped.values())
+        limit = min(k_per_vault, rrf_k) if k_per_vault is not None else rrf_k
+        return _fuse_results(aggregated, limit=limit, rrf_k=rrf_k)
