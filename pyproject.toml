@@ -5,12 +5,9 @@ description = "STORM: A language model-powered knowledge curation engine."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "dspy_ai==2.4.9",
-    "wikipedia==1.4.0",
     "toml",
     "trafilatura",
     "numpy==1.26.4",
-    "litellm==1.59.3",
     "pytz",
     "httpx>=0.27.0,<0.29",
     "chromadb",
@@ -27,13 +24,27 @@ tino-storm = "tino_storm.cli:main"
 bing_async = "tino_storm.providers.bing_async:BingAsyncProvider"
 
 [project.optional-dependencies]
+llm = [
+    "backoff>=2.2.1",
+    "dspy_ai==2.4.9",
+    "litellm==1.59.3",
+    "openai>=1.0.0",
+    "transformers>=4.38.0",
+    "ujson>=5.9.0",
+]
 scrapers = [
     "snscrape",
     "praw",
     "pypdf",
 ]
 research = [
+    "backoff>=2.2.1",
+    "dspy_ai==2.4.9",
     "fastapi>=0.110.0",
+    "litellm==1.59.3",
+    "openai>=1.0.0",
+    "transformers>=4.38.0",
+    "ujson>=5.9.0",
     "uvicorn>=0.29.0",
     "watchdog",
     "knowledge-storm",

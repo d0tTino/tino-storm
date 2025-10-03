@@ -35,6 +35,13 @@ which tino-storm
 
 `tino-storm` exposes a couple of optional dependency groups:
 
+- **llm** – installs LiteLLM, DSPy and related tooling used for summarisation
+  and collaborative research flows.
+
+  ```bash
+  pip install tino-storm[llm]
+  ```
+
 - **scrapers** – enable the ingestion helpers for scraping social platforms and PDF files.
 
   ```bash
@@ -42,6 +49,7 @@ which tino-storm
   ```
 
 - **research** – install the FastAPI server and filesystem watcher used by the CLI.
+  This extra also pulls in the ``llm`` dependencies for convenience.
   The `watchdog` dependency required for directory watching ships with this
   extra, and the CLI will prompt you to install it automatically whenever a
   command needs it.
