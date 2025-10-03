@@ -1,23 +1,33 @@
-import backoff
-import dspy
+from __future__ import annotations
+
 import functools
 import logging
 import os
 import random
-import requests
 import threading
-from typing import Optional, Literal, Any
-import ujson
 from pathlib import Path
+from typing import Any, Literal, Optional
 
+import requests
+
+from ._extras import require_extra
 from .security import log_request
 
-
-from dsp import ERRORS, backoff_hdlr, giveup_hdlr
-from dsp.modules.hf import openai_to_hf
-from dsp.modules.hf_client import send_hftgi_request_v01_wrapped
-from openai import OpenAI, AzureOpenAI
-from transformers import AutoTokenizer
+backoff = require_extra("backoff", "llm")
+dspy = require_extra("dspy", "llm")
+dsp = require_extra("dsp", "llm")
+ERRORS = dsp.ERRORS
+backoff_hdlr = dsp.backoff_hdlr
+giveup_hdlr = dsp.giveup_hdlr
+openai_module = require_extra("openai", "llm")
+OpenAI = openai_module.OpenAI
+AzureOpenAI = openai_module.AzureOpenAI
+_dsp_hf = require_extra("dsp.modules.hf", "llm", package="dsp")
+openai_to_hf = _dsp_hf.openai_to_hf
+_dsp_hf_client = require_extra("dsp.modules.hf_client", "llm", package="dsp")
+send_hftgi_request_v01_wrapped = _dsp_hf_client.send_hftgi_request_v01_wrapped
+AutoTokenizer = require_extra("transformers", "llm").AutoTokenizer
+ujson = require_extra("ujson", "llm")
 
 try:
     from anthropic import RateLimitError
@@ -34,12 +44,12 @@ with warnings.catch_warnings():
     warnings.filterwarnings("ignore", category=UserWarning)
     if "LITELLM_LOCAL_MODEL_COST_MAP" not in os.environ:
         os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
-    import litellm
+    litellm = require_extra("litellm", "llm")
 
     litellm.drop_params = True
     litellm.telemetry = False
 
-from litellm.caching.caching import Cache
+Cache = require_extra("litellm.caching.caching", "llm", package="litellm").Cache
 
 disk_cache_dir = os.path.join(Path.home(), ".storm_local_cache")
 litellm.cache = Cache(disk_cache_dir=disk_cache_dir, type="disk")

@@ -5,6 +5,7 @@ language-model agents to query one or more STORM vaults. Install optional
 extras to pull in additional features:
 
 ```bash
+pip install tino-storm[llm]       # LiteLLM, DSPy and summarisation helpers
 pip install tino-storm[research]  # FastAPI server and filesystem watcher
 pip install tino-storm[scrapers]  # ingestion helpers for social platforms
 pip install tino-storm[retrieval] # semantic search and vector DB helpers
@@ -28,7 +29,8 @@ The search API returns a list of `ResearchResult` objects containing the URL,
 text snippets, optional metadata and a short summary from the retrieved
 documents. By default the first snippet is used as the summary. If the
 `STORM_SUMMARY_MODEL` environment variable is set, that model will be invoked
-to generate a one-sentence summary for each result. The optional
+to generate a one-sentence summary for each result. Install the ``llm`` extra
+to pull in the LiteLLM integration required for this feature. The optional
 `STORM_SUMMARY_TIMEOUT` variable limits how long the summarizer is allowed to
 run before the first snippet is used as a fallback.
 

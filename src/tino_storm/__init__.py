@@ -1,7 +1,4 @@
-"""Top-level package for ``tino_storm``.
-
-Primary classes are exposed here via lazy imports to avoid heavy
-dependencies unless needed."""
+"""Top-level package for ``tino_storm`` with optional dependency helpers."""
 
 import asyncio
 from importlib import import_module
@@ -9,8 +6,17 @@ import sys
 from types import ModuleType
 from typing import TYPE_CHECKING
 
+from ._extras import ensure_optional_dependency_stub
+
 if TYPE_CHECKING:  # pragma: no cover
     from .search import search, search_sync
+
+# Register helpful stubs for optional dependencies so that modules importing
+# DSPy-related helpers raise ``MissingExtraError`` with installation guidance
+# instead of failing with a bare ``ModuleNotFoundError`` when the ``llm`` extra
+# is not installed.
+ensure_optional_dependency_stub("dspy", "llm")
+ensure_optional_dependency_stub("dspy.teleprompt", "llm")
 
 __all__ = [
     "__version__",
