@@ -222,6 +222,21 @@ The first three endpoints accept a JSON body with `topic`, optional
 `/search` endpoint expects `query`, a list of `vaults` and optional
 `k_per_vault` and `rrf_k` parameters.
 
+If the research workflow cannot start, the `/research`, `/outline` and
+`/draft` endpoints return a JSON error payload in the following format:
+
+```json
+{
+  "status": "error",
+  "detail": {
+    "error": "description of the failure"
+  }
+}
+```
+
+When a `vault` was requested, a `ResearchAdded` event is emitted with the same
+error information so downstream automation can react to the failure.
+
 ## Programmatic API
 
 The CLI itself is a thin layer over the API defined in `tino_storm.api`.

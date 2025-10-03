@@ -279,6 +279,62 @@ def test_ingestion_failure_emits_event(monkeypatch, tmp_path, caplog):
     assert "Error ingesting article" in caplog.text
 
 
+def test_research_endpoint_runner_failure(monkeypatch):
+    events: list[ResearchAdded] = []
+
+    def handler(event: ResearchAdded) -> None:
+        events.append(event)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+
+    def failing_runner_factory(_dir):
+        raise RuntimeError("runner exploded")
+
+    monkeypatch.setattr(api_module, "_make_default_runner", failing_runner_factory)
+
+    try:
+        resp = asyncio.run(
+            _post("/research", {"topic": "t", "vault": "vault-name"})
+        )
+    finally:
+        event_emitter.unsubscribe(ResearchAdded, handler)
+
+    payload = resp.json()
+    assert payload["status"] == "error"
+    assert "runner exploded" in payload["detail"]["error"]
+    assert events and events[0].topic == "vault-name"
+    assert "runner exploded" in events[0].information_table["error"]
+
+
+def test_draft_endpoint_failure_emits_event(monkeypatch):
+    events: list[ResearchAdded] = []
+
+    def handler(event: ResearchAdded) -> None:
+        events.append(event)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+
+    class FailingRunner(DummyRunner):
+        def run(self, **kwargs):
+            raise RuntimeError("draft failure")
+
+    runner_inst = FailingRunner("./results")
+    monkeypatch.setattr(api_module, "_make_default_runner", lambda dir_: runner_inst)
+
+    try:
+        resp = asyncio.run(
+            _post("/draft", {"topic": "t", "vault": "v", "output_dir": "./results"})
+        )
+    finally:
+        event_emitter.unsubscribe(ResearchAdded, handler)
+
+    payload = resp.json()
+    assert payload["status"] == "error"
+    assert "draft failure" in payload["detail"]["error"]
+    assert events and events[0].topic == "v"
+    assert "draft failure" in events[0].information_table["error"]
+
+
 def test_make_default_runner_local_model(monkeypatch):
     monkeypatch.delenv("cloud_allowed", raising=False)
 

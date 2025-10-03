@@ -35,6 +35,26 @@ def _model_to_dict(instance: Any) -> Dict[str, Any]:
         raise TypeError("Unsupported request payload type") from exc
 
 
+def _emit_research_failure(topic: str, vault: Optional[str], exc: Exception) -> Dict[str, Any]:
+    """Emit a ``ResearchAdded`` failure event and return the error payload."""
+
+    info_table = {"error": str(exc)}
+    event_emitter.emit_sync(
+        ResearchAdded(topic=vault or topic, information_table=info_table)
+    )
+    return info_table
+
+
+def _maybe_raise_http_error(detail: Dict[str, Any]) -> Optional[Exception]:
+    """Return an ``HTTPException`` when FastAPI is available."""
+
+    try:  # pragma: no cover - exercised when FastAPI is installed
+        from fastapi import HTTPException  # type: ignore
+    except Exception:  # pragma: no cover - optional dependency missing
+        return None
+    return HTTPException(status_code=500, detail={"status": "error", "detail": detail})
+
+
 def _register_routes(app: Any, models: _RequestModels) -> None:
     """Attach API routes to ``app`` using the provided request models."""
 
@@ -42,41 +62,55 @@ def _register_routes(app: Any, models: _RequestModels) -> None:
     IngestRequestModel = models.ingest
     SearchRequestModel = models.search
 
-    @app.post("/research")
-    async def research(req: ResearchRequestModel) -> Dict[str, str]:
-        data = _model_to_dict(req)
-        await asyncio.to_thread(
-            run_research,
-            topic=data["topic"],
-            output_dir=data.get("output_dir", "./results"),
-            vault=data.get("vault"),
-        )
+    async def _handle_research_request(
+        data: Dict[str, Any],
+        *,
+        do_research: bool = True,
+        do_generate_outline: bool = True,
+        do_generate_article: bool = True,
+        do_polish_article: bool = True,
+    ) -> Dict[str, Any]:
+        try:
+            await asyncio.to_thread(
+                run_research,
+                topic=data["topic"],
+                output_dir=data.get("output_dir", "./results"),
+                vault=data.get("vault"),
+                do_research=do_research,
+                do_generate_outline=do_generate_outline,
+                do_generate_article=do_generate_article,
+                do_polish_article=do_polish_article,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logging.exception("Failed to start research for topic %s", data["topic"])
+            detail = _emit_research_failure(data["topic"], data.get("vault"), exc)
+            http_exc = _maybe_raise_http_error(detail)
+            if http_exc is not None:
+                raise http_exc
+            return {"status": "error", "detail": detail}
         return {"status": "ok"}
 
-    @app.post("/outline")
-    async def outline(req: ResearchRequestModel) -> Dict[str, str]:
+    @app.post("/research")
+    async def research(req: ResearchRequestModel) -> Dict[str, Any]:
         data = _model_to_dict(req)
-        await asyncio.to_thread(
-            run_research,
-            topic=data["topic"],
-            output_dir=data.get("output_dir", "./results"),
-            vault=data.get("vault"),
+        return await _handle_research_request(data)
+
+    @app.post("/outline")
+    async def outline(req: ResearchRequestModel) -> Dict[str, Any]:
+        data = _model_to_dict(req)
+        return await _handle_research_request(
+            data,
             do_generate_article=False,
             do_polish_article=False,
         )
-        return {"status": "ok"}
 
     @app.post("/draft")
-    async def draft(req: ResearchRequestModel) -> Dict[str, str]:
+    async def draft(req: ResearchRequestModel) -> Dict[str, Any]:
         data = _model_to_dict(req)
-        await asyncio.to_thread(
-            run_research,
-            topic=data["topic"],
-            output_dir=data.get("output_dir", "./results"),
-            vault=data.get("vault"),
+        return await _handle_research_request(
+            data,
             do_polish_article=False,
         )
-        return {"status": "ok"}
 
     @app.post("/ingest")
     async def ingest(req: IngestRequestModel) -> Dict[str, str]:
