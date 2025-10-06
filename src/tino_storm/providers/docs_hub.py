@@ -24,6 +24,21 @@ class DocsHubProvider(Provider):
     def __init__(self, client: Optional[DocsHubClient] = None) -> None:
         self._client = client or get_docs_hub_client()
 
+    @property
+    def is_remote_configured(self) -> bool:
+        """Return ``True`` when a remote Docs Hub endpoint is configured."""
+
+        return bool(self._client and self._client.is_configured)
+
+    def _tag_origin(self, results: List[ResearchResult], origin: str) -> List[ResearchResult]:
+        """Annotate results with the origin used to satisfy the query."""
+
+        for result in results:
+            meta = dict(result.meta) if result.meta else {}
+            meta.setdefault("docs_hub_origin", origin)
+            result.meta = meta
+        return results
+
     async def _emit_error_async(
         self, query: str, error: Exception, stage: str, extra: Optional[dict] = None
     ) -> None:
@@ -66,7 +81,7 @@ class DocsHubProvider(Provider):
         """Asynchronously search Docs Hub, falling back to the local index."""
 
         remote_info = {}
-        if self._client and self._client.is_configured:
+        if self.is_remote_configured:
             remote_info = {"remote_url": self._client.base_url, "fallback": "local"}
             try:
                 remote_results = await self._client.search_async(
@@ -78,7 +93,8 @@ class DocsHubProvider(Provider):
                     vault=vault,
                     timeout=timeout,
                 )
-                return [as_research_result(r) for r in remote_results]
+                parsed_results = [as_research_result(r) for r in remote_results]
+                return self._tag_origin(parsed_results, "remote")
             except DocsHubClientNotConfigured:
                 remote_info = {}
             except DocsHubClientError as exc:
@@ -99,7 +115,8 @@ class DocsHubProvider(Provider):
                 vault=vault,
                 timeout=timeout,
             )
-            return [as_research_result(r) for r in raw_results]
+            parsed_results = [as_research_result(r) for r in raw_results]
+            return self._tag_origin(parsed_results, "local")
         except Exception as exc:  # pragma: no cover - network/IO errors
             logging.exception("DocsHubProvider local search failed")
             await self._emit_error_async(query, exc, "local")
@@ -119,7 +136,7 @@ class DocsHubProvider(Provider):
         """Synchronously search Docs Hub, falling back to the local index."""
 
         remote_info = {}
-        if self._client and self._client.is_configured:
+        if self.is_remote_configured:
             remote_info = {"remote_url": self._client.base_url, "fallback": "local"}
             try:
                 remote_results = self._client.search(
@@ -131,7 +148,8 @@ class DocsHubProvider(Provider):
                     vault=vault,
                     timeout=timeout,
                 )
-                return [as_research_result(r) for r in remote_results]
+                parsed_results = [as_research_result(r) for r in remote_results]
+                return self._tag_origin(parsed_results, "remote")
             except DocsHubClientNotConfigured:
                 remote_info = {}
             except DocsHubClientError as exc:
@@ -151,7 +169,8 @@ class DocsHubProvider(Provider):
                 vault=vault,
                 timeout=timeout,
             )
-            return [as_research_result(r) for r in raw_results]
+            parsed_results = [as_research_result(r) for r in raw_results]
+            return self._tag_origin(parsed_results, "local")
         except Exception as exc:  # pragma: no cover - network/IO errors
             logging.exception("DocsHubProvider local search failed")
             self._emit_error_sync(query, exc, "local")
