@@ -137,7 +137,9 @@ def test_parallel_provider_gathers_and_merges(monkeypatch):
     monkeypatch.setattr(
         provider,
         "_bing_search",
-        lambda q: [{"url": "bing", "description": "desc", "title": "t"}],
+        lambda *args, **kwargs: [
+            {"url": "bing", "description": "desc", "title": "t"}
+        ],
     )
 
     async def run():
@@ -158,7 +160,9 @@ def test_default_provider_formats_bing(monkeypatch):
     monkeypatch.setattr(
         provider,
         "_bing_search",
-        lambda q: [{"url": "u", "description": "d", "title": "t"}],
+        lambda *args, **kwargs: [
+            {"url": "u", "description": "d", "title": "t"}
+        ],
     )
     results = provider.search_sync("q", [])
     assert results == [

@@ -135,7 +135,9 @@ class DefaultProvider(Provider):
         # Cache summarization tasks by snippet text, keeping insertion order
         self._summary_tasks: OrderedDict[str, asyncio.Task] = OrderedDict()
 
-    def _bing_search(self, query: str) -> List[Dict[str, Any]]:
+    def _bing_search(
+        self, query: str, *, timeout: Optional[float] = None
+    ) -> List[Dict[str, Any]]:
         if self._bing is None:
             api_key = os.environ.get("BING_SEARCH_API_KEY")
             if not api_key:
@@ -144,7 +146,10 @@ class DefaultProvider(Provider):
                 bing_search_api_key=api_key, k=self.bing_k, **self.bing_kwargs
             )
         try:
-            return self._bing(query)
+            kwargs: Dict[str, Any] = {}
+            if timeout is not None:
+                kwargs["timeout"] = timeout
+            return self._bing(query, **kwargs)
         except Exception as e:  # pragma: no cover - network issues
             logging.error(f"Bing search failed for query {query}: {e}")
             event_emitter.emit_sync(
@@ -278,7 +283,7 @@ class DefaultProvider(Provider):
         if raw_results:
             results = [as_research_result(r) for r in raw_results]
         else:
-            web = self._bing_search(query)
+            web = self._bing_search(query, timeout=timeout)
             formatted = format_bing_items(web)
             results = [as_research_result(r) for r in formatted]
 
@@ -320,7 +325,7 @@ class DefaultProvider(Provider):
         if raw_results:
             results = [as_research_result(r) for r in raw_results]
         else:
-            web = await asyncio.to_thread(self._bing_search, query)
+            web = await asyncio.to_thread(self._bing_search, query, timeout=timeout)
             formatted = format_bing_items(web)
             results = [as_research_result(r) for r in formatted]
 

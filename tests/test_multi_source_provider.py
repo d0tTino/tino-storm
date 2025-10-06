@@ -27,7 +27,9 @@ def test_multi_source_provider_queries_all_sources(monkeypatch):
     monkeypatch.setattr(
         provider,
         "_bing_search",
-        lambda q: [{"url": "bing", "description": "desc", "title": "t"}],
+        lambda *args, **kwargs: [
+            {"url": "bing", "description": "desc", "title": "t"}
+        ],
     )
 
     async def docs_search_async(query, vaults, **kwargs):
@@ -67,7 +69,7 @@ def test_multi_source_provider_handles_source_failure(monkeypatch):
 
     provider = MultiSourceProvider()
 
-    def raise_bing(_q: str):
+    def raise_bing(*_args, **_kwargs):
         raise RuntimeError("boom")
 
     monkeypatch.setattr(provider, "_bing_search", raise_bing)
@@ -102,7 +104,9 @@ def test_multi_source_provider_search_sync_in_running_loop(monkeypatch):
     monkeypatch.setattr(
         provider,
         "_bing_search",
-        lambda q: [{"url": "bing", "description": "desc", "title": "t"}],
+        lambda *args, **kwargs: [
+            {"url": "bing", "description": "desc", "title": "t"}
+        ],
     )
 
     async def docs_search_async(query, vaults, **kwargs):

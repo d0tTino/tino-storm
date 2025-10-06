@@ -51,7 +51,7 @@ class MultiSourceProvider(DefaultProvider):
             vault=vault,
             timeout=timeout,
         )
-        bing_task = asyncio.to_thread(self._bing_search, query)
+        bing_task = asyncio.to_thread(self._bing_search, query, timeout=timeout)
 
         vault_res, docs_res, bing_res = await asyncio.gather(
             vault_task, docs_task, bing_task, return_exceptions=True
