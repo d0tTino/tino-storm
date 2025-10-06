@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Callable, Union, List
+from typing import Callable, Union, List, Optional
 
 import asyncio
 import backoff
@@ -105,6 +105,7 @@ class BingSearch(dspy.Retrieve):
         webpage_helper_max_threads=10,
         mkt="en-US",
         language="en",
+        timeout: Optional[float] = 10,
         **kwargs,
     ):
         """
@@ -131,6 +132,7 @@ class BingSearch(dspy.Retrieve):
             snippet_chunk_size=snippet_chunk_size,
             max_thread_num=webpage_helper_max_threads,
         )
+        self.timeout = timeout
         self.usage = 0
 
         # If not None, is_valid_source shall be a function that takes a URL and returns a boolean.
@@ -146,7 +148,11 @@ class BingSearch(dspy.Retrieve):
         return {"BingSearch": usage}
 
     def forward(
-        self, query_or_queries: Union[str, List[str]], exclude_urls: List[str] = []
+        self,
+        query_or_queries: Union[str, List[str]],
+        exclude_urls: List[str] = [],
+        *,
+        timeout: Optional[float] = None,
     ):
         """Search with Bing for self.k top passages for query or queries
 
@@ -175,7 +181,7 @@ class BingSearch(dspy.Retrieve):
                     self.endpoint,
                     headers=headers,
                     params={**self.params, "q": query},
-                    timeout=10,
+                    timeout=self.timeout if timeout is None else timeout,
                 ).json()
 
                 for d in results["webPages"]["value"]:

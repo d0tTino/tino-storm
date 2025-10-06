@@ -35,7 +35,7 @@ class ParallelProvider(DefaultProvider):
             vault=vault,
             timeout=timeout,
         )
-        bing_task = asyncio.to_thread(self._bing_search, query)
+        bing_task = asyncio.to_thread(self._bing_search, query, timeout=timeout)
         vault_res, bing_res = await asyncio.gather(vault_task, bing_task)
 
         rankings: List[List[Dict[str, Any]]] = []

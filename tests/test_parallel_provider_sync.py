@@ -9,7 +9,7 @@ def test_parallel_provider_search_sync_inside_event_loop(monkeypatch):
     )
 
     provider = ParallelProvider()
-    monkeypatch.setattr(provider, "_bing_search", lambda query: [])
+    monkeypatch.setattr(provider, "_bing_search", lambda *args, **kwargs: [])
 
     async def invoke_search_sync():
         return provider.search_sync("query", ["vault"])
