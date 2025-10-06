@@ -121,10 +121,13 @@ class DocsHubClient:
             normalised.append(item)
         return normalised
 
-    def _request_kwargs(self) -> MutableMapping[str, Any]:
+    def _request_kwargs(
+        self, *, timeout: Optional[float] = None
+    ) -> MutableMapping[str, Any]:
         kwargs: MutableMapping[str, Any] = {}
-        if self.timeout is not None:
-            kwargs["timeout"] = self.timeout
+        effective_timeout = timeout if timeout is not None else self.timeout
+        if effective_timeout is not None:
+            kwargs["timeout"] = effective_timeout
         return kwargs
 
     def search(
@@ -153,7 +156,7 @@ class DocsHubClient:
             timeout=timeout,
         )
         headers = self._build_headers()
-        request_kwargs = self._request_kwargs()
+        request_kwargs = self._request_kwargs(timeout=timeout)
         try:
             with httpx.Client(**request_kwargs) as client:
                 response = client.post(self.base_url, headers=headers, json=payload)
@@ -188,7 +191,7 @@ class DocsHubClient:
             timeout=timeout,
         )
         headers = self._build_headers()
-        request_kwargs = self._request_kwargs()
+        request_kwargs = self._request_kwargs(timeout=timeout)
         try:
             async with httpx.AsyncClient(**request_kwargs) as client:
                 response = await client.post(self.base_url, headers=headers, json=payload)

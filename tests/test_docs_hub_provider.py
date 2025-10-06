@@ -197,6 +197,35 @@ def test_docs_hub_provider_remote_success(monkeypatch):
     assert [r.url for r in async_results] == ["remote"]
 
 
+def test_docs_hub_provider_passes_timeout():
+    import tino_storm.providers.docs_hub as docs_hub
+
+    class RemoteClient:
+        base_url = "https://docs"
+        is_configured = True
+
+        def __init__(self):
+            self.sync_timeout = None
+            self.async_timeout = None
+
+        def search(self, *args, **kwargs):
+            self.sync_timeout = kwargs.get("timeout")
+            return []
+
+        async def search_async(self, *args, **kwargs):
+            self.async_timeout = kwargs.get("timeout")
+            return []
+
+    remote_client = RemoteClient()
+    provider = docs_hub.DocsHubProvider(client=remote_client)
+
+    provider.search_sync("topic", ["vault"], timeout=7.5)
+    assert remote_client.sync_timeout == 7.5
+
+    asyncio.run(provider.search_async("topic", ["vault"], timeout=8.5))
+    assert remote_client.async_timeout == 8.5
+
+
 def test_docs_hub_provider_remote_failure_falls_back(monkeypatch):
     import tino_storm.providers.docs_hub as docs_hub
 

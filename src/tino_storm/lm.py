@@ -5,6 +5,7 @@ import logging
 import os
 import random
 import threading
+import warnings
 from pathlib import Path
 from typing import Any, Literal, Optional
 
@@ -37,9 +38,7 @@ except ImportError:
 ############################
 # Code copied from https://github.com/stanfordnlp/dspy/blob/main/dspy/clients/lm.py on Sep 29, 2024
 
-# try:
-import warnings
-
+# Suppress LiteLLM warnings during import and configuration.
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore", category=UserWarning)
     if "LITELLM_LOCAL_MODEL_COST_MAP" not in os.environ:
