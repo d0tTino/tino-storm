@@ -24,6 +24,7 @@ def test_multi_source_provider_queries_all_sources(monkeypatch):
     )
 
     provider = MultiSourceProvider()
+    provider.docs_provider._client = type("Client", (), {"is_configured": True})()
     monkeypatch.setattr(
         provider,
         "_bing_search",
@@ -68,6 +69,7 @@ def test_multi_source_provider_handles_source_failure(monkeypatch):
     )
 
     provider = MultiSourceProvider()
+    provider.docs_provider._client = type("Client", (), {"is_configured": True})()
 
     def raise_bing(*_args, **_kwargs):
         raise RuntimeError("boom")
@@ -90,6 +92,37 @@ def test_multi_source_provider_handles_source_failure(monkeypatch):
     assert events[0].information_table["error"] == "boom"
 
 
+def test_multi_source_provider_skips_duplicate_local_search(monkeypatch):
+    call_count = 0
+
+    async def fake_to_thread(func, *a, **k):
+        return func(*a, **k)
+
+    def fake_search_vaults(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        return [{"url": "vault", "snippets": [], "meta": {}}]
+
+    monkeypatch.setattr(asyncio, "to_thread", fake_to_thread)
+    monkeypatch.setattr(
+        "tino_storm.providers.multi_source.search_vaults", fake_search_vaults
+    )
+    monkeypatch.setattr("tino_storm.providers.docs_hub.search_vaults", fake_search_vaults)
+
+    provider = MultiSourceProvider()
+    provider.docs_provider._client = None
+
+    monkeypatch.setattr(provider, "_bing_search", lambda q: [])
+
+    async def run():
+        return await provider.search_async("query", ["vault"])
+
+    results = asyncio.run(run())
+
+    assert call_count == 1
+    assert {r.url for r in results} == {"vault"}
+
+
 def test_multi_source_provider_search_sync_in_running_loop(monkeypatch):
     async def fake_to_thread(func, *a, **k):
         return func(*a, **k)
@@ -101,6 +134,7 @@ def test_multi_source_provider_search_sync_in_running_loop(monkeypatch):
     )
 
     provider = MultiSourceProvider()
+    provider.docs_provider._client = type("Client", (), {"is_configured": True})()
     monkeypatch.setattr(
         provider,
         "_bing_search",

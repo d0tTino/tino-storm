@@ -32,16 +32,25 @@ class MultiSourceProvider(DefaultProvider):
         vault: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
-        vault_task = asyncio.to_thread(
-            search_vaults,
-            query,
-            vaults,
-            k_per_vault=k_per_vault,
-            rrf_k=rrf_k,
-            chroma_path=chroma_path,
-            vault=vault,
-            timeout=timeout,
-        )
+        tasks = []
+        task_names: List[str] = []
+
+        docs_will_handle_local = not self.docs_provider.is_remote_configured
+
+        if not docs_will_handle_local:
+            vault_task = asyncio.to_thread(
+                search_vaults,
+                query,
+                vaults,
+                k_per_vault=k_per_vault,
+                rrf_k=rrf_k,
+                chroma_path=chroma_path,
+                vault=vault,
+                timeout=timeout,
+            )
+            tasks.append(vault_task)
+            task_names.append("vault")
+
         docs_task = self.docs_provider.search_async(
             query,
             vaults,
@@ -52,10 +61,30 @@ class MultiSourceProvider(DefaultProvider):
             timeout=timeout,
         )
         bing_task = asyncio.to_thread(self._bing_search, query, timeout=timeout)
+        tasks.append(docs_task)
+        task_names.append("docs")
 
-        vault_res, docs_res, bing_res = await asyncio.gather(
-            vault_task, docs_task, bing_task, return_exceptions=True
+        bing_task = asyncio.to_thread(self._bing_search, query)
+        tasks.append(bing_task)
+        task_names.append("bing")
+
+        gathered_results = await asyncio.gather(*tasks, return_exceptions=True)
+        results_map = dict(zip(task_names, gathered_results))
+
+        vault_res = results_map.get("vault") if "vault" in results_map else None
+        docs_res = results_map.get("docs")
+        bing_res = results_map.get("bing")
+
+        docs_used_local = (
+            not isinstance(docs_res, Exception)
+            and bool(docs_res)
+            and all(
+                getattr(r, "meta", {}).get("docs_hub_origin") == "local" for r in docs_res
+            )
         )
+
+        if docs_used_local:
+            vault_res = None
 
         rankings: List[List[Dict[str, Any]]] = []
 
@@ -64,6 +93,8 @@ class MultiSourceProvider(DefaultProvider):
             ("docs", docs_res),
             ("bing", bing_res),
         ):
+            if res is None:
+                continue
             if isinstance(res, Exception):
                 logging.exception("%s search failed in MultiSourceProvider", source)
                 await event_emitter.emit(
