@@ -89,6 +89,16 @@ class SlowProvider(Provider):
         return [ResearchResult(url="slow", snippets=[], meta={})]
 
 
+class AsyncOnlyProvider(Provider):
+    name = "async-only"
+
+    async def search_async(self, query, vaults, **kwargs):
+        return [ResearchResult(url="async-only", snippets=[], meta={})]
+
+    def search_sync(self, query, vaults, **kwargs):
+        raise NotImplementedError
+
+
 class RankingProvider(Provider):
     def __init__(self, name: str, payload):
         self.name = name
@@ -210,6 +220,22 @@ def test_search_sync_dedupes_and_emits_event(monkeypatch):
     assert len(events) == 1
     assert events[0].topic == "failing"
     assert events[0].information_table["error"] == "boom"
+
+
+def test_search_sync_falls_back_to_async_provider(monkeypatch):
+    monkeypatch.setattr(event_emitter, "_subscribers", {})
+    events: List[ResearchAdded] = []
+
+    def handler(event: ResearchAdded) -> None:
+        events.append(event)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+
+    provider = ProviderAggregator([DummyProvider("sync"), AsyncOnlyProvider()])
+
+    results = provider.search_sync("q", [])
+    assert {r.url for r in results} == {"sync", "async-only"}
+    assert events == []
 
 
 def test_aggregator_returns_research_results():
