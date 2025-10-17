@@ -15,7 +15,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Set
 from urllib.parse import urlsplit, urlunsplit
 
 
-from .base import Provider, load_provider
+from .base import Provider, load_provider, _run_coroutine_in_new_loop
 from .registry import provider_registry
 from ..retrieval.rrf import reciprocal_rank_fusion
 from ..search_result import ResearchResult
@@ -235,6 +235,36 @@ class ProviderAggregator(Provider):
             for provider, future in zip(self.providers, futures):
                 try:
                     r = future.result(timeout=actual_timeout)
+                except NotImplementedError:
+                    try:
+                        coroutine = provider.search_async(
+                            query,
+                            vaults,
+                            k_per_vault=k_per_vault,
+                            rrf_k=rrf_k,
+                            chroma_path=chroma_path,
+                            vault=vault,
+                            timeout=actual_timeout,
+                        )
+                        if actual_timeout is not None:
+                            coroutine = asyncio.wait_for(
+                                coroutine, timeout=actual_timeout
+                            )
+                        r = _run_coroutine_in_new_loop(coroutine)
+                    except Exception as e:
+                        logging.exception(
+                            "Provider %s failed in search_sync fallback", provider
+                        )
+                        provider_name = getattr(
+                            provider, "name", provider.__class__.__name__
+                        )
+                        event_emitter.emit_sync(
+                            ResearchAdded(
+                                topic=provider_name,
+                                information_table={"error": str(e)},
+                            )
+                        )
+                        continue
                 except FuturesTimeoutError:
                     logging.exception("Provider %s timed out in search_sync", provider)
                     provider_name = getattr(
@@ -246,6 +276,7 @@ class ProviderAggregator(Provider):
                             information_table={"error": "timeout"},
                         )
                     )
+                    continue
                 except Exception as e:  # pragma: no cover - defensive
                     logging.exception("Provider %s failed in search_sync", provider)
                     provider_name = getattr(
@@ -257,8 +288,8 @@ class ProviderAggregator(Provider):
                             information_table={"error": str(e)},
                         )
                     )
-                else:
-                    aggregated.append(r)
+                    continue
+                aggregated.append(r)
 
         limit = min(k_per_vault, rrf_k) if k_per_vault is not None else rrf_k
         return _fuse_results(aggregated, limit=limit, rrf_k=rrf_k)
