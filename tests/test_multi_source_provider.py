@@ -92,6 +92,40 @@ def test_multi_source_provider_handles_source_failure(monkeypatch):
     assert events[0].information_table["error"] == "boom"
 
 
+def test_multi_source_provider_propagates_timeout(monkeypatch):
+    async def fake_to_thread(func, *a, **k):
+        return func(*a, **k)
+
+    monkeypatch.setattr(asyncio, "to_thread", fake_to_thread)
+    monkeypatch.setattr(
+        "tino_storm.providers.multi_source.search_vaults",
+        lambda *a, **k: [{"url": "vault", "snippets": [], "meta": {}}],
+    )
+
+    provider = MultiSourceProvider()
+    provider.docs_provider._client = type("Client", (), {"is_configured": True})()
+
+    captured_kwargs: dict[str, object] = {}
+
+    def capture_bing(*_args, **kwargs):
+        captured_kwargs.update(kwargs)
+        return []
+
+    monkeypatch.setattr(provider, "_bing_search", capture_bing)
+
+    async def docs_search_async(query, vaults, **kwargs):
+        return [ResearchResult(url="docs", snippets=[], meta={})]
+
+    monkeypatch.setattr(provider.docs_provider, "search_async", docs_search_async)
+
+    async def run():
+        return await provider.search_async("q", ["v"], timeout=42.0)
+
+    asyncio.run(run())
+
+    assert captured_kwargs["timeout"] == 42.0
+
+
 def test_multi_source_provider_skips_duplicate_local_search(monkeypatch):
     call_count = 0
 
