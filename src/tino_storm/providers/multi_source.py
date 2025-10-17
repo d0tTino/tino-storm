@@ -64,7 +64,6 @@ class MultiSourceProvider(DefaultProvider):
         tasks.append(docs_task)
         task_names.append("docs")
 
-        bing_task = asyncio.to_thread(self._bing_search, query)
         tasks.append(bing_task)
         task_names.append("bing")
 
