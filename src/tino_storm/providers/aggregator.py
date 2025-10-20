@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Iterable as IterableABC
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set
 from urllib.parse import urlsplit, urlunsplit
@@ -41,6 +42,52 @@ def canonical_url(url: str) -> str:
     return urlunsplit((scheme, netloc, path, "", ""))
 
 
+def _normalize_provider_ids(value: Any) -> List[str]:
+    """Return provider identifiers in *value* as an ordered list."""
+
+    if not value:
+        return []
+
+    if isinstance(value, str):
+        return [value]
+
+    if isinstance(value, IterableABC):
+        normalized: List[str] = []
+        for item in value:
+            if not item:
+                continue
+            text = str(item)
+            if text not in normalized:
+                normalized.append(text)
+        return normalized
+
+    return [str(value)]
+
+
+def _merge_provider_ids(*metas: Dict[str, Any]) -> List[str]:
+    """Combine provider identifiers stored in ``providers`` metadata keys."""
+
+    combined: List[str] = []
+    for meta in metas:
+        providers = _normalize_provider_ids(meta.get("providers")) if meta else []
+        for provider_id in providers:
+            if provider_id not in combined:
+                combined.append(provider_id)
+    return combined
+
+
+def _annotate_provider(result: ResearchResult, provider_id: str) -> None:
+    """Ensure the given *result* tracks ``provider_id`` provenance."""
+
+    meta = dict(result.meta) if result.meta else {}
+    providers = _normalize_provider_ids(meta.get("providers"))
+    if provider_id not in providers:
+        providers.append(provider_id)
+    if providers:
+        meta["providers"] = providers
+    result.meta = meta
+
+
 def _update_best_metadata(existing: ResearchResult, candidate: ResearchResult) -> None:
     """Merge ``candidate`` metadata into ``existing`` preferring richer fields."""
 
@@ -68,6 +115,9 @@ def _update_best_metadata(existing: ResearchResult, candidate: ResearchResult) -
     if candidate.meta:
         merged_meta = dict(existing.meta)
         merged_meta.update(candidate.meta)
+        provider_ids = _merge_provider_ids(existing.meta, candidate.meta)
+        if provider_ids:
+            merged_meta["providers"] = provider_ids
         existing.meta = merged_meta
 
 
@@ -198,7 +248,13 @@ class ProviderAggregator(Provider):
                 )
                 continue
 
-            aggregated.append(r)
+            provider_name = getattr(provider, "name", provider.__class__.__name__)
+            annotated: List[ResearchResult] = []
+            for result in r:
+                _annotate_provider(result, provider_name)
+                annotated.append(result)
+
+            aggregated.append(annotated)
 
         limit = min(k_per_vault, rrf_k) if k_per_vault is not None else rrf_k
         return _fuse_results(aggregated, limit=limit, rrf_k=rrf_k)
@@ -289,7 +345,13 @@ class ProviderAggregator(Provider):
                         )
                     )
                     continue
-                aggregated.append(r)
+                provider_name = getattr(provider, "name", provider.__class__.__name__)
+                annotated: List[ResearchResult] = []
+                for result in r:
+                    _annotate_provider(result, provider_name)
+                    annotated.append(result)
+
+                aggregated.append(annotated)
 
         limit = min(k_per_vault, rrf_k) if k_per_vault is not None else rrf_k
         return _fuse_results(aggregated, limit=limit, rrf_k=rrf_k)

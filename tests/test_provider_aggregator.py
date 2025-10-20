@@ -124,6 +124,32 @@ class RankingProvider(Provider):
         return self._build()
 
 
+class ProvenanceProvider(Provider):
+    def __init__(self, name: str, summary: str):
+        self.name = name
+        self._summary = summary
+
+    async def search_async(self, query, vaults, **kwargs):
+        return [
+            ResearchResult(
+                url="https://example.com/shared",
+                snippets=[f"snippet-{self.name}"],
+                meta={"source": self.name},
+                summary=self._summary,
+            )
+        ]
+
+    def search_sync(self, query, vaults, **kwargs):
+        return [
+            ResearchResult(
+                url="https://example.com/shared",
+                snippets=[f"snippet-{self.name}"],
+                meta={"source": self.name},
+                summary=self._summary,
+            )
+        ]
+
+
 def test_resolve_provider_aggregates_and_runs_concurrently(monkeypatch):
     monkeypatch.setattr(provider_registry, "_providers", {})
     provider_registry.register("p1", DummyProvider("p1"))
@@ -402,6 +428,7 @@ def test_rrf_fusion_preserves_metadata_and_trims():
     assert top.score == 0.95
     assert top.posterior == 0.8
     assert top.meta["source"] == "b"
+    assert top.meta["providers"] == ["a", "b"]
 
     sync_results = aggregator.search_sync("q", [], k_per_vault=3, rrf_k=2)
     assert [canonical_url(r.url) for r in sync_results] == [
@@ -409,3 +436,22 @@ def test_rrf_fusion_preserves_metadata_and_trims():
         "https://example.com/a",
     ]
     assert len(sync_results) == 2
+    assert sync_results[0].meta["providers"] == ["a", "b"]
+
+
+def test_aggregator_records_provider_provenance():
+    provider_a = ProvenanceProvider("alpha", "Short")
+    provider_b = ProvenanceProvider("beta", "A much longer beta summary")
+    aggregator = ProviderAggregator([provider_a, provider_b])
+
+    async_results = asyncio.run(aggregator.search_async("query", []))
+    assert len(async_results) == 1
+    async_meta = async_results[0].meta
+    assert async_meta["providers"] == ["alpha", "beta"]
+    assert async_meta["source"] in {"alpha", "beta"}
+
+    sync_results = aggregator.search_sync("query", [])
+    assert len(sync_results) == 1
+    sync_meta = sync_results[0].meta
+    assert sync_meta["providers"] == ["alpha", "beta"]
+    assert sync_meta["source"] in {"alpha", "beta"}

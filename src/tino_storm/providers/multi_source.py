@@ -102,15 +102,23 @@ class MultiSourceProvider(DefaultProvider):
                 res = []
 
             if source == "vault" and res:
-                rankings.append(res)
+                annotated_vault: List[Dict[str, Any]] = []
+                for item in res:
+                    entry = dict(item)
+                    meta = dict(entry.get("meta") or {})
+                    meta.setdefault("source", "vault")
+                    entry["meta"] = meta
+                    annotated_vault.append(entry)
+                rankings.append(annotated_vault)
             elif source == "docs" and res:
                 formatted_docs: List[Dict[str, Any]] = []
                 for r in res:
                     info: Dict[str, Any] = {
                         "url": r.url,
                         "snippets": r.snippets,
-                        "meta": r.meta,
+                        "meta": dict(r.meta),
                     }
+                    info["meta"].setdefault("source", "docs_hub")
                     if r.summary is not None:
                         info["summary"] = r.summary
                     if r.score is not None:
