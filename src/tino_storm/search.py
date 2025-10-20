@@ -10,6 +10,8 @@ from .providers import (
     Provider,
     provider_registry,
     ProviderAggregator,
+    get_docs_hub_provider,
+    get_vector_db_provider,
 )
 from .events import ResearchAdded, event_emitter
 from .search_result import ResearchResult
@@ -69,7 +71,32 @@ def _resolve_provider(provider: Provider | str | None) -> Provider:
                 logging.exception("Failed to load provider '%s'", spec)
                 _emit_load_error(spec, e)
                 raise ResearchError(str(e), provider_spec=spec) from e
-        return _get_or_create_provider(_DEFAULT_PROVIDER_CACHE_KEY, DefaultProvider)
+        default_provider = _get_or_create_provider(
+            _DEFAULT_PROVIDER_CACHE_KEY, DefaultProvider
+        )
+
+        extras: List[Provider] = []
+
+        docs_hub_provider = get_docs_hub_provider()
+        if docs_hub_provider is not None:
+            extras.append(docs_hub_provider)
+
+        vector_provider = get_vector_db_provider()
+        if vector_provider is not None and vector_provider not in extras:
+            extras.append(vector_provider)
+
+        if extras:
+            extra_names = [
+                getattr(p, "name", None) or p.__class__.__name__ for p in extras
+            ]
+            cache_key = "__aggregated__:" + ",".join(extra_names)
+
+            def factory() -> Provider:
+                return ProviderAggregator([default_provider, *extras])
+
+            return _get_or_create_provider(cache_key, factory)
+
+        return default_provider
     if isinstance(provider, str):
         if "," in provider:
             specs = _split_provider_specs(provider)
