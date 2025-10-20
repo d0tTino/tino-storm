@@ -70,10 +70,20 @@ def format_bing_items(items: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
         if not url:
             continue
         snippets = item.get("snippets") or [item.get("description", "")]
-        formatted.append(
-            {"url": url, "snippets": snippets, "meta": {"title": item.get("title")}}
-        )
+        meta: Dict[str, Any] = {"source": "bing"}
+        if "title" in item:
+            meta["title"] = item.get("title")
+        formatted.append({"url": url, "snippets": snippets, "meta": meta})
     return formatted
+
+
+def _ensure_source(results: Iterable[ResearchResult], source: str) -> None:
+    """Attach a ``source`` hint to each result when missing."""
+
+    for result in results:
+        meta = dict(result.meta) if result.meta else {}
+        meta.setdefault("source", source)
+        result.meta = meta
 
 
 class Provider(ABC):
@@ -282,10 +292,12 @@ class DefaultProvider(Provider):
         )
         if raw_results:
             results = [as_research_result(r) for r in raw_results]
+            _ensure_source(results, "vault")
         else:
             web = self._bing_search(query, timeout=timeout)
             formatted = format_bing_items(web)
             results = [as_research_result(r) for r in formatted]
+            _ensure_source(results, "bing")
 
         unsummarized = [res for res in results if not getattr(res, "summary", None)]
         if unsummarized:
@@ -324,10 +336,12 @@ class DefaultProvider(Provider):
         )
         if raw_results:
             results = [as_research_result(r) for r in raw_results]
+            _ensure_source(results, "vault")
         else:
             web = await asyncio.to_thread(self._bing_search, query, timeout=timeout)
             formatted = format_bing_items(web)
             results = [as_research_result(r) for r in formatted]
+            _ensure_source(results, "bing")
 
         unsummarized = [res for res in results if not getattr(res, "summary", None)]
         if unsummarized:

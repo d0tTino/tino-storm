@@ -48,6 +48,11 @@ def test_multi_source_provider_queries_all_sources(monkeypatch):
     bing_result = next(r for r in results if r.url == "bing")
     assert bing_result.snippets == ["desc"]
     assert bing_result.meta["title"] == "t"
+    assert bing_result.meta["source"] == "bing"
+    vault_result = next(r for r in results if r.url == "vault")
+    assert vault_result.meta["source"] == "vault"
+    docs_result = next(r for r in results if r.url == "docs")
+    assert docs_result.meta["source"] == "docs_hub"
 
 
 def test_multi_source_provider_handles_source_failure(monkeypatch):
@@ -90,6 +95,11 @@ def test_multi_source_provider_handles_source_failure(monkeypatch):
     assert len(events) == 1
     assert events[0].topic == "q"
     assert events[0].information_table["error"] == "boom"
+    for result in results:
+        if result.url == "vault":
+            assert result.meta["source"] == "vault"
+        elif result.url == "docs":
+            assert result.meta["source"] == "docs_hub"
 
 
 def test_multi_source_provider_propagates_timeout(monkeypatch):
@@ -155,6 +165,7 @@ def test_multi_source_provider_skips_duplicate_local_search(monkeypatch):
 
     assert call_count == 1
     assert {r.url for r in results} == {"vault"}
+    assert results[0].meta["source"] == "docs_hub"
 
 
 def test_multi_source_provider_search_sync_in_running_loop(monkeypatch):
@@ -190,3 +201,10 @@ def test_multi_source_provider_search_sync_in_running_loop(monkeypatch):
     results = asyncio.run(run_sync_call())
 
     assert {r.url for r in results} == {"vault", "docs", "bing"}
+    for result in results:
+        if result.url == "vault":
+            assert result.meta["source"] == "vault"
+        elif result.url == "docs":
+            assert result.meta["source"] == "docs_hub"
+        elif result.url == "bing":
+            assert result.meta["source"] == "bing"
