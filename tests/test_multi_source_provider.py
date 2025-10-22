@@ -208,3 +208,52 @@ def test_multi_source_provider_search_sync_in_running_loop(monkeypatch):
             assert result.meta["source"] == "docs_hub"
         elif result.url == "bing":
             assert result.meta["source"] == "bing"
+
+
+def test_multi_source_provider_merges_duplicate_sources(monkeypatch):
+    async def fake_to_thread(func, *a, **k):
+        return func(*a, **k)
+
+    monkeypatch.setattr(asyncio, "to_thread", fake_to_thread)
+
+    vault_url = "https://example.com/page?from=vault"
+    docs_url = "https://example.com/page?from=docs"
+
+    monkeypatch.setattr(
+        "tino_storm.providers.multi_source.search_vaults",
+        lambda *a, **k: [
+            {
+                "url": vault_url,
+                "snippets": ["vault snippet"],
+                "meta": {"vault_flag": True},
+            }
+        ],
+    )
+
+    provider = MultiSourceProvider()
+    provider.docs_provider._client = type("Client", (), {"is_configured": True})()
+
+    monkeypatch.setattr(provider, "_bing_search", lambda *a, **k: [])
+
+    async def docs_search_async(*_args, **_kwargs):
+        return [
+            ResearchResult(
+                url=docs_url,
+                snippets=["docs snippet"],
+                meta={"docs_flag": True},
+            )
+        ]
+
+    monkeypatch.setattr(provider.docs_provider, "search_async", docs_search_async)
+
+    async def run():
+        return await provider.search_async("query", ["vault"])
+
+    results = asyncio.run(run())
+
+    assert len(results) == 1
+    result = results[0]
+    assert result.url in {vault_url, docs_url}
+    assert result.meta["vault_flag"] is True
+    assert result.meta["docs_flag"] is True
+    assert set(result.meta["providers"]) == {"vault", "docs_hub"}
