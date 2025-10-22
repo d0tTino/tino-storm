@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-import os
 import atexit
 import asyncio
+import logging
+import os
 from pathlib import Path
-from typing import Any, Iterable, List, Dict, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 import chromadb
 
 from .utils import list_vaults  # noqa: F401
+from ..events import ResearchAdded, event_emitter
 from ..security import (
     get_passphrase,
     encrypt_parquet_enabled,
@@ -79,7 +81,17 @@ def search_vaults(
                 res = collection.query(query_texts=[query], n_results=k_per_vault)
         except asyncio.TimeoutError:
             raise
-        except Exception:
+        except Exception as exc:
+            logging.exception("Error querying vault collection: %s", vault_name)
+            event_emitter.emit_sync(
+                ResearchAdded(
+                    topic=vault_name,
+                    information_table={
+                        "vault": vault_name,
+                        "error": str(exc),
+                    },
+                )
+            )
             res = {"documents": [[]], "metadatas": [[]]}
 
         docs = res.get("documents", [[]])[0] or []
