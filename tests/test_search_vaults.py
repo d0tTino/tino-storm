@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 
@@ -6,6 +7,7 @@ if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 from tino_storm.ingest.search import search_vaults  # noqa: E402
+from tino_storm.events import ResearchAdded, event_emitter  # noqa: E402
 
 
 class DummyCollection:
@@ -65,3 +67,40 @@ def test_search_vaults_rrf(monkeypatch):
 
     # expected RRF order with k=5
     assert [r["url"] for r in results] == ["docA", "docC", "docB"]
+
+
+def test_search_vaults_failure_emits_event(monkeypatch, caplog):
+    client = _make_client()
+
+    class BoomCollection:
+        def query(self, *args, **kwargs):
+            raise RuntimeError("boom")
+
+    client.collections["v1"] = BoomCollection()
+
+    monkeypatch.setattr("chromadb.PersistentClient", lambda *a, **k: client)
+    monkeypatch.setattr(
+        "tino_storm.ingest.search.get_passphrase", lambda vault=None: None
+    )
+    monkeypatch.setattr("tino_storm.ingest.search.score_results", lambda x: x)
+    monkeypatch.setattr(event_emitter, "_subscribers", {})
+
+    events: list[ResearchAdded] = []
+
+    def handler(event: ResearchAdded) -> None:
+        events.append(event)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+
+    with caplog.at_level(logging.ERROR):
+        results = search_vaults("q", ["v1"], k_per_vault=2, rrf_k=5)
+
+    assert results == []
+    assert len(events) == 1
+    assert events[0].topic == "q"
+    assert events[0].information_table["stage"] == "local"
+    assert events[0].information_table["vault"] == "v1"
+    assert "boom" in events[0].information_table["error"]
+    assert any(
+        "search_vaults query failed" in record.getMessage() for record in caplog.records
+    )
