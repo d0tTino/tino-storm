@@ -10,6 +10,7 @@ from typing import Any, Dict, Iterable, List, Optional
 import chromadb
 
 from .utils import list_vaults  # noqa: F401
+from ..events import ResearchAdded, event_emitter
 from ..security import (
     get_passphrase,
     encrypt_parquet_enabled,
@@ -93,6 +94,14 @@ def search_vaults(
                         "stage": "local",
                         "vault": vault_name,
                         "provider": "search_vaults",
+        except Exception as exc:
+            logging.exception("Error querying vault collection: %s", vault_name)
+            event_emitter.emit_sync(
+                ResearchAdded(
+                    topic=vault_name,
+                    information_table={
+                        "vault": vault_name,
+                        "error": str(exc),
                     },
                 )
             )
