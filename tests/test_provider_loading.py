@@ -165,9 +165,13 @@ def test_default_provider_formats_bing(monkeypatch):
         ],
     )
     results = provider.search_sync("q", [])
-    assert results == [
-        ResearchResult(url="u", snippets=["d"], meta={"title": "t"}, summary="d")
-    ]
+    assert len(results) == 1
+    result = results[0]
+    assert result.url == "u"
+    assert result.snippets == ["d"]
+    assert result.summary == "d"
+    assert result.meta["title"] == "t"
+    assert result.meta["source"] == "bing"
 
 
 def test_resolve_provider_caches_instance(monkeypatch):

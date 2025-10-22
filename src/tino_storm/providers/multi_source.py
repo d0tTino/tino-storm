@@ -4,6 +4,7 @@ import asyncio
 import logging
 from typing import Iterable, List, Dict, Any, Optional, Set
 
+from .aggregator import canonical_url, _update_best_metadata
 from .base import DefaultProvider, format_bing_items, _run_coroutine_in_new_loop
 from .aggregator import canonical_url, _update_best_metadata
 from .docs_hub import DocsHubProvider
@@ -12,6 +13,24 @@ from ..events import ResearchAdded, event_emitter
 from ..ingest import search_vaults
 from ..retrieval import reciprocal_rank_fusion, score_results, add_posteriors
 from ..search_result import ResearchResult, as_research_result
+
+
+def _ensure_provenance(meta: Dict[str, Any], provider_id: str) -> Dict[str, Any]:
+    """Return ``meta`` annotated with the given ``provider_id`` provenance."""
+
+    existing = meta.get("providers")
+    if not existing:
+        providers: List[str] = []
+    elif isinstance(existing, list):
+        providers = [str(p) for p in existing if p]
+    else:
+        providers = [str(existing)]
+
+    if provider_id not in providers:
+        providers.append(provider_id)
+
+    meta["providers"] = providers
+    return meta
 
 
 @register_provider("multi_source")
@@ -131,12 +150,29 @@ class MultiSourceProvider(DefaultProvider):
                     entry = dict(item)
                     meta = dict(entry.get("meta") or {})
                     meta.setdefault("source", "vault")
+                    _ensure_provenance(meta, "vault")
                     entry["meta"] = meta
                     annotated_vault.append(as_research_result(entry))
                 add_ranked_results(annotated_vault)
             elif source == "docs" and res:
                 formatted_docs: List[ResearchResult] = []
                 for r in res:
+                    info: Dict[str, Any] = {
+                        "url": r.url,
+                        "snippets": r.snippets,
+                        "meta": dict(r.meta),
+                    }
+                    info["meta"].setdefault("source", "docs_hub")
+                    _ensure_provenance(info["meta"], "docs_hub")
+                    if r.summary is not None:
+                        info["summary"] = r.summary
+                    if r.score is not None:
+                        info["score"] = r.score
+                    if r.posterior is not None:
+                        info["posterior"] = r.posterior
+                    formatted_docs.append(info)
+
+                rankings.append(formatted_docs)
                     meta = dict(r.meta) if r.meta else {}
                     meta.setdefault("source", "docs_hub")
                     formatted_docs.append(
@@ -153,6 +189,10 @@ class MultiSourceProvider(DefaultProvider):
                 add_ranked_results(formatted_docs)
             elif source == "bing":
                 formatted = format_bing_items(res)
+                for item in formatted:
+                    meta = dict(item.get("meta") or {})
+                    _ensure_provenance(meta, "bing")
+                    item["meta"] = meta
                 if formatted:
                     scored = score_results(formatted)
                     bing_results = [as_research_result(item) for item in scored]
@@ -161,6 +201,21 @@ class MultiSourceProvider(DefaultProvider):
         if not canonical_to_result:
             return []
 
+        fused = reciprocal_rank_fusion(rankings, k=rrf_k)
+        scored = add_posteriors(fused)
+        results = [as_research_result(r) for r in scored]
+
+        deduped: Dict[str, ResearchResult] = {}
+        order: List[str] = []
+        for result in results:
+            key = canonical_url(result.url) if result.url else result.url
+            if key not in deduped:
+                deduped[key] = result
+                order.append(key)
+            else:
+                _update_best_metadata(deduped[key], result)
+
+        return [deduped[key] for key in order]
         ordered_results: List[ResearchResult]
         if rankings:
             fused = reciprocal_rank_fusion(rankings, k=rrf_k)
