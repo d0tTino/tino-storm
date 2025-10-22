@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import os
 import atexit
 import asyncio
+import logging
+import os
 from pathlib import Path
-from typing import Any, Iterable, List, Dict, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 import chromadb
 
@@ -19,6 +20,7 @@ from ..security.encrypted_chroma import EncryptedChroma
 from ..retrieval.rrf import reciprocal_rank_fusion
 from ..retrieval.scoring import score_results
 from ..retrieval.bayes import add_posteriors
+from ..events import ResearchAdded, event_emitter
 
 
 def search_vaults(
@@ -79,7 +81,21 @@ def search_vaults(
                 res = collection.query(query_texts=[query], n_results=k_per_vault)
         except asyncio.TimeoutError:
             raise
-        except Exception:
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logging.exception(
+                "search_vaults query failed for vault %s", vault_name
+            )
+            event_emitter.emit_sync(
+                ResearchAdded(
+                    topic=query,
+                    information_table={
+                        "error": str(exc),
+                        "stage": "local",
+                        "vault": vault_name,
+                        "provider": "search_vaults",
+                    },
+                )
+            )
             res = {"documents": [[]], "metadatas": [[]]}
 
         docs = res.get("documents", [[]])[0] or []
