@@ -3,6 +3,7 @@ import dataclasses
 import importlib.machinery
 import logging
 import sys
+import threading
 import types
 
 import knowledge_storm
@@ -279,6 +280,108 @@ def test_ingestion_failure_emits_event(monkeypatch, tmp_path, caplog):
     assert "Error ingesting article" in caplog.text
 
 
+def test_run_research_ingests_article_success(monkeypatch, tmp_path):
+    events: list[ResearchAdded] = []
+
+    def handler(event: ResearchAdded) -> None:
+        events.append(event)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+
+    class RunnerStub(DummyRunner):
+        def __init__(self, output_dir: str):
+            super().__init__(output_dir)
+            self.post_called = 0
+
+        def run(self, **kwargs):
+            super().run(**kwargs)
+            article_path = tmp_path / "storm_gen_article_polished.txt"
+            article_path.write_text("polished content", encoding="utf-8")
+
+        def post_run(self):
+            self.post_called += 1
+
+    runner_inst = RunnerStub(str(tmp_path))
+    monkeypatch.setattr(api_module, "_make_default_runner", lambda dir_: runner_inst)
+
+    captured: dict[str, object] = {}
+
+    class SuccessfulHandler:
+        def __init__(self, root, **kwargs):
+            captured["root"] = root
+            captured["vault"] = kwargs.get("vault")
+
+        def _ingest_text(self, text, source, vault):
+            captured["ingest"] = (text, source, vault)
+            event_emitter.emit_sync(
+                ResearchAdded(
+                    topic=vault,
+                    information_table={"source": source, "size": len(text)},
+                )
+            )
+
+    monkeypatch.setattr("tino_storm.ingest.watcher.VaultIngestHandler", SuccessfulHandler)
+
+    try:
+        api_module.run_research(
+            topic="t",
+            output_dir=str(tmp_path),
+            vault="vault-topic",
+        )
+    finally:
+        event_emitter.unsubscribe(ResearchAdded, handler)
+
+    assert runner_inst.post_called == 1
+    assert captured["vault"] == "vault-topic"
+    ingested = captured["ingest"]
+    assert isinstance(ingested, tuple) and ingested[0] == "polished content"
+    assert events and events[-1].topic == "vault-topic"
+    assert events[-1].information_table["source"] == ingested[1]
+    assert events[-1].information_table["size"] == len("polished content")
+
+
+def test_run_research_ingestion_failure(monkeypatch, tmp_path, caplog):
+    events: list[ResearchAdded] = []
+
+    def handler(event: ResearchAdded) -> None:
+        events.append(event)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+
+    class RunnerWithArticle(DummyRunner):
+        def run(self, **kwargs):
+            super().run(**kwargs)
+            (tmp_path / "storm_gen_article_polished.txt").write_text(
+                "draft", encoding="utf-8"
+            )
+
+    runner_inst = RunnerWithArticle(str(tmp_path))
+    monkeypatch.setattr(api_module, "_make_default_runner", lambda dir_: runner_inst)
+
+    class ExplodingHandler:
+        def __init__(self, root, **kwargs):
+            pass
+
+        def _ingest_text(self, text, source, vault):
+            raise RuntimeError("ingest failed")
+
+    monkeypatch.setattr("tino_storm.ingest.watcher.VaultIngestHandler", ExplodingHandler)
+
+    with caplog.at_level(logging.ERROR):
+        try:
+            api_module.run_research(
+                topic="subject",
+                output_dir=str(tmp_path),
+                vault="target-vault",
+            )
+        finally:
+            event_emitter.unsubscribe(ResearchAdded, handler)
+
+    assert events and events[-1].topic == "target-vault"
+    assert "ingest failed" in events[-1].information_table["error"]
+    assert "Error ingesting article for vault target-vault" in caplog.text
+
+
 def test_research_endpoint_runner_failure(monkeypatch):
     events: list[ResearchAdded] = []
 
@@ -333,6 +436,67 @@ def test_draft_endpoint_failure_emits_event(monkeypatch):
     assert "draft failure" in payload["detail"]["error"]
     assert events and events[0].topic == "v"
     assert "draft failure" in events[0].information_table["error"]
+
+
+def test_research_endpoint_async_error_propagation(monkeypatch):
+    main_thread = threading.get_ident()
+    events: list[ResearchAdded] = []
+
+    def handler(event: ResearchAdded) -> None:
+        events.append(event)
+
+    event_emitter.subscribe(ResearchAdded, handler)
+
+    captured: dict[str, int] = {}
+
+    def failing_run_research(*args, **kwargs):
+        captured["thread"] = threading.get_ident()
+        raise RuntimeError("run boom")
+
+    monkeypatch.setattr(api_module, "run_research", failing_run_research)
+
+    async def _run():
+        async with AsyncClient(app=get_app(), base_url="http://test") as client:
+            return await client.post("/research", json={"topic": "async"})
+
+    try:
+        resp = asyncio.run(_run())
+    finally:
+        event_emitter.unsubscribe(ResearchAdded, handler)
+
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["status"] == "error"
+    assert payload["detail"]["error"] == "run boom"
+    assert captured["thread"] != main_thread
+    assert events and events[-1].information_table["error"] == "run boom"
+
+
+def test_ingest_endpoint_async_error_propagation(monkeypatch):
+    main_thread = threading.get_ident()
+    captured: dict[str, int] = {}
+
+    class ExplodingHandler:
+        def __init__(self, root, **kwargs):
+            pass
+
+        def _ingest_text(self, text, source, vault):
+            captured["thread"] = threading.get_ident()
+            raise RuntimeError("ingest boom")
+
+    monkeypatch.setattr("tino_storm.ingest.watcher.VaultIngestHandler", ExplodingHandler)
+
+    async def _run():
+        async with AsyncClient(app=get_app(), base_url="http://test") as client:
+            await client.post(
+                "/ingest",
+                json={"text": "payload", "vault": "vault-1"},
+            )
+
+    with pytest.raises(RuntimeError, match="ingest boom"):
+        asyncio.run(_run())
+
+    assert captured["thread"] != main_thread
 
 
 def test_make_default_runner_local_model(monkeypatch):
