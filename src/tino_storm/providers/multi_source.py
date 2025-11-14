@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Iterable, List, Dict, Any, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional, Set
 
 from .aggregator import canonical_url, _update_best_metadata
-from .base import DefaultProvider, format_bing_items, _run_coroutine_in_new_loop
-from .aggregator import canonical_url, _update_best_metadata
+from .base import DefaultProvider, _run_coroutine_in_new_loop, format_bing_items
 from .docs_hub import DocsHubProvider
 from .registry import register_provider
 from ..events import ResearchAdded, event_emitter
@@ -155,27 +154,12 @@ class MultiSourceProvider(DefaultProvider):
                     annotated_vault.append(as_research_result(entry))
                 add_ranked_results(annotated_vault)
             elif source == "docs" and res:
-                formatted_docs: List[ResearchResult] = []
+                docs_results: List[ResearchResult] = []
                 for r in res:
-                    info: Dict[str, Any] = {
-                        "url": r.url,
-                        "snippets": r.snippets,
-                        "meta": dict(r.meta),
-                    }
-                    info["meta"].setdefault("source", "docs_hub")
-                    _ensure_provenance(info["meta"], "docs_hub")
-                    if r.summary is not None:
-                        info["summary"] = r.summary
-                    if r.score is not None:
-                        info["score"] = r.score
-                    if r.posterior is not None:
-                        info["posterior"] = r.posterior
-                    formatted_docs.append(info)
-
-                rankings.append(formatted_docs)
                     meta = dict(r.meta) if r.meta else {}
                     meta.setdefault("source", "docs_hub")
-                    formatted_docs.append(
+                    _ensure_provenance(meta, "docs_hub")
+                    docs_results.append(
                         ResearchResult(
                             url=r.url,
                             snippets=list(r.snippets),
@@ -186,11 +170,12 @@ class MultiSourceProvider(DefaultProvider):
                         )
                     )
 
-                add_ranked_results(formatted_docs)
+                add_ranked_results(docs_results)
             elif source == "bing":
                 formatted = format_bing_items(res)
                 for item in formatted:
                     meta = dict(item.get("meta") or {})
+                    meta.setdefault("source", "bing")
                     _ensure_provenance(meta, "bing")
                     item["meta"] = meta
                 if formatted:
@@ -201,35 +186,28 @@ class MultiSourceProvider(DefaultProvider):
         if not canonical_to_result:
             return []
 
-        fused = reciprocal_rank_fusion(rankings, k=rrf_k)
-        scored = add_posteriors(fused)
-        results = [as_research_result(r) for r in scored]
-
-        deduped: Dict[str, ResearchResult] = {}
-        order: List[str] = []
-        for result in results:
-            key = canonical_url(result.url) if result.url else result.url
-            if key not in deduped:
-                deduped[key] = result
-                order.append(key)
-            else:
-                _update_best_metadata(deduped[key], result)
-
-        return [deduped[key] for key in order]
-        ordered_results: List[ResearchResult]
+        ordered_keys: List[str]
         if rankings:
             fused = reciprocal_rank_fusion(rankings, k=rrf_k)
-            ordered_results = [
-                canonical_to_result[entry["url"]]
+            ordered_keys = [
+                entry["url"]
                 for entry in fused
                 if entry.get("url") in canonical_to_result
             ]
         else:
-            ordered_results = list(canonical_to_result.values())
+            ordered_keys = list(canonical_to_result.keys())
 
-        limit = min(k_per_vault, rrf_k) if k_per_vault is not None else rrf_k
-        if limit is not None and limit >= 0:
-            ordered_results = ordered_results[:limit]
+        seen: Set[str] = set()
+        ordered_results: List[ResearchResult] = []
+        for key in ordered_keys:
+            if key in seen:
+                continue
+            seen.add(key)
+            ordered_results.append(canonical_to_result[key])
+
+        for key, result in canonical_to_result.items():
+            if key not in seen:
+                ordered_results.append(result)
 
         serialized = [
             {
@@ -242,14 +220,18 @@ class MultiSourceProvider(DefaultProvider):
             }
             for result in ordered_results
         ]
-        scored = add_posteriors(serialized)
-        for idx, result in enumerate(ordered_results):
-            if result.posterior is not None and scored[idx].get("posterior") is not None:
-                scored[idx]["posterior"] = max(
-                    result.posterior, scored[idx]["posterior"]
-                )
 
-        return [as_research_result(r) for r in scored]
+        scored = add_posteriors(serialized)
+        for result, scored_data in zip(ordered_results, scored):
+            posterior = scored_data.get("posterior")
+            if posterior is None:
+                continue
+            if result.posterior is None:
+                result.posterior = posterior
+            else:
+                result.posterior = max(result.posterior, posterior)
+
+        return ordered_results
 
     def search_sync(
         self,

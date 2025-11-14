@@ -257,3 +257,47 @@ def test_multi_source_provider_merges_duplicate_sources(monkeypatch):
     assert result.meta["vault_flag"] is True
     assert result.meta["docs_flag"] is True
     assert set(result.meta["providers"]) == {"vault", "docs_hub"}
+
+
+def test_multi_source_provider_returns_typed_docs_results(monkeypatch):
+    async def fake_to_thread(func, *a, **k):
+        return func(*a, **k)
+
+    monkeypatch.setattr(asyncio, "to_thread", fake_to_thread)
+
+    monkeypatch.setattr(
+        "tino_storm.providers.multi_source.search_vaults", lambda *a, **k: []
+    )
+
+    provider = MultiSourceProvider()
+    provider.docs_provider._client = type("Client", (), {"is_configured": True})()
+
+    async def docs_search_async(*_args, **_kwargs):
+        return [
+            ResearchResult(
+                url="https://docs.example/page",
+                snippets=["docs snippet"],
+                meta={"docs_hub_origin": "remote"},
+                summary="A useful summary",
+                score=0.75,
+            )
+        ]
+
+    monkeypatch.setattr(provider.docs_provider, "search_async", docs_search_async)
+    monkeypatch.setattr(provider, "_bing_search", lambda *a, **k: [])
+
+    async def run():
+        return await provider.search_async("query", ["vault"])
+
+    results = asyncio.run(run())
+
+    assert len(results) == 1
+    result = results[0]
+    assert isinstance(result, ResearchResult)
+    assert result.url == "https://docs.example/page"
+    assert result.meta["source"] == "docs_hub"
+    assert result.meta["docs_hub_origin"] == "remote"
+    assert "docs_hub" in result.meta["providers"]
+    assert result.summary == "A useful summary"
+    assert result.score == 0.75
+    assert result.posterior is not None
