@@ -92,12 +92,12 @@ def search_vaults(
                     information_table={
                         "error": str(exc),
                         "stage": "local",
-                        "vault": vault_name,
                         "provider": "search_vaults",
+                        "vault": vault_name,
                     },
                 )
             )
-            res = {"documents": [[]], "metadatas": [[]]}
+            continue
 
         docs = res.get("documents", [[]])[0] or []
         metas = res.get("metadatas", [[]])[0] or []
