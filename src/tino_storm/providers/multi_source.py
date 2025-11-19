@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Dict, Iterable, List, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional
 
-from .aggregator import canonical_url, _update_best_metadata
+from .aggregator import _fuse_results
 from .base import DefaultProvider, _run_coroutine_in_new_loop, format_bing_items
 from .docs_hub import DocsHubProvider
 from .registry import register_provider
 from ..events import ResearchAdded, event_emitter
 from ..ingest import search_vaults
-from ..retrieval import reciprocal_rank_fusion, score_results, add_posteriors
+from ..retrieval import add_posteriors, score_results
 from ..search_result import ResearchResult, as_research_result
 
 
@@ -104,30 +104,7 @@ class MultiSourceProvider(DefaultProvider):
         if docs_used_local:
             vault_res = None
 
-        rankings: List[List[Dict[str, Any]]] = []
-        canonical_to_result: Dict[str, ResearchResult] = {}
-
-        def add_ranked_results(results: Iterable[ResearchResult]) -> None:
-            ranking: List[Dict[str, Any]] = []
-            seen: Set[str] = set()
-
-            for result in results:
-                if not result.url:
-                    continue
-
-                key = canonical_url(result.url)
-                existing = canonical_to_result.get(key)
-                if existing is None:
-                    canonical_to_result[key] = result
-                else:
-                    _update_best_metadata(existing, result)
-
-                if key not in seen:
-                    ranking.append({"url": key})
-                    seen.add(key)
-
-            if ranking:
-                rankings.append(ranking)
+        provider_results: List[List[ResearchResult]] = []
 
         for source, res in (
             ("vault", vault_res),
@@ -152,7 +129,8 @@ class MultiSourceProvider(DefaultProvider):
                     _ensure_provenance(meta, "vault")
                     entry["meta"] = meta
                     annotated_vault.append(as_research_result(entry))
-                add_ranked_results(annotated_vault)
+                if annotated_vault:
+                    provider_results.append(annotated_vault)
             elif source == "docs" and res:
                 docs_results: List[ResearchResult] = []
                 for r in res:
@@ -170,7 +148,8 @@ class MultiSourceProvider(DefaultProvider):
                         )
                     )
 
-                add_ranked_results(docs_results)
+                if docs_results:
+                    provider_results.append(docs_results)
             elif source == "bing":
                 formatted = format_bing_items(res)
                 for item in formatted:
@@ -181,33 +160,14 @@ class MultiSourceProvider(DefaultProvider):
                 if formatted:
                     scored = score_results(formatted)
                     bing_results = [as_research_result(item) for item in scored]
-                    add_ranked_results(bing_results)
+                    if bing_results:
+                        provider_results.append(bing_results)
 
-        if not canonical_to_result:
+        limit = min(k_per_vault, rrf_k) if k_per_vault is not None else rrf_k
+        ordered_results = _fuse_results(provider_results, limit=limit, rrf_k=rrf_k)
+
+        if not ordered_results:
             return []
-
-        ordered_keys: List[str]
-        if rankings:
-            fused = reciprocal_rank_fusion(rankings, k=rrf_k)
-            ordered_keys = [
-                entry["url"]
-                for entry in fused
-                if entry.get("url") in canonical_to_result
-            ]
-        else:
-            ordered_keys = list(canonical_to_result.keys())
-
-        seen: Set[str] = set()
-        ordered_results: List[ResearchResult] = []
-        for key in ordered_keys:
-            if key in seen:
-                continue
-            seen.add(key)
-            ordered_results.append(canonical_to_result[key])
-
-        for key, result in canonical_to_result.items():
-            if key not in seen:
-                ordered_results.append(result)
 
         serialized = [
             {
