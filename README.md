@@ -58,6 +58,29 @@ which tino-storm
   pip install tino-storm[research]
   ```
 
+## TaskCascadence integration
+
+Deployers that only need a lightweight callable/search surface for
+TaskCascadence can import the adapter in ``tino_storm.cascadence`` without
+pulling in the CLI or FastAPI service stack:
+
+```python
+from tino_storm.cascadence import adapter
+
+# Synchronous or async dispatch based on the current loop
+results = adapter("quantum computing", vaults=["science"])
+
+# Explicit coroutines for orchestrators that manage their own loop
+results = await adapter.search("quantum computing", vaults=["science"])
+```
+
+Install just this integration via the dedicated extra to avoid the CLI/service
+dependencies:
+
+```bash
+pip install tino-storm[cascadence]
+```
+
 ## Command line usage
 
 `tino-storm` provides a simple CLI.  The `run` sub-command executes a single
