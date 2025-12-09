@@ -32,5 +32,20 @@ def test_search_vaults_timeout(monkeypatch):
         "tino_storm.ingest.search.get_passphrase", lambda vault=None: None
     )
 
+    results = search_sync("q", ["v1"], timeout=0.05)
+
+    assert results == []
+    assert hasattr(results, "errors")
+    assert results.errors[0]["exception_type"] == "TimeoutError"
+
+
+def test_search_vaults_timeout_can_raise(monkeypatch):
+    coll = SlowCollection()
+    client = DummyClient(coll)
+    monkeypatch.setattr("chromadb.PersistentClient", lambda *a, **k: client)
+    monkeypatch.setattr(
+        "tino_storm.ingest.search.get_passphrase", lambda vault=None: None
+    )
+
     with pytest.raises(ResearchError):
-        search_sync("q", ["v1"], timeout=0.05)
+        search_sync("q", ["v1"], timeout=0.05, raise_on_error=True)

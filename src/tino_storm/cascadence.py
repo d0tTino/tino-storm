@@ -37,6 +37,7 @@ class CascadenceAdapter:
         vault: Optional[str] = None,
         provider=None,
         timeout: Optional[float] = None,
+        raise_on_error: bool = False,
     ):
         try:
             asyncio.get_running_loop()
@@ -50,6 +51,7 @@ class CascadenceAdapter:
                 vault=vault,
                 provider=provider,
                 timeout=timeout,
+                raise_on_error=raise_on_error,
             )
         return _search(
             query,
@@ -60,6 +62,7 @@ class CascadenceAdapter:
             vault=vault,
             provider=provider,
             timeout=timeout,
+            raise_on_error=raise_on_error,
         )
 
     async def search(
@@ -73,6 +76,7 @@ class CascadenceAdapter:
         vault: Optional[str] = None,
         provider=None,
         timeout: Optional[float] = None,
+        raise_on_error: bool = False,
     ) -> List[ResearchResult]:
         return await _search(
             query,
@@ -83,6 +87,7 @@ class CascadenceAdapter:
             vault=vault,
             provider=provider,
             timeout=timeout,
+            raise_on_error=raise_on_error,
         )
 
     def search_sync(
@@ -96,6 +101,7 @@ class CascadenceAdapter:
         vault: Optional[str] = None,
         provider=None,
         timeout: Optional[float] = None,
+        raise_on_error: bool = False,
     ) -> List[ResearchResult]:
         return _search_sync(
             query,
@@ -106,6 +112,7 @@ class CascadenceAdapter:
             vault=vault,
             provider=provider,
             timeout=timeout,
+            raise_on_error=raise_on_error,
         )
 
 
