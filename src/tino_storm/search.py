@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 import threading
-from typing import Callable, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional
 
 from .providers import (
     DefaultProvider,
@@ -42,6 +42,33 @@ class ResearchError(RuntimeError):
     def __init__(self, message: str, *, provider_spec: str | None = None) -> None:
         super().__init__(message)
         self.provider_spec = provider_spec
+
+
+class SearchResults(List[ResearchResult]):
+    """List-like container that also records structured error metadata."""
+
+    def __init__(self, iterable=None, *, errors: Optional[List[Dict[str, Any]]] = None):
+        super().__init__(iterable or [])
+        self.errors: List[Dict[str, Any]] = errors or []
+
+
+def _provider_name(provider: Provider | str | None) -> Optional[str]:
+    if isinstance(provider, str):
+        return provider
+    if provider is None:
+        return None
+    return getattr(provider, "name", None) or provider.__class__.__name__
+
+
+def _error_metadata(
+    query: str, error: Exception, provider: Provider | str | None
+) -> Dict[str, Any]:
+    return {
+        "error": str(error),
+        "provider": _provider_name(provider) or getattr(error, "provider_spec", None),
+        "exception_type": error.__class__.__name__,
+        "query": query,
+    }
 
 
 def _resolve_provider(provider: Provider | str | None) -> Provider:
@@ -128,15 +155,31 @@ async def search_async(
     vault: Optional[str] = None,
     provider: Provider | str | None = None,
     timeout: Optional[float] = None,
+    raise_on_error: bool = False,
 ) -> List[ResearchResult]:
     """Asynchronously query ``vaults`` using the configured provider."""
 
     if vaults is None:
         vaults = list_vaults()
 
-    provider = _resolve_provider(provider)
     try:
-        return await provider.search_async(
+        provider = _resolve_provider(provider)
+    except Exception as e:
+        logging.error(f"Search failed for query {query}: {e}")
+        await event_emitter.emit(
+            ResearchAdded(topic=query, information_table={"error": str(e)})
+        )
+        if raise_on_error:
+            if isinstance(e, ResearchError):
+                raise
+            raise ResearchError(str(e)) from e
+        return SearchResults(
+            [],
+            errors=[_error_metadata(query, e, provider)],
+        )
+
+    try:
+        results = await provider.search_async(
             query,
             vaults,
             k_per_vault=k_per_vault,
@@ -145,12 +188,20 @@ async def search_async(
             vault=vault,
             timeout=timeout,
         )
+        if isinstance(results, SearchResults):
+            return results
+        return SearchResults(results)
     except Exception as e:
         logging.error(f"Search failed for query {query}: {e}")
         await event_emitter.emit(
             ResearchAdded(topic=query, information_table={"error": str(e)})
         )
-        raise ResearchError(str(e)) from e
+        if raise_on_error:
+            raise ResearchError(str(e)) from e
+        return SearchResults(
+            [],
+            errors=[_error_metadata(query, e, provider)],
+        )
 
 
 def search_sync(
@@ -163,16 +214,31 @@ def search_sync(
     vault: Optional[str] = None,
     provider: Provider | str | None = None,
     timeout: Optional[float] = None,
+    raise_on_error: bool = False,
 ) -> List[ResearchResult]:
     """Synchronously query ``vaults`` using the configured provider."""
 
     if vaults is None:
         vaults = list_vaults()
 
-    provider = _resolve_provider(provider)
+    try:
+        provider = _resolve_provider(provider)
+    except Exception as e:
+        logging.error(f"Search failed for query {query}: {e}")
+        event_emitter.emit_sync(
+            ResearchAdded(topic=query, information_table={"error": str(e)})
+        )
+        if raise_on_error:
+            if isinstance(e, ResearchError):
+                raise
+            raise ResearchError(str(e)) from e
+        return SearchResults(
+            [],
+            errors=[_error_metadata(query, e, provider)],
+        )
 
     try:
-        return provider.search_sync(
+        results = provider.search_sync(
             query,
             vaults,
             k_per_vault=k_per_vault,
@@ -181,12 +247,15 @@ def search_sync(
             vault=vault,
             timeout=timeout,
         )
+        if isinstance(results, SearchResults):
+            return results
+        return SearchResults(results)
     except NotImplementedError:
         try:
             asyncio.get_running_loop()
         except RuntimeError:
             try:
-                return asyncio.run(
+                results = asyncio.run(
                     provider.search_async(
                         query,
                         vaults,
@@ -197,12 +266,20 @@ def search_sync(
                         timeout=timeout,
                     )
                 )
+                if isinstance(results, SearchResults):
+                    return results
+                return SearchResults(results)
             except Exception as e:  # pragma: no cover - defensive fallback
                 logging.error(f"Search failed for query {query}: {e}")
                 event_emitter.emit_sync(
                     ResearchAdded(topic=query, information_table={"error": str(e)})
                 )
-                raise ResearchError(str(e)) from e
+                if raise_on_error:
+                    raise ResearchError(str(e)) from e
+                return SearchResults(
+                    [],
+                    errors=[_error_metadata(query, e, provider)],
+                )
         raise RuntimeError(
             "search_sync cannot run inside a running event loop when the provider "
             "only implements asynchronous search; use search_async instead."
@@ -212,7 +289,12 @@ def search_sync(
         event_emitter.emit_sync(
             ResearchAdded(topic=query, information_table={"error": str(e)})
         )
-        raise ResearchError(str(e)) from e
+        if raise_on_error:
+            raise ResearchError(str(e)) from e
+        return SearchResults(
+            [],
+            errors=[_error_metadata(query, e, provider)],
+        )
 
 
 async def search(
@@ -225,6 +307,7 @@ async def search(
     vault: Optional[str] = None,
     provider: Provider | str | None = None,
     timeout: Optional[float] = None,
+    raise_on_error: bool = False,
 ) -> List[ResearchResult]:
     """Asynchronously query ``vaults`` via :func:`search_async`."""
 
@@ -237,4 +320,5 @@ async def search(
         vault=vault,
         provider=provider,
         timeout=timeout,
+        raise_on_error=raise_on_error,
     )
