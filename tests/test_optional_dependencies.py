@@ -1,6 +1,9 @@
 import importlib
 import sys
 
+import importlib
+import sys
+
 import pytest
 
 from tino_storm._extras import MissingExtraError
@@ -66,3 +69,22 @@ def test_research_skill_missing_dspy(monkeypatch, _restore_module_cache):
         importlib.import_module("tino_storm.skills.research")
 
     assert "pip install tino-storm[llm]" in str(excinfo.value)
+
+
+def test_research_core_callable_without_vector_store(monkeypatch, _restore_module_cache):
+    _simulate_missing(monkeypatch, "chromadb")
+
+    class DummyProvider:
+        def search_sync(self, *args, **kwargs):
+            from tino_storm.search_result import ResearchResult
+
+            return [ResearchResult(url="http://example.com", snippets=["test"])]
+
+        async def search_async(self, *args, **kwargs):  # pragma: no cover - sync path
+            return self.search_sync(*args, **kwargs)
+
+    from tino_storm import search_sync
+
+    results = search_sync("query", provider=DummyProvider())
+
+    assert results

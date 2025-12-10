@@ -10,8 +10,6 @@ dependencies = [
     "numpy==1.26.4",
     "pytz",
     "httpx>=0.27.0,<0.29",
-    "chromadb",
-
     "requests>=2.31.0",
     "PyYAML>=6.0",
     "cryptography>=41.0.0",
@@ -51,6 +49,7 @@ research = [
     "uvicorn>=0.29.0",
     "watchdog",
     "knowledge-storm",
+    "chromadb",
 ]
 cascadence = []
 retrieval = [
@@ -59,6 +58,19 @@ retrieval = [
     "langchain-huggingface",
     "qdrant-client",
     "langchain-qdrant",
+]
+research-core = [
+    "toml",
+    "trafilatura",
+    "numpy==1.26.4",
+    "pytz",
+    "httpx>=0.27.0,<0.29",
+    "requests>=2.31.0",
+    "PyYAML>=6.0",
+    "cryptography>=41.0.0",
+]
+vector-store = [
+    "chromadb",
 ]
 
 [build-system]

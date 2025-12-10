@@ -8,6 +8,8 @@ import asyncio
 from pathlib import Path
 from typing import Any, Optional, List
 
+from .._extras import require_extra
+
 try:
     from watchdog.events import FileSystemEventHandler
     from watchdog.observers import Observer
@@ -16,7 +18,6 @@ except ImportError as e:  # pragma: no cover - optional dependency
         "watchdog is required for ingestion features; install with 'tino-storm[research]'"
     ) from e
 
-import chromadb
 import trafilatura
 from weakref import ref, ReferenceType
 
@@ -159,6 +160,7 @@ class VaultIngestHandler(FileSystemEventHandler):
                 atexit.register(encrypt_parquet_files, self._chroma_root, passphrase)
             client = EncryptedChroma(self._chroma_root, passphrase=passphrase)
         else:
+            chromadb = require_extra("chromadb", "vector-store")
             client = chromadb.PersistentClient(path=self._chroma_root)
         self._instrument_client(client)
         return client

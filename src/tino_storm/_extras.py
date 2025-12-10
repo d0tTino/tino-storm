@@ -66,7 +66,10 @@ def ensure_optional_dependency_stub(module: str, extra: str) -> None:
     if module in sys.modules:
         return
 
-    spec = importlib.util.find_spec(module)
+    try:
+        spec = importlib.util.find_spec(module)
+    except ModuleNotFoundError:
+        spec = None
     if spec is not None:  # The real module is available; do nothing.
         return
 
