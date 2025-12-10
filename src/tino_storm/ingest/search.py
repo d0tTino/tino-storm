@@ -7,8 +7,7 @@ import os
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
-import chromadb
-
+from .._extras import MissingExtraError, require_extra
 from .utils import list_vaults  # noqa: F401
 from ..events import ResearchAdded, event_emitter
 from ..security import (
@@ -36,6 +35,18 @@ def search_vaults(
 ) -> List[Dict[str, Any]]:
     """Query multiple Chroma namespaces and combine results using RRF."""
 
+    vault_list = list(vaults)
+    if not vault_list:
+        return []
+
+    try:
+        chromadb = require_extra("chromadb", "vector-store")
+    except MissingExtraError:
+        logging.warning(
+            "chromadb is missing; install the 'vector-store' extra for vault search"
+        )
+        return []
+
     chroma_root = Path(
         chroma_path
         or os.environ.get("STORM_CHROMA_PATH", Path.home() / ".tino_storm" / "chroma")
@@ -57,7 +68,7 @@ def search_vaults(
         client_map: dict[str | None, Any] = {}
 
     rankings: List[List[Dict[str, Any]]] = []
-    for vault_name in vaults:
+    for vault_name in vault_list:
         if vault is not None:
             collection = client.get_or_create_collection(vault_name)
         else:

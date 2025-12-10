@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Optional
 
+from .._extras import MissingExtraError
 from .search import search_vaults
 
 WATCHDOG_INSTALL_HINT = (
@@ -21,12 +22,13 @@ class _WatchdogProxy:
         "__tino_missing_dependency_message__",
     )
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, message: str = WATCHDOG_INSTALL_HINT) -> None:
         self._name = name
         self.__name__ = name
         self.__qualname__ = name
-        self.__tino_missing_dependency__ = "watchdog"
-        self.__tino_missing_dependency_message__ = WATCHDOG_INSTALL_HINT
+        dependency = "vector-store" if "vector-store" in message else "watchdog"
+        self.__tino_missing_dependency__ = dependency
+        self.__tino_missing_dependency_message__ = message
 
     def _raise(self) -> None:
         raise ImportError(self.__tino_missing_dependency_message__)
@@ -43,12 +45,13 @@ class _WatchdogProxy:
 
 try:
     from .watcher import start_watcher, VaultIngestHandler, load_txt_documents
-except ImportError as exc:  # pragma: no cover - optional dependency
-    if "watchdog is required" not in str(exc):
+except (ImportError, MissingExtraError) as exc:  # pragma: no cover - optional dependency
+    message = str(exc)
+    if "watchdog is required" not in message and "vector-store" not in message:
         raise
-    start_watcher = _WatchdogProxy("start_watcher")
-    VaultIngestHandler = _WatchdogProxy("VaultIngestHandler")
-    load_txt_documents = _WatchdogProxy("load_txt_documents")
+    start_watcher = _WatchdogProxy("start_watcher", message)
+    VaultIngestHandler = _WatchdogProxy("VaultIngestHandler", message)
+    load_txt_documents = _WatchdogProxy("load_txt_documents", message)
 
 
 def ingest_path(

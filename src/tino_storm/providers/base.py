@@ -10,6 +10,7 @@ from collections import OrderedDict
 from contextlib import suppress
 from typing import Any, Awaitable, Dict, Iterable, List, Optional, TypeVar
 
+from .._extras import MissingExtraError
 from ..search_result import ResearchResult, as_research_result
 
 from ..ingest import search_vaults
@@ -281,15 +282,18 @@ class DefaultProvider(Provider):
         vault: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
-        raw_results = search_vaults(
-            query,
-            vaults,
-            k_per_vault=k_per_vault,
-            rrf_k=rrf_k,
-            chroma_path=chroma_path,
-            vault=vault,
-            timeout=timeout,
-        )
+        try:
+            raw_results = search_vaults(
+                query,
+                vaults,
+                k_per_vault=k_per_vault,
+                rrf_k=rrf_k,
+                chroma_path=chroma_path,
+                vault=vault,
+                timeout=timeout,
+            )
+        except MissingExtraError:
+            raw_results = []
         if raw_results:
             results = [as_research_result(r) for r in raw_results]
             _ensure_source(results, "vault")
@@ -324,16 +328,19 @@ class DefaultProvider(Provider):
         vault: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> List[ResearchResult]:
-        raw_results = await asyncio.to_thread(
-            search_vaults,
-            query,
-            vaults,
-            k_per_vault=k_per_vault,
-            rrf_k=rrf_k,
-            chroma_path=chroma_path,
-            vault=vault,
-            timeout=timeout,
-        )
+        try:
+            raw_results = await asyncio.to_thread(
+                search_vaults,
+                query,
+                vaults,
+                k_per_vault=k_per_vault,
+                rrf_k=rrf_k,
+                chroma_path=chroma_path,
+                vault=vault,
+                timeout=timeout,
+            )
+        except MissingExtraError:
+            raw_results = []
         if raw_results:
             results = [as_research_result(r) for r in raw_results]
             _ensure_source(results, "vault")

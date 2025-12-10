@@ -5,9 +5,14 @@ from __future__ import annotations
 import base64
 from typing import Any, List, Optional
 
-import chromadb
-from chromadb.api import Collection
-from chromadb.config import Settings
+from typing import TYPE_CHECKING
+
+from .._extras import require_extra
+
+if TYPE_CHECKING:  # pragma: no cover
+    import chromadb
+    from chromadb.api import Collection
+    from chromadb.config import Settings
 
 from .config import get_passphrase
 from .crypto import encrypt_bytes, decrypt_bytes
@@ -16,7 +21,7 @@ from .crypto import encrypt_bytes, decrypt_bytes
 class EncryptedCollection:
     """A thin wrapper over a Chroma ``Collection`` that encrypts documents."""
 
-    def __init__(self, collection: Collection, passphrase: Optional[str] = None):
+    def __init__(self, collection: "Collection", passphrase: Optional[str] = None):
         self._collection = collection
         self._passphrase = passphrase or get_passphrase()
 
@@ -61,6 +66,9 @@ class EncryptedChroma:
     """Helper that creates encrypted Chroma collections."""
 
     def __init__(self, path: str, passphrase: Optional[str] = None, **settings: Any):
+        chromadb = require_extra("chromadb", "vector-store")
+        Settings = chromadb.config.Settings
+
         self._passphrase = passphrase or get_passphrase()
         self._client = chromadb.PersistentClient(
             path=path, settings=Settings(**settings)
