@@ -93,7 +93,13 @@ def _resolve_provider(provider: Provider | str | None) -> Provider:
 
                     return _get_or_create_provider(spec, factory)
 
-                return _get_or_create_provider(spec, lambda: load_provider(spec))
+                def factory() -> Provider:
+                    try:
+                        return provider_registry.get(spec)
+                    except KeyError:
+                        return load_provider(spec)
+
+                return _get_or_create_provider(spec, factory)
             except Exception as e:
                 logging.exception("Failed to load provider '%s'", spec)
                 _emit_load_error(spec, e)
