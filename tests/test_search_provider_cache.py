@@ -49,3 +49,12 @@ def test_env_provider_list_builds_aggregator(monkeypatch, env_value):
 
     monkeypatch.delenv("STORM_SEARCH_PROVIDER")
 
+
+def test_env_provider_registered_name_resolves(monkeypatch):
+    _clear_provider_cache()
+    monkeypatch.setenv("STORM_SEARCH_PROVIDER", "parallel")
+
+    provider = search_module._resolve_provider(None)
+
+    assert provider is search_module.provider_registry.get("parallel")
+    assert search_module._resolve_provider(None) is provider

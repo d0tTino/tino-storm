@@ -115,6 +115,43 @@ def test_search_uses_env_provider(monkeypatch):
     assert calls["args"] == ("q", ["v"], 5, 60, None, None, None)
 
 
+def test_resolve_provider_uses_env_dotted_path(monkeypatch):
+    class DummyProvider(Provider):
+        def search_sync(self, *a, **k):
+            return []
+
+    mod = types.ModuleType("dummy_env_provider_mod")
+    mod.DummyProvider = DummyProvider
+    monkeypatch.setitem(sys.modules, "dummy_env_provider_mod", mod)
+    monkeypatch.setenv("STORM_SEARCH_PROVIDER", "dummy_env_provider_mod.DummyProvider")
+    _PROVIDER_CACHE.clear()
+
+    provider = _resolve_provider(None)
+
+    assert isinstance(provider, DummyProvider)
+
+
+def test_resolve_provider_emits_event_on_invalid_env_spec(monkeypatch):
+    events: list[ResearchAdded] = []
+
+    def handler(event: ResearchAdded) -> None:
+        events.append(event)
+
+    _PROVIDER_CACHE.clear()
+    monkeypatch.setenv("STORM_SEARCH_PROVIDER", "bad provider spec")
+    event_emitter.subscribe(ResearchAdded, handler)
+    try:
+        with pytest.raises(ResearchError) as exc:
+            _resolve_provider(None)
+    finally:
+        event_emitter.unsubscribe(ResearchAdded, handler)
+
+    assert len(events) == 1
+    assert events[0].topic == "bad provider spec"
+    assert "error" in events[0].information_table
+    assert exc.value.provider_spec == "bad provider spec"
+
+
 def test_parallel_provider_gathers_and_merges(monkeypatch):
     gathered = {}
 
