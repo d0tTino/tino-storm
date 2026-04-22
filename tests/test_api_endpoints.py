@@ -91,6 +91,7 @@ class AsyncClient:
         elif path == "/search":
             data.setdefault("k_per_vault", 5)
             data.setdefault("rrf_k", 60)
+            data.setdefault("raise_on_error", False)
         arg = types.SimpleNamespace(**data)
         result = fn(arg)
         if asyncio.iscoroutine(result):
@@ -216,8 +217,8 @@ def test_ingest_endpoint(monkeypatch):
 def test_search_endpoint(monkeypatch):
     called = {}
 
-    async def fake_search(query, vaults, *, k_per_vault=5, rrf_k=60):
-        called["args"] = (query, list(vaults), k_per_vault, rrf_k)
+    async def fake_search(query, vaults, *, k_per_vault=5, rrf_k=60, raise_on_error=False):
+        called["args"] = (query, list(vaults), k_per_vault, rrf_k, raise_on_error)
         return [ResearchResult(url="u", snippets=["s"], meta={})]
 
     monkeypatch.setattr(api_module, "search", fake_search)
@@ -235,7 +236,7 @@ def test_search_endpoint(monkeypatch):
         "score": None,
         "posterior": None,
     }
-    assert called["args"] == ("q", ["v1", "v2"], 5, 60)
+    assert called["args"] == ("q", ["v1", "v2"], 5, 60, False)
 
 
 def test_ingestion_failure_emits_event(monkeypatch, tmp_path, caplog):
@@ -526,8 +527,8 @@ def test_search_endpoint_asyncio(monkeypatch):
 
     called = {}
 
-    async def fake_search(query, vaults, *, k_per_vault=5, rrf_k=60):
-        called["args"] = (query, list(vaults), k_per_vault, rrf_k)
+    async def fake_search(query, vaults, *, k_per_vault=5, rrf_k=60, raise_on_error=False):
+        called["args"] = (query, list(vaults), k_per_vault, rrf_k, raise_on_error)
         return [ResearchResult(url="u", snippets=["s"], meta={})]
 
     monkeypatch.setattr(api_module, "search", fake_search)
@@ -553,8 +554,41 @@ def test_search_endpoint_asyncio(monkeypatch):
         "score": None,
         "posterior": None,
     }
-    assert called["args"] == ("q", ["v1", "v2"], 5, 60)
+    assert called["args"] == ("q", ["v1", "v2"], 5, 60, False)
 
+
+
+
+def test_search_endpoint_includes_errors(monkeypatch):
+    async def fake_search(query, vaults, *, k_per_vault=5, rrf_k=60, raise_on_error=False):
+        from tino_storm.search import SearchResults
+
+        return SearchResults([], errors=[{"error": "boom", "query": query}])
+
+    monkeypatch.setattr(api_module, "search", fake_search)
+
+    resp = asyncio.run(_post("/search", {"query": "q", "vaults": ["v1"]}))
+    assert resp.status_code == 200
+    assert resp.json() == {"results": [], "errors": [{"error": "boom", "query": "q"}]}
+
+
+def test_search_endpoint_raise_on_error_returns_error_payload(monkeypatch):
+    from tino_storm.search import ResearchError
+
+    async def fake_search(query, vaults, *, k_per_vault=5, rrf_k=60, raise_on_error=False):
+        assert raise_on_error is True
+        raise ResearchError("boom")
+
+    monkeypatch.setattr(api_module, "search", fake_search)
+
+    resp = asyncio.run(
+        _post(
+            "/search",
+            {"query": "q", "vaults": ["v1"], "raise_on_error": True},
+        )
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "error", "detail": {"error": "boom"}}
 
 def test_create_fastapi_app_missing_dependency(monkeypatch):
     stub_fastapi = types.ModuleType("fastapi")

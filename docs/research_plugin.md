@@ -75,8 +75,10 @@ invoked.
 ### Misconfigured providers
 
 If a provider specified via `STORM_SEARCH_PROVIDER` fails to load or lacks
-required settings, `tino_storm.search()` raises `ResearchError`. Wrap calls in a
-`try`/`except` block to handle these errors gracefully.
+required settings, `tino_storm.search()` and `tino_storm.search_async()`
+soft-fail by default and return an empty `SearchResults` object with structured
+error metadata in `results.errors`. Pass `raise_on_error=True` to opt into
+raising `ResearchError`.
 
 ```python
 import os
@@ -84,8 +86,12 @@ import tino_storm
 from tino_storm.search import ResearchError
 
 os.environ["STORM_SEARCH_PROVIDER"] = "my_package.providers.MisconfiguredProvider"
+
+results = tino_storm.search_sync("large language models")
+print(results.errors)
+
 try:
-    tino_storm.search("large language models")
+    tino_storm.search_sync("large language models", raise_on_error=True)
 except ResearchError as exc:
     print("Provider misconfigured:", exc)
 ```
@@ -177,14 +183,19 @@ export STORM_SEARCH_PROVIDER="docs_hub, parallel"
 
 ## Error handling
 
-When a provider fails to complete a query, ``search`` and ``search_async``
-raise ``ResearchError``. Catch this exception to handle failures gracefully.
+When a provider fails to complete a query, ``search_sync`` and ``search_async``
+return a ``SearchResults`` list with ``errors`` populated by default. Each error
+entry includes the failing provider name, exception type, query, and message.
+Set ``raise_on_error=True`` to raise ``ResearchError`` instead.
 
 ```python
-from tino_storm.search import ResearchError, search
+from tino_storm.search import ResearchError, search_sync
+
+results = search_sync("large language models", provider="failing-provider")
+print(results.errors)
 
 try:
-    search("large language models", provider="failing-provider")
+    search_sync("large language models", provider="failing-provider", raise_on_error=True)
 except ResearchError as e:
     print("Search failed:", e)
 ```

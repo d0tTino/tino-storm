@@ -237,6 +237,26 @@ Third-party packages may expose providers through the
 After installation the provider can be used by name with
 `tino_storm.search()` or retrieved from `provider_registry`.
 
+
+#### Error handling contract
+
+`tino_storm.search_sync()` and `tino_storm.search_async()` soft-fail by default.
+On provider failures they return `SearchResults` with an empty result list and
+structured diagnostics in `results.errors`. Set `raise_on_error=True` to opt
+into raising `ResearchError` instead.
+
+```python
+from tino_storm.search import ResearchError, search_sync
+
+results = search_sync("cats", ["science"], provider="my-provider")
+print(results.errors)
+
+try:
+    search_sync("cats", ["science"], provider="my-provider", raise_on_error=True)
+except ResearchError as exc:
+    print("Search failed:", exc)
+```
+
 ### HTTP API
 
 When running `tino-storm serve` the following POST endpoints become available:
@@ -250,8 +270,10 @@ When running `tino-storm serve` the following POST endpoints become available:
 The first three endpoints accept a JSON body with `topic`, optional
 `output_dir` and `vault` fields.  The `/ingest` endpoint expects `text`,
 `vault` and an optional `source` identifying the origin of the text.  The
-`/search` endpoint expects `query`, a list of `vaults` and optional
-`k_per_vault` and `rrf_k` parameters.
+`/search` endpoint expects `query`, a list of `vaults`, optional
+`k_per_vault` and `rrf_k` parameters, and optional `raise_on_error`
+(default `false`). Successful responses include both `results` and `errors`,
+where `errors` mirrors `SearchResults.errors`.
 
 If the research workflow cannot start, the `/research`, `/outline` and
 `/draft` endpoints return a JSON error payload in the following format:

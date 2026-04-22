@@ -7,6 +7,7 @@ from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from . import search
+from .search import ResearchError, SearchResults
 from .events import ResearchAdded, event_emitter
 
 if TYPE_CHECKING:  # pragma: no cover - imported for type hints only
@@ -130,13 +131,23 @@ def _register_routes(app: Any, models: _RequestModels) -> None:
     @app.post("/search")
     async def search_endpoint(req: SearchRequestModel) -> Dict[str, Any]:
         data = _model_to_dict(req)
-        result = await search(
-            data["query"],
-            data["vaults"],
-            k_per_vault=data.get("k_per_vault", 5),
-            rrf_k=data.get("rrf_k", 60),
-        )
-        return {"results": [asdict(r) for r in result]}
+        try:
+            result = await search(
+                data["query"],
+                data["vaults"],
+                k_per_vault=data.get("k_per_vault", 5),
+                rrf_k=data.get("rrf_k", 60),
+                raise_on_error=data.get("raise_on_error", False),
+            )
+        except ResearchError as exc:
+            detail = {"error": str(exc)}
+            http_exc = _maybe_raise_http_error(detail)
+            if http_exc is not None:
+                raise http_exc
+            return {"status": "error", "detail": detail}
+
+        errors = result.errors if isinstance(result, SearchResults) else []
+        return {"results": [asdict(r) for r in result], "errors": errors}
 
 
 def _create_fastapi_app():
@@ -163,6 +174,7 @@ def _create_fastapi_app():
         vaults: List[str]
         k_per_vault: int = 5
         rrf_k: int = 60
+        raise_on_error: bool = False
 
     fastapi_app = FastAPI(title="tino-storm API")
     _register_routes(
