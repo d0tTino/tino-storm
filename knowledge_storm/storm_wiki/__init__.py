@@ -1,2 +1,3 @@
-from .engine import *  # noqa: F401,F403
-from .modules import *  # noqa: F401,F403
+"""Compatibility shim forwarding to ``tino_storm.storm_wiki``."""
+
+from tino_storm.storm_wiki import *  # noqa: F401,F403

@@ -1,7 +1,3 @@
-"""Subpackage containing the collaborative STORM implementation."""
+"""Compatibility shim forwarding to ``tino_storm.collaborative_storm``."""
 
-__all__ = []
-
-# Similar to the package root, importing everything here would trigger
-# many optional dependencies. Consumers should import from specific
-# modules (e.g. ``knowledge_storm.collaborative_storm.engine``) instead.
+from tino_storm.collaborative_storm import *  # noqa: F401,F403
