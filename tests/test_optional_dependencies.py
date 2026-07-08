@@ -1,9 +1,6 @@
 import importlib
 import sys
 
-import importlib
-import sys
-
 import pytest
 
 from tino_storm._extras import MissingExtraError
@@ -71,7 +68,9 @@ def test_research_skill_missing_dspy(monkeypatch, _restore_module_cache):
     assert "pip install tino-storm[llm]" in str(excinfo.value)
 
 
-def test_research_core_callable_without_vector_store(monkeypatch, _restore_module_cache):
+def test_research_core_callable_without_vector_store(
+    monkeypatch, _restore_module_cache
+):
     _simulate_missing(monkeypatch, "chromadb")
 
     class DummyProvider:
@@ -88,3 +87,16 @@ def test_research_core_callable_without_vector_store(monkeypatch, _restore_modul
     results = search_sync("query", provider=DummyProvider())
 
     assert results
+
+
+def test_search_import_without_llm_extras(monkeypatch, _restore_module_cache):
+    for dependency in ("dspy", "backoff", "dsp"):
+        _simulate_missing(monkeypatch, dependency)
+    monkeypatch.delitem(sys.modules, "tino_storm.search", raising=False)
+    monkeypatch.delitem(sys.modules, "tino_storm.providers.base", raising=False)
+    monkeypatch.delitem(sys.modules, "tino_storm.core.rm", raising=False)
+
+    module = importlib.import_module("tino_storm.search")
+
+    assert module.search_sync is not None
+    assert "tino_storm.core.rm" not in sys.modules
