@@ -1,9 +1,6 @@
 import importlib
 import sys
 
-import importlib
-import sys
-
 import pytest
 
 from tino_storm._extras import MissingExtraError
@@ -88,3 +85,26 @@ def test_research_core_callable_without_vector_store(monkeypatch, _restore_modul
     results = search_sync("query", provider=DummyProvider())
 
     assert results
+
+
+def test_import_search_with_missing_optional_provider_dependencies(
+    monkeypatch, _restore_module_cache
+):
+    for prefix in ("chromadb", "qdrant_client", "llama_index"):
+        _simulate_missing(monkeypatch, prefix)
+
+    for name in [
+        "tino_storm.search",
+        "tino_storm.providers",
+        "tino_storm.providers.docs_hub",
+        "tino_storm.providers.multi_source",
+        "tino_storm.providers.vector_db",
+    ]:
+        monkeypatch.delitem(sys.modules, name, raising=False)
+
+    module = importlib.import_module("tino_storm.search")
+
+    assert module.search_sync is not None
+    assert "tino_storm.providers.docs_hub" not in sys.modules
+    assert "tino_storm.providers.multi_source" not in sys.modules
+    assert "tino_storm.providers.vector_db" not in sys.modules
