@@ -10,11 +10,10 @@ from collections import OrderedDict
 from contextlib import suppress
 from typing import Any, Awaitable, Dict, Iterable, List, Optional, TypeVar
 
-from .._extras import MissingExtraError
+from .._extras import MissingExtraError, require_extra
 from ..search_result import ResearchResult, as_research_result
 
 from ..ingest import search_vaults
-from ..core.rm import BingSearch
 from ..events import ResearchAdded, event_emitter
 
 # Maximum number of in-flight or cached summary tasks.
@@ -76,6 +75,18 @@ def format_bing_items(items: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
             meta["title"] = item.get("title")
         formatted.append({"url": url, "snippets": snippets, "meta": meta})
     return formatted
+
+
+def _load_bing_search_class():
+    """Load BingSearch only when Bing web search is actually used."""
+
+    require_extra("backoff", "llm")
+    require_extra("dspy", "llm", package="dspy_ai")
+    require_extra("dsp", "llm")
+
+    from ..core.rm import BingSearch
+
+    return BingSearch
 
 
 def _ensure_source(results: Iterable[ResearchResult], source: str) -> None:
@@ -153,9 +164,17 @@ class DefaultProvider(Provider):
             api_key = os.environ.get("BING_SEARCH_API_KEY")
             if not api_key:
                 return []
-            self._bing = BingSearch(
-                bing_search_api_key=api_key, k=self.bing_k, **self.bing_kwargs
-            )
+            try:
+                BingSearch = _load_bing_search_class()
+                self._bing = BingSearch(
+                    bing_search_api_key=api_key, k=self.bing_k, **self.bing_kwargs
+                )
+            except MissingExtraError as e:
+                logging.error(f"Bing search dependencies are unavailable: {e}")
+                event_emitter.emit_sync(
+                    ResearchAdded(topic=query, information_table={"error": str(e)})
+                )
+                return []
         try:
             kwargs: Dict[str, Any] = {}
             if timeout is not None:
