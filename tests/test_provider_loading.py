@@ -249,3 +249,22 @@ def test_resolve_provider_caches_instance(monkeypatch):
         assert calls["count"] == 1
     finally:
         _PROVIDER_CACHE.clear()
+
+
+def test_import_search_does_not_eagerly_load_optional_provider_modules(monkeypatch):
+    for name in [
+        "tino_storm.search",
+        "tino_storm.providers",
+        "tino_storm.providers.docs_hub",
+        "tino_storm.providers.multi_source",
+        "tino_storm.providers.vector_db",
+    ]:
+        monkeypatch.delitem(sys.modules, name, raising=False)
+
+    import importlib
+
+    importlib.import_module("tino_storm.search")
+
+    assert "tino_storm.providers.docs_hub" not in sys.modules
+    assert "tino_storm.providers.multi_source" not in sys.modules
+    assert "tino_storm.providers.vector_db" not in sys.modules
